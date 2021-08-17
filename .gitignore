@@ -34,6 +34,3 @@
 # Build files
 build
 cmake-build-*
-
-# Configuration files
-.idea
