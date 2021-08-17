@@ -31,5 +31,9 @@
 *.out
 *.app
 
-# CMake build files
+# Build files
+build
 cmake-build-*
+
+# Configuration files
+.idea
