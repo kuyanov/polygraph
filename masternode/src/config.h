@@ -1,7 +1,7 @@
 #pragma once
+
 #include <fstream>
 #include <string>
-#include <stdexcept>
 #include "rapidjson/document.h"
 #include "rapidjson/istreamwrapper.h"
 

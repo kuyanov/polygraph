@@ -1,6 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
+  "required": ["blocks", "connections", "entries"],
   "properties": {
     "blocks": {
       "type": "array"
@@ -9,9 +10,6 @@
       "type": "array"
     },
     "entries": {
-      "type": "array"
-    },
-    "resources": {
       "type": "array"
     }
   }
