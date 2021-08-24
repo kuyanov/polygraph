@@ -1,16 +1,133 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["blocks", "connections", "entries"],
+  "required": ["blocks", "files", "connections", "entries"],
   "properties": {
     "blocks": {
-      "type": "array"
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "inputs", "outputs", "tasks"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["filename"],
+              "properties": {
+                "filename": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["filename"],
+              "properties": {
+                "filename": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["argv"],
+              "properties": {
+                "argv": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "time-limit-ms": {
+                  "type": "integer"
+                },
+                "wall-time-limit-ms": {
+                  "type": "integer"
+                },
+                "memory-limit-kb": {
+                  "type": "integer"
+                },
+                "fsize-limit-kb": {
+                  "type": "integer"
+                },
+                "max-files": {
+                  "type": "integer"
+                },
+                "max-threads": {
+                  "type": "integer"
+                },
+                "stdin": {
+                  "type": "string"
+                },
+                "stdout": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["external-path", "filename", "allow-read", "allow-write"],
+        "properties": {
+          "external-path": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "allow-read": {
+            "type": "boolean"
+          },
+          "allow-write": {
+            "type": "boolean"
+          }
+        }
+      }
     },
     "connections": {
-      "type": "array"
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "start-block-id", "end-block-id"],
+        "properties": {
+          "type": {
+            "enum": ["block-block", "block-file", "file-block"]
+          },
+          "start-block-id": {
+            "type": "integer"
+          },
+          "start-block-output-id": {
+            "type": "integer"
+          },
+          "end-block-id": {
+            "type": "integer"
+          },
+          "end-block-input-id": {
+            "type": "integer"
+          }
+        }
+      }
     },
     "entries": {
-      "type": "array"
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
     }
   }
 }
