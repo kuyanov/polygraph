@@ -34,7 +34,7 @@ public:
             rapidjson::StringBuffer buffer;
             rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
             schemaValidator->GetError().Accept(writer);
-            validationError = std::string("Invalid document: ") + buffer.GetString();
+            validationError = buffer.GetString();
             return false;
         }
         return true;

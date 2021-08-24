@@ -30,11 +30,11 @@ int main() {
             if (isLast) {
                 rapidjson::Document graph;
                 if (graph.Parse(graphJson.c_str()).HasParseError()) {
-                    res->writeStatus("400 Bad Request")->end("Error: could not parse json");
+                    res->writeStatus("400 Bad Request")->end("Not a json");
                     return;
                 }
                 if (!graphValidator.validate(graph)) {
-                    res->writeStatus("400 Bad Request")->end(graphValidator.validationError);
+                    res->writeStatus("400 Bad Request")->end("Invalid document: " + graphValidator.validationError);
                     return;
                 }
                 string graphId = uuid::generate();
