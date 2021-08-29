@@ -1,6 +1,9 @@
 #include <iostream>
+#include <utility>
 #include "App.h"
+#include "clients_group.h"
 #include "config.h"
+#include "graph.h"
 #include "schema_validator.h"
 #include "uuid.h"
 
@@ -9,12 +12,11 @@ using namespace std;
 const char *CONFIG_FILE = "config.json";
 const char *GRAPH_SCHEMA_FILE = "schema/graph.json";
 
-struct UserData {
-};
-
 int main() {
     Config config(CONFIG_FILE);
     SchemaValidator graphValidator(GRAPH_SCHEMA_FILE);
+    GraphsStorage graphsStorage;
+    ClientsGroup<false> users;
 
     uWS::App().get("/", [](auto *res, auto *req) {
         res->end();
@@ -28,19 +30,50 @@ int main() {
             }
             graphJson.append(chunk);
             if (isLast) {
-                rapidjson::Document graph;
-                if (graph.Parse(graphJson.c_str()).HasParseError()) {
-                    res->writeStatus("400 Bad Request")->end("Not a json");
+                try {
+                    auto graph = graphValidator.parse(graphJson);
+                    string graphId = uuid::generate();
+                    graphsStorage.initGraph(graphId, graph);
+                    res->end(graphId);
+                } catch (const ParseError &error) {
+                    res->writeStatus("400 Bad Request")->end("Could not parse json: " + error.message);
+                    return;
+                } catch (const ValidationError &error) {
+                    res->writeStatus("400 Bad Request")->end("Invalid document: " + error.message);
                     return;
                 }
-                if (!graphValidator.validate(graph)) {
-                    res->writeStatus("400 Bad Request")->end("Invalid document: " + graphValidator.validationError);
-                    return;
-                }
-                string graphId = uuid::generate();
-                res->end(graphId);
             }
         });
+    }).ws<UserData>("/graph/:id", {
+        .maxPayloadLength = config.maxPayloadSize,
+        .upgrade = [&](auto *res, auto *req, auto *context) {
+            string graphId(req->getParameter(0));
+            if (!graphsStorage.contains(graphId)) {
+                res->writeStatus("404 Not Found")->end();
+                return;
+            }
+            res->template upgrade<UserData>({
+                .group = graphId
+            },
+                req->getHeader("sec-websocket-key"),
+                req->getHeader("sec-websocket-protocol"),
+                req->getHeader("sec-websocket-extensions"),
+                context
+            );
+        },
+        .open = [&](auto *ws) {
+            users.join(ws);
+        },
+        .message = [&](auto *ws, string_view message, uWS::OpCode opCode) {
+            if (message == "run") {
+                // TODO
+            } else if (message == "stop") {
+                // TODO
+            }
+        },
+        .close = [&](auto *ws, int code, string_view message) {
+            users.leave(ws);
+        }
     }).listen(config.host, config.port, [&](auto *listen_socket) {
         if (listen_socket) {
             cout << "Listening on " << config.host << ":" << config.port << endl;

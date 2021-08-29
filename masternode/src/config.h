@@ -8,7 +8,7 @@
 struct Config {
     std::string host;
     int port;
-    int maxPayloadSize;
+    unsigned int maxPayloadSize;
 
     explicit Config(const char *filename) {
         std::ifstream fin(filename);
