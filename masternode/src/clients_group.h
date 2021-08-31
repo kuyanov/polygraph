@@ -10,9 +10,8 @@ struct UserData {
     std::string group;
 };
 
-template<bool SSL>
 class ClientsGroup {
-    using WebSocket = uWS::WebSocket<SSL, true, UserData>;
+    using WebSocket = uWS::WebSocket<true, true, UserData>;
 
 public:
     void join(WebSocket *ws) {

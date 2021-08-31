@@ -16,9 +16,12 @@ int main() {
     Config config(CONFIG_FILE);
     SchemaValidator graphValidator(GRAPH_SCHEMA_FILE);
     GraphsStorage graphsStorage;
-    ClientsGroup<false> users;
+    ClientsGroup users;
 
-    uWS::App().get("/", [](auto *res, auto *req) {
+    uWS::SSLApp({
+        .key_file_name = config.sslKeyFileName.c_str(),
+        .cert_file_name = config.sslCertFileName.c_str()
+    }).get("/", [](auto *res, auto *req) {
         res->end();
     }).post("/submit", [&](auto *res, auto *req) {
         string graphJson;
@@ -29,19 +32,18 @@ int main() {
                 return;
             }
             graphJson.append(chunk);
-            if (isLast) {
-                try {
-                    auto graph = graphValidator.parse(graphJson);
-                    string graphId = uuid::generate();
-                    graphsStorage.initGraph(graphId, graph);
-                    res->end(graphId);
-                } catch (const ParseError &error) {
-                    res->writeStatus("400 Bad Request")->end("Could not parse json: " + error.message);
-                    return;
-                } catch (const ValidationError &error) {
-                    res->writeStatus("400 Bad Request")->end("Invalid document: " + error.message);
-                    return;
-                }
+            if (!isLast) {
+                return;
+            }
+            try {
+                auto graph = graphValidator.parse(graphJson);
+                string graphId = uuid::generate();
+                graphsStorage.initGraph(graphId, graph);
+                res->end(graphId);
+            } catch (const ParseError &error) {
+                res->writeStatus("400 Bad Request")->end("Could not parse json: " + error.message);
+            } catch (const ValidationError &error) {
+                res->writeStatus("400 Bad Request")->end("Invalid document: " + error.message);
             }
         });
     }).ws<UserData>("/graph/:id", {
@@ -78,7 +80,7 @@ int main() {
         if (listen_socket) {
             cout << "Listening on " << config.host << ":" << config.port << endl;
         } else {
-            cout << "Failed to listen on " << config.host << ":" << config.port << endl;
+            cerr << "Failed to listen on " << config.host << ":" << config.port << endl;
         }
     }).run();
 }
