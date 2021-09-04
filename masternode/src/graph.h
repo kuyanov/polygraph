@@ -6,14 +6,14 @@
 
 class GraphsStorage {
 public:
-    bool contains(const std::string &graphId) {
-        return graphs.contains(graphId);
+    bool Contains(const std::string &graph_id) {
+        return graphs_.contains(graph_id);
     }
 
-    void initGraph(const std::string &graphId, const rapidjson::Document &graph) {
-        graphs[graphId] = 57; // TODO: Initialize graph
+    void InitGraph(const std::string &graph_id, const rapidjson::Document &graph) {
+        graphs_[graph_id] = 57; // TODO: Initialize graph
     }
 
 private:
-    std::unordered_map<std::string, int> graphs;
+    std::unordered_map<std::string, int> graphs_;
 };

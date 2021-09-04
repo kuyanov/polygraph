@@ -10,7 +10,7 @@ namespace uuid {
     static std::uniform_int_distribution<> dis1(0, 15);
     static std::uniform_int_distribution<> dis2(8, 11);
 
-    std::string generate() {
+    std::string Generate() {
         std::stringstream ss;
         int i;
         ss << std::hex;

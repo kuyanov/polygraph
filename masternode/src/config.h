@@ -8,8 +8,8 @@
 struct Config {
     std::string host;
     int port;
-    std::string sslKeyFileName, sslCertFileName;
-    unsigned int maxPayloadSize;
+    std::string ssl_key_file_name, ssl_cert_file_name;
+    unsigned int max_payload_size;
 
     explicit Config(const char *filename) {
         std::ifstream fin(filename);
@@ -19,8 +19,8 @@ struct Config {
 
         host = config["host"].GetString();
         port = config["port"].GetInt();
-        sslKeyFileName = config["ssl-key-file-name"].GetString();
-        sslCertFileName = config["ssl-cert-file-name"].GetString();
-        maxPayloadSize = config["max-payload-size"].GetInt();
+        ssl_key_file_name = config["ssl-key-file-name"].GetString();
+        ssl_cert_file_name = config["ssl-cert-file-name"].GetString();
+        max_payload_size = config["max-payload-size"].GetInt();
     }
 };

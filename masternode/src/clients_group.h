@@ -14,20 +14,20 @@ class ClientsGroup {
     using WebSocket = uWS::WebSocket<true, true, UserData>;
 
 public:
-    void join(WebSocket *ws) {
-        sockets[ws->getUserData()->group].insert(ws);
+    void Join(WebSocket *ws) {
+        sockets_[ws->getUserData()->group].insert(ws);
     }
 
-    void leave(WebSocket *ws) {
-        sockets[ws->getUserData()->group].erase(ws);
+    void Leave(WebSocket *ws) {
+        sockets_[ws->getUserData()->group].erase(ws);
     }
 
-    void sendToAll(const std::string &group, std::string_view message, uWS::OpCode opCode) {
-        for (WebSocket *ws: sockets[group]) {
-            ws->send(message, opCode);
+    void SendToAll(const std::string &group, std::string_view message, uWS::OpCode op_code) {
+        for (WebSocket *ws: sockets_[group]) {
+            ws->send(message, op_code);
         }
     }
 
 private:
-    std::unordered_map<std::string, std::unordered_set<WebSocket *>> sockets;
+    std::unordered_map<std::string, std::unordered_set<WebSocket *>> sockets_;
 };
