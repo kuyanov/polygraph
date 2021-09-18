@@ -12,25 +12,28 @@
 struct ParseError : public std::exception {
     std::string message;
 
-    explicit ParseError(std::string message = "") : message(std::move(message)) {}
+    explicit ParseError(std::string message = "") : message(std::move(message)) {
+    }
 };
 
 struct ValidationError : public std::exception {
     std::string message;
 
-    explicit ValidationError(std::string message = "") : message(std::move(message)) {}
+    explicit ValidationError(std::string message = "") : message(std::move(message)) {
+    }
 };
 
 std::string FormattedError(const rapidjson::Document &document) {
-    return std::string(rapidjson::GetParseError_En(document.GetParseError())) +
-           " (at position " + std::to_string(document.GetErrorOffset()) + ")";
+    return std::string(rapidjson::GetParseError_En(document.GetParseError())) + " (at position " +
+           std::to_string(document.GetErrorOffset()) + ")";
 }
 
 class SchemaValidator {
 public:
     explicit SchemaValidator(const char *filename) {
         std::ifstream fin(filename);
-        std::string json_schema((std::istreambuf_iterator<char>(fin)), std::istreambuf_iterator<char>());
+        std::string json_schema((std::istreambuf_iterator<char>(fin)),
+                                std::istreambuf_iterator<char>());
         rapidjson::Document document;
         document.Parse(json_schema.c_str());
         if (document.HasParseError()) {

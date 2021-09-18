@@ -23,7 +23,7 @@ public:
     }
 
     void SendToAll(const std::string &group, std::string_view message, uWS::OpCode op_code) {
-        for (WebSocket *ws: sockets_[group]) {
+        for (WebSocket *ws : sockets_[group]) {
             ws->send(message, op_code);
         }
     }

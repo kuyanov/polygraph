@@ -1,5 +1,5 @@
 ---
-Checks:          '-*,cppcoreguidelines-avoid-goto,cppcoreguidelines-pro-type-const-cast, google-readability-casting, google-runtime-int, modernize-replace-random-shuffle, modernize-use-nullptr, readability-braces-around-statements, readability-container-size-empty, readability-redundant-control-flow, readability-redundant-string-init, readability-identifier-naming, google-build-using-namespace'
+Checks:          '-*,cppcoreguidelines-avoid-goto,cppcoreguidelines-pro-type-const-cast, google-readability-casting, modernize-replace-random-shuffle, readability-braces-around-statements, readability-container-size-empty, readability-redundant-control-flow, readability-redundant-string-init, modernize-use-nullptr, readability-identifier-naming, google-build-using-namespace'
 HeaderFilterRegex: '\.h$'
 WarningsAsErrors: '*'
 CheckOptions:

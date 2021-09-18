@@ -10,6 +10,10 @@
 const char *config_file = "config.json";
 const char *graph_schema_file = "schema/graph.json";
 
+const char *status_400 = "400 Bad Request";
+const char *status_404 = "404 Not Found";
+const char *status_413 = "413 Request Entity Too Large";
+
 int main() {
     Config config(config_file);
     SchemaValidator graph_validator(graph_schema_file);
@@ -26,7 +30,7 @@ int main() {
         res->onAborted([]() {});
         res->onData([&, res, graph_json = move(graph_json)](std::string_view chunk, bool is_last) mutable {
             if (graph_json.size() + chunk.size() > config.max_payload_size) {
-                res->writeStatus("413 Request Entity Too Large")->end("", true);
+                res->writeStatus(status_413)->end("", true);
                 return;
             }
             graph_json.append(chunk);
@@ -39,9 +43,9 @@ int main() {
                 graphs_storage.InitGraph(graph_id, graph);
                 res->end(graph_id);
             } catch (const ParseError &error) {
-                res->writeStatus("400 Bad Request")->end("Could not parse json: " + error.message);
+                res->writeStatus(status_400)->end("Could not parse json: " + error.message);
             } catch (const ValidationError &error) {
-                res->writeStatus("400 Bad Request")->end("Invalid document: " + error.message);
+                res->writeStatus(status_400)->end("Invalid document: " + error.message);
             }
         });
     }).ws<UserData>("/graph/:id", {
@@ -49,7 +53,7 @@ int main() {
         .upgrade = [&](auto *res, auto *req, auto *context) {
             std::string graph_id(req->getParameter(0));
             if (!graphs_storage.Contains(graph_id)) {
-                res->writeStatus("404 Not Found")->end();
+                res->writeStatus(status_404)->end();
                 return;
             }
             res->template upgrade<UserData>({
