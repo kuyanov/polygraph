@@ -17,6 +17,6 @@ if (MASTERNODE)
     add_subdirectory(masternode)
 endif()
 
-if (WORKER)
-    add_subdirectory(worker)
+if (RUNNER)
+    add_subdirectory(runner)
 endif()

@@ -23,7 +23,7 @@ struct ValidationError : public std::exception {
     }
 };
 
-std::string FormattedError(const rapidjson::Document &document) {
+inline std::string FormattedError(const rapidjson::Document &document) {
     return std::string(rapidjson::GetParseError_En(document.GetParseError())) + " (at position " +
            std::to_string(document.GetErrorOffset()) + ")";
 }

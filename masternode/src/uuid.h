@@ -4,13 +4,11 @@
 #include <random>
 #include <sstream>
 
-namespace uuid {
-static std::random_device rnd;
-static std::mt19937 gen(rnd());
-static std::uniform_int_distribution<> dis1(0, 15);
-static std::uniform_int_distribution<> dis2(8, 11);
-
-std::string Generate() {
+inline std::string GenerateUuid() {
+    static std::random_device rnd;
+    static std::mt19937 gen(rnd());
+    static std::uniform_int_distribution<> dis1(0, 15);
+    static std::uniform_int_distribution<> dis2(8, 11);
     std::stringstream ss;
     int i;
     ss << std::hex;
@@ -36,4 +34,3 @@ std::string Generate() {
     }
     return ss.str();
 }
-}  // namespace uuid

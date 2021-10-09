@@ -1,36 +1,35 @@
 #include <iostream>
 #include <utility>
 #include "App.h"
-#include "clients_group.h"
+#include "socket_group.h"
 #include "config.h"
 #include "graph.h"
 #include "schema_validator.h"
 #include "uuid.h"
 
-const char *config_file = "config.json";
-const char *graph_schema_file = "schema/graph.json";
+const char *http_bad_request = "400 Bad Request";
+const char *http_not_found = "404 Not Found";
+const char *http_request_entity_too_large = "413 Request Entity Too Large";
 
-const char *status_400 = "400 Bad Request";
-const char *status_404 = "404 Not Found";
-const char *status_413 = "413 Request Entity Too Large";
+using WebSocket = uWS::WebSocket<true, true, UserData>;
 
 int main() {
-    Config config(config_file);
-    SchemaValidator graph_validator(graph_schema_file);
-    GraphsStorage graphs_storage;
-    ClientsGroup users;
+    SchemaValidator graph_validator("schema/graph.json");
+    GraphStorage graph_storage;
+    SocketGroup<WebSocket> users, runners;
 
     uWS::SSLApp({
-        .key_file_name = config.ssl_key_file_name.c_str(),
-        .cert_file_name = config.ssl_cert_file_name.c_str()
+        .key_file_name = GetConfig().ssl_key_file_name.c_str(),
+        .cert_file_name = GetConfig().ssl_cert_file_name.c_str()
     }).get("/", [](auto *res, auto *req) {
         res->end();
     }).post("/submit", [&](auto *res, auto *req) {
         std::string graph_json;
-        res->onAborted([]() {});
-        res->onData([&, res, graph_json = move(graph_json)](std::string_view chunk, bool is_last) mutable {
-            if (graph_json.size() + chunk.size() > config.max_payload_size) {
-                res->writeStatus(status_413)->end("", true);
+        res->onAborted([] {});
+        res->onData([&, res, graph_json = move(graph_json)]
+                    (std::string_view chunk, bool is_last) mutable {
+            if (graph_json.size() + chunk.size() > GetConfig().max_payload_size) {
+                res->writeStatus(http_request_entity_too_large)->end("", true);
                 return;
             }
             graph_json.append(chunk);
@@ -39,21 +38,21 @@ int main() {
             }
             try {
                 auto graph = graph_validator.Parse(graph_json);
-                std::string graph_id = uuid::Generate();
-                graphs_storage.InitGraph(graph_id, graph);
+                std::string graph_id = GenerateUuid();
+                graph_storage.InitGraph(graph_id, graph);
                 res->end(graph_id);
             } catch (const ParseError &error) {
-                res->writeStatus(status_400)->end("Could not parse json: " + error.message);
+                res->writeStatus(http_bad_request)->end("Could not parse json: " + error.message);
             } catch (const ValidationError &error) {
-                res->writeStatus(status_400)->end("Invalid document: " + error.message);
+                res->writeStatus(http_bad_request)->end("Invalid document: " + error.message);
             }
         });
     }).ws<UserData>("/graph/:id", {
-        .maxPayloadLength = config.max_payload_size,
+        .maxPayloadLength = GetConfig().max_payload_size,
         .upgrade = [&](auto *res, auto *req, auto *context) {
             std::string graph_id(req->getParameter(0));
-            if (!graphs_storage.Contains(graph_id)) {
-                res->writeStatus(status_404)->end();
+            if (!graph_storage.Contains(graph_id)) {
+                res->writeStatus(http_not_found)->end();
                 return;
             }
             res->template upgrade<UserData>({
@@ -78,11 +77,13 @@ int main() {
         .close = [&](auto *ws, int code, std::string_view message) {
             users.Leave(ws);
         }
-    }).listen(config.host, config.port, [&](auto *listen_socket) {
+    }).listen(GetConfig().host, GetConfig().port, [&](auto *listen_socket) {
         if (listen_socket) {
-            std::cout << "Listening on " << config.host << ":" << config.port << std::endl;
+            std::cout << "Listening on " << GetConfig().host << ":" << GetConfig().port
+                      << std::endl;
         } else {
-            std::cerr << "Failed to listen on " << config.host << ":" << config.port << std::endl;
+            std::cerr << "Failed to listen on " << GetConfig().host << ":" << GetConfig().port
+                      << std::endl;
         }
     }).run();
 }

@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include "rapidjson/document.h"
 
-class GraphsStorage {
+class GraphStorage {
 public:
     bool Contains(const std::string &graph_id) {
         return graphs_.contains(graph_id);

@@ -10,9 +10,8 @@ struct UserData {
     std::string group;
 };
 
-class ClientsGroup {
-    using WebSocket = uWS::WebSocket<true, true, UserData>;
-
+template <typename WebSocket>
+class SocketGroup {
 public:
     void Join(WebSocket *ws) {
         sockets_[ws->getUserData()->group].insert(ws);

@@ -11,7 +11,7 @@ struct Config {
     std::string ssl_key_file_name, ssl_cert_file_name;
     unsigned int max_payload_size;
 
-    explicit Config(const char *filename) {
+    explicit Config(const char* filename) {
         std::ifstream fin(filename);
         rapidjson::IStreamWrapper isw(fin);
         rapidjson::Document config;
@@ -24,3 +24,8 @@ struct Config {
         max_payload_size = config["max-payload-size"].GetInt();
     }
 };
+
+Config& GetConfig() {
+    static Config config("config.json");
+    return config;
+}
