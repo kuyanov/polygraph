@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+
 #include "rapidjson/schema.h"
 #include "rapidjson/writer.h"
 

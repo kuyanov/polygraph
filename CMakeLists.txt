@@ -3,15 +3,10 @@ project(PolyGraph)
 
 set(CMAKE_CXX_STANDARD 20)
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_compile_options("-fsanitize=address")
-    add_link_options("-fsanitize=address")
-elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
-    add_compile_options("-Ofast")
-endif()
+set(CMAKE_CXX_FLAGS_ASAN "-g -fsanitize=address,undefined -fno-sanitize-recover=all")
 
 add_library(RapidJSON INTERFACE)
-target_include_directories(RapidJSON INTERFACE rapidjson/include)
+target_include_directories(RapidJSON INTERFACE contrib/rapidjson/include)
 
 if (MASTERNODE)
     add_subdirectory(masternode)

@@ -1,10 +1,11 @@
 #include <iostream>
 #include <utility>
+
 #include "App.h"
-#include "socket_group.h"
 #include "config.h"
 #include "graph.h"
 #include "schema_validator.h"
+#include "socket_group.h"
 #include "uuid.h"
 
 const char *http_bad_request = "400 Bad Request";

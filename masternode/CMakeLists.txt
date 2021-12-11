@@ -1,5 +1,5 @@
-set(USOCKETS_SRC_DIR ../uWebSockets/uSockets/src)
-set(UWEBSOCKETS_SRC_DIR ../uWebSockets/src)
+set(USOCKETS_SRC_DIR ../contrib/uWebSockets/uSockets/src)
+set(UWEBSOCKETS_SRC_DIR ../contrib/uWebSockets/src)
 
 add_library(uSockets)
 file(GLOB USOCKETS_SOURCES
