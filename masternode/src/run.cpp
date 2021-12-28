@@ -1,9 +1,11 @@
 #include <iostream>
 #include <utility>
 
-#include "App.h"
+#include <App.h>
+
 #include "config.h"
 #include "graph.h"
+#include "run.h"
 #include "schema_validator.h"
 #include "socket_group.h"
 #include "uuid.h"
@@ -12,24 +14,17 @@ const char *http_bad_request = "400 Bad Request";
 const char *http_not_found = "404 Not Found";
 const char *http_request_entity_too_large = "413 Request Entity Too Large";
 
-using WebSocket = uWS::WebSocket<true, true, UserData>;
-
-int main() {
-    SchemaValidator graph_validator("schema/graph.json");
+void Run(const Config &config) {
+    SchemaValidator graph_validator(config.graph_schema_file.c_str());
     GraphStorage graph_storage;
-    SocketGroup<WebSocket> users, runners;
+    SocketGroup users, runners;
 
-    uWS::SSLApp({
-        .key_file_name = GetConfig().ssl_key_file_name.c_str(),
-        .cert_file_name = GetConfig().ssl_cert_file_name.c_str()
-    }).get("/", [](auto *res, auto *req) {
-        res->end();
-    }).post("/submit", [&](auto *res, auto *req) {
+    uWS::App().post("/submit", [&](auto *res, auto *req) {
         std::string graph_json;
         res->onAborted([] {});
-        res->onData([&, res, graph_json = move(graph_json)]
+        res->onData([&, res, graph_json = std::move(graph_json)]
                     (std::string_view chunk, bool is_last) mutable {
-            if (graph_json.size() + chunk.size() > GetConfig().max_payload_size) {
+            if (graph_json.size() + chunk.size() > config.max_payload_size) {
                 res->writeStatus(http_request_entity_too_large)->end("", true);
                 return;
             }
@@ -49,16 +44,14 @@ int main() {
             }
         });
     }).ws<UserData>("/graph/:id", {
-        .maxPayloadLength = GetConfig().max_payload_size,
+        .maxPayloadLength = config.max_payload_size,
         .upgrade = [&](auto *res, auto *req, auto *context) {
             std::string graph_id(req->getParameter(0));
             if (!graph_storage.Contains(graph_id)) {
                 res->writeStatus(http_not_found)->end();
                 return;
             }
-            res->template upgrade<UserData>({
-                .group = graph_id
-            },
+            res->template upgrade<UserData>({ .group = graph_id },
                 req->getHeader("sec-websocket-key"),
                 req->getHeader("sec-websocket-protocol"),
                 req->getHeader("sec-websocket-extensions"),
@@ -78,13 +71,11 @@ int main() {
         .close = [&](auto *ws, int code, std::string_view message) {
             users.Leave(ws);
         }
-    }).listen(GetConfig().host, GetConfig().port, [&](auto *listen_socket) {
+    }).listen(config.host, config.port, [&](auto *listen_socket) {
         if (listen_socket) {
-            std::cout << "Listening on " << GetConfig().host << ":" << GetConfig().port
-                      << std::endl;
+            std::cout << "Listening on " << config.host << ":" << config.port << std::endl;
         } else {
-            std::cerr << "Failed to listen on " << GetConfig().host << ":" << GetConfig().port
-                      << std::endl;
+            std::cerr << "Failed to listen on " << config.host << ":" << config.port << std::endl;
         }
     }).run();
 }

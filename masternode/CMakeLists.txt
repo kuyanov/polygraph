@@ -39,6 +39,11 @@ endif()
 
 target_link_libraries(uWebSockets INTERFACE uSockets)
 
-add_executable(MasterNode src/main.cpp)
-target_include_directories(MasterNode PUBLIC src)
-target_link_libraries(MasterNode PRIVATE uWebSockets RapidJSON)
+add_library(MasterNodeLib)
+file(GLOB MASTERNODE_SOURCES src/*.cpp)
+target_sources(MasterNodeLib PRIVATE ${MASTERNODE_SOURCES})
+target_include_directories(MasterNodeLib PUBLIC src)
+target_link_libraries(MasterNodeLib PRIVATE uWebSockets RapidJSON)
+
+add_executable(MasterNode main.cpp)
+target_link_libraries(MasterNode PRIVATE MasterNodeLib)
