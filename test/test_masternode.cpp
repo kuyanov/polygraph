@@ -21,7 +21,7 @@ class MasterNodeServer {
 public:
     MasterNodeServer()
         : config_{
-              .host = "localhost",
+              .host = "0.0.0.0",
               .port = 3000,
               .max_payload_size = kMaxPayloadSize,
               .graph_schema_file = "../masternode/schema/graph.json",

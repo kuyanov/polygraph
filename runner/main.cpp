@@ -9,7 +9,7 @@ namespace beast = boost::beast;
 namespace websocket = beast::websocket;
 namespace http = beast::http;
 
-const char *host = "localhost";
+const char *host = "0.0.0.0";
 const int kPort = 3000;
 
 int main() {
