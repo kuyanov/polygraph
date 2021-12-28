@@ -19,15 +19,14 @@ const int kMaxPayloadSize = 16 * 1024 * 1024;
 
 class MasterNodeServer {
 public:
-    MasterNodeServer() : config_{
-            .host = "localhost",
-            .port = 3000,
-            .max_payload_size = kMaxPayloadSize,
-            .graph_schema_file = "../masternode/schema/graph.json",
-    } {
-        std::thread([=] {
-            Run(config_);
-        }).detach();
+    MasterNodeServer()
+        : config_{
+              .host = "localhost",
+              .port = 3000,
+              .max_payload_size = kMaxPayloadSize,
+              .graph_schema_file = "../masternode/schema/graph.json",
+          } {
+        std::thread([*this] { Run(config_); }).detach();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
@@ -85,18 +84,8 @@ TEST(TestMasterNode, UuidUnique) {
 TEST(TestMasterNode, SubmitParseError) {
     MasterNodeServer server;
     std::vector<std::string> bodies = {
-            "",
-            "{",
-            "}",
-            "{:}",
-            "{,}",
-            "{a:b}",
-            "\"a\":\"b\"",
-            "{[]:[]}",
-            "{\"a\":\"b}",
-            "{\"a\":2,}"
-    };
-    for (const auto &body: bodies) {
+        "", "{", "}", "{:}", "{,}", "{a:b}", "\"a\":\"b\"", "{[]:[]}", "{\"a\":\"b}", "{\"a\":2,}"};
+    for (const auto &body : bodies) {
         auto result = server.PostQuery("/submit", body);
         ASSERT_TRUE(IsParseError(result));
     }
@@ -105,16 +94,16 @@ TEST(TestMasterNode, SubmitParseError) {
 TEST(TestMasterNode, SubmitValidationError) {
     MasterNodeServer server;
     std::vector<std::string> bodies = {
-            "{}",
-            "[]",
-            "{\"blocks\":[],\"connections\":[]}",
-            "{\"connections\":[],\"files\":[]}",
-            "{\"blocks\":[],\"files\":[]}",
-            "{\"blocks\":[],\"connections\":[],\"files\":0}",
-            "{\"blocks\":[],\"connections\":[],\"files\":{}}",
-            // TODO: more tests
+        "{}",
+        "[]",
+        "{\"blocks\":[],\"connections\":[]}",
+        "{\"connections\":[],\"files\":[]}",
+        "{\"blocks\":[],\"files\":[]}",
+        "{\"blocks\":[],\"connections\":[],\"files\":0}",
+        "{\"blocks\":[],\"connections\":[],\"files\":{}}",
+        // TODO: more tests
     };
-    for (const auto &body: bodies) {
+    for (const auto &body : bodies) {
         auto result = server.PostQuery("/submit", body);
         ASSERT_TRUE(IsValidationError(result));
     }
