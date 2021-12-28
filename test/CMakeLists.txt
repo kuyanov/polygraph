@@ -1,6 +1,3 @@
-find_package(Threads REQUIRED)
-find_package(Boost REQUIRED COMPONENTS system)
-
 function (make_test name)
     add_executable("${name}" ${ARGN})
     target_include_directories("${name}" PUBLIC ${Boost_INCLUDE_DIRS})

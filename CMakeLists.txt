@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS_ASAN "-g -fsanitize=address,undefined -fno-sanitize-recover=all")
 set(CMAKE_CXX_FLAGS_TSAN "-g -fsanitize=thread")
 
+find_package(Threads REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system)
+
 add_library(RapidJSON INTERFACE)
 target_include_directories(RapidJSON INTERFACE contrib/rapidjson/include)
 
