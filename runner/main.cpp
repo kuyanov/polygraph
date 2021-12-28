@@ -2,7 +2,6 @@
 #include <iostream>
 
 #include <boost/beast.hpp>
-#include <boost/lexical_cast.hpp>
 
 namespace asio = boost::asio;
 namespace ip = asio::ip;
