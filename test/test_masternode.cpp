@@ -101,7 +101,8 @@ TEST(TestMasterNode, SubmitValidationError) {
         "{\"blocks\":[],\"files\":[]}",
         "{\"blocks\":[],\"connections\":[],\"files\":0}",
         "{\"blocks\":[],\"connections\":[],\"files\":{}}",
-        // TODO: more tests
+        "{\"blocks\":[{\"name\":\"block1\",\"inputs\":[{}],\"outputs\":[],\"tasks\":[]}],"
+        "\"connections\":[],\"files\":[]}"
     };
     for (const auto &body : bodies) {
         auto result = server.PostQuery("/submit", body);
@@ -109,7 +110,7 @@ TEST(TestMasterNode, SubmitValidationError) {
     }
 }
 
-TEST(TestMasterNode, SubmitBig) {
+TEST(TestMasterNode, SubmitLarge) {
     MasterNodeServer server;
     std::string body;
     body.resize(kMaxPayloadSize, '.');
