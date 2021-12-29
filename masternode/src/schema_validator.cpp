@@ -14,7 +14,7 @@ SchemaValidator::SchemaValidator(const char *filename) {
     if (document.HasParseError()) {
         throw std::runtime_error("Could not parse json schema: " + FormattedError(document));
     }
-    schema_document_ = std::make_unique<rapidjson::SchemaDocument>(document);
+    schema_document_ = std::make_unique<rapidjson::SchemaDocument>(std::move(document));
     schema_validator_ = std::make_unique<rapidjson::SchemaValidator>(*schema_document_);
 }
 
