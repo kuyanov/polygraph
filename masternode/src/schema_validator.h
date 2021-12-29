@@ -1,6 +1,6 @@
 #pragma once
 
-#include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -30,9 +30,9 @@ class SchemaValidator {
 public:
     explicit SchemaValidator(const char *filename);
 
-    rapidjson::Document Parse(const std::string &graph_json);
+    rapidjson::Document ParseAndValidate(const std::string &graph_json);
 
 private:
-    std::unique_ptr<rapidjson::SchemaDocument> schema_document_;
-    std::unique_ptr<rapidjson::SchemaValidator> schema_validator_;
+    std::optional<rapidjson::SchemaDocument> schema_document_;
+    std::optional<rapidjson::SchemaValidator> schema_validator_;
 };

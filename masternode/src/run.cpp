@@ -33,7 +33,7 @@ void Run(const Config &config) {
                 return;
             }
             try {
-                auto graph = graph_validator.Parse(graph_json);
+                auto graph = graph_validator.ParseAndValidate(graph_json);
                 std::string graph_id = GenerateUuid();
                 graph_storage.InitGraph(graph_id, graph);
                 res->end(graph_id);

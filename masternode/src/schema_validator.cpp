@@ -1,34 +1,33 @@
 #include <fstream>
-#include <iterator>
 
+#include <rapidjson/istreamwrapper.h>
 #include <rapidjson/writer.h>
 
 #include "schema_validator.h"
 
 SchemaValidator::SchemaValidator(const char *filename) {
-    std::ifstream fin(filename);
-    std::string json_schema((std::istreambuf_iterator<char>(fin)),
-                            std::istreambuf_iterator<char>());
+    std::ifstream schema_ifs(filename);
+    rapidjson::IStreamWrapper schema_isw(schema_ifs);
     rapidjson::Document document;
-    document.Parse(json_schema.c_str());
+    document.ParseStream(schema_isw);
     if (document.HasParseError()) {
         throw std::runtime_error("Could not parse json schema: " + FormattedError(document));
     }
-    schema_document_ = std::make_unique<rapidjson::SchemaDocument>(std::move(document));
-    schema_validator_ = std::make_unique<rapidjson::SchemaValidator>(*schema_document_);
+    schema_document_.emplace(rapidjson::SchemaDocument(document));
+    schema_validator_.emplace(*schema_document_);
 }
 
-rapidjson::Document SchemaValidator::Parse(const std::string &graph_json) {
-    rapidjson::Document graph;
-    if (graph.Parse(graph_json.c_str()).HasParseError()) {
-        throw ParseError(FormattedError(graph));
+rapidjson::Document SchemaValidator::ParseAndValidate(const std::string &json) {
+    rapidjson::Document document;
+    if (document.Parse(json.c_str()).HasParseError()) {
+        throw ParseError(FormattedError(document));
     }
     schema_validator_->Reset();
-    if (!graph.Accept(*schema_validator_)) {
+    if (!document.Accept(*schema_validator_)) {
         rapidjson::StringBuffer buffer;
         rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
         schema_validator_->GetError().Accept(writer);
         throw ValidationError(buffer.GetString());
     }
-    return graph;
+    return document;
 }
