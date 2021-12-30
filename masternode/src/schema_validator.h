@@ -34,5 +34,5 @@ public:
 
 private:
     std::optional<rapidjson::SchemaDocument> schema_document_;
-    std::optional<rapidjson::SchemaValidator> schema_validator_;
+    // std::optional<rapidjson::SchemaValidator> schema_validator_;
 };

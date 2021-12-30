@@ -13,8 +13,8 @@ SchemaValidator::SchemaValidator(const char *filename) {
     if (document.HasParseError()) {
         throw std::runtime_error("Could not parse json schema: " + FormattedError(document));
     }
-    schema_document_.emplace(rapidjson::SchemaDocument(std::move(document)));
-    schema_validator_.emplace(std::move(*schema_document_));
+    schema_document_.emplace(document);
+    // schema_validator_.emplace(*schema_document_);
 }
 
 rapidjson::Document SchemaValidator::ParseAndValidate(const std::string &json) {
@@ -22,12 +22,13 @@ rapidjson::Document SchemaValidator::ParseAndValidate(const std::string &json) {
     if (document.Parse(json.c_str()).HasParseError()) {
         throw ParseError(FormattedError(document));
     }
-    schema_validator_->Reset();
-    if (!document.Accept(*schema_validator_)) {
+    // schema_validator_->Reset();
+    rapidjson::SchemaValidator schema_validator(*schema_document_);
+    if (!document.Accept(schema_validator)) {
         rapidjson::StringBuffer buffer;
         rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-        schema_validator_->GetError().Accept(writer);
+        schema_validator.GetError().Accept(writer);
         throw ValidationError(buffer.GetString());
     }
-    return std::move(document);
+    return document;
 }
