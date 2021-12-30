@@ -12,4 +12,4 @@ jobs:
       - name: Build
         run: docker build -f test/Dockerfile -t polygraph_test .
       - name: Run
-        run: docker run -v $PWD:/PolyGraph -t polygraph_test
+        run: docker run -t polygraph_test
