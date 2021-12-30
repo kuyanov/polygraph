@@ -8,12 +8,11 @@
 SchemaValidator::SchemaValidator(const char *filename) {
     std::ifstream schema_ifs(filename);
     rapidjson::IStreamWrapper schema_isw(schema_ifs);
-    rapidjson::Document document;
-    document.ParseStream(schema_isw);
-    if (document.HasParseError()) {
-        throw std::runtime_error("Could not parse json schema: " + FormattedError(document));
+    document_.ParseStream(schema_isw);
+    if (document_.HasParseError()) {
+        throw std::runtime_error("Could not parse json schema: " + FormattedError(document_));
     }
-    schema_document_.emplace(std::move(document));
+    schema_document_.emplace(document_);
     // schema_validator_.emplace(*schema_document_);
 }
 

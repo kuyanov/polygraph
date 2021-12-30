@@ -33,6 +33,7 @@ public:
     rapidjson::Document ParseAndValidate(const std::string &graph_json);
 
 private:
+    rapidjson::Document document_;
     std::optional<rapidjson::SchemaDocument> schema_document_;
     // std::optional<rapidjson::SchemaValidator> schema_validator_;
 };
