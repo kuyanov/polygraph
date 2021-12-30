@@ -15,9 +15,9 @@ const char *http_not_found = "404 Not Found";
 const char *http_request_entity_too_large = "413 Request Entity Too Large";
 
 void Run(const Config &config) {
-    SchemaValidator graph_validator(config.graph_schema_file.c_str());
-    GraphStorage graph_storage;
-    SocketGroup users, runners;
+    static SchemaValidator graph_validator(config.graph_schema_file.c_str());
+    static GraphStorage graph_storage;
+    static SocketGroup users, runners;
 
     uWS::App().post("/submit", [&](auto *res, auto *req) {
         std::string graph_json;
