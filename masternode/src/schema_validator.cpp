@@ -13,7 +13,7 @@ SchemaValidator::SchemaValidator(const char *filename) {
     if (document.HasParseError()) {
         throw std::runtime_error("Could not parse json schema: " + FormattedError(document));
     }
-    schema_document_.emplace(document);
+    // schema_document_.emplace(document);
     // schema_validator_.emplace(*schema_document_);
 }
 
