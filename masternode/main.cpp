@@ -2,6 +2,5 @@
 #include "run.h"
 
 int main() {
-    Config config = ConfigFromFile("config.json");
-    Run(config);
+    Run(ConfigFromFile("config.json"));
 }

@@ -6,15 +6,15 @@
 #include "config.h"
 
 Config ConfigFromFile(const char *filename) {
-    std::ifstream fin(filename);
-    rapidjson::IStreamWrapper isw(fin);
+    std::ifstream config_ifs(filename);
+    rapidjson::IStreamWrapper config_isw(config_ifs);
     rapidjson::Document config;
-    config.ParseStream(isw);
+    config.ParseStream(config_isw);
 
     return Config{
-            .host = config["host"].GetString(),
-            .port = config["port"].GetInt(),
-            .max_payload_size = config["max-payload-size"].GetUint(),
-            .graph_schema_file = config["graph-schema-file"].GetString(),
+        .host = config["host"].GetString(),
+        .port = config["port"].GetInt(),
+        .max_payload_size = config["max-payload-size"].GetUint(),
+        .graph_schema_file = config["graph-schema-file"].GetString(),
     };
 }

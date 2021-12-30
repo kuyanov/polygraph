@@ -19,13 +19,7 @@ const int kMaxPayloadSize = 16 * 1024 * 1024;
 
 class MasterNodeServer {
 public:
-    MasterNodeServer()
-        : config_{
-              .host = "0.0.0.0",
-              .port = 3000,
-              .max_payload_size = kMaxPayloadSize,
-              .graph_schema_file = "../masternode/schema/graph.json",
-          } {
+    MasterNodeServer() {
         std::thread([*this] { Run(config_); }).detach();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
@@ -53,7 +47,12 @@ public:
     }
 
 private:
-    Config config_;
+    Config config_{
+        .host = "0.0.0.0",
+        .port = 3000,
+        .max_payload_size = kMaxPayloadSize,
+        .graph_schema_file = "../masternode/schema/graph.json",
+    };
 };
 
 bool IsUuid(const std::string &s) {
