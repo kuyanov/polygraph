@@ -15,13 +15,13 @@ namespace ip = asio::ip;
 namespace beast = boost::beast;
 namespace http = beast::http;
 
-const int kMaxPayloadSize = 16 * 1024 * 1024;
-
 class MasterNodeServer {
 public:
-    MasterNodeServer() {
-        std::thread([*this] { Run(config_); }).detach();
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    Config config;
+
+    MasterNodeServer() : config("../masternode/config/test.json") {
+        std::thread([*this] { Run(config); }).detach();
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
 
     std::string PostQuery(const std::string &target, const std::string &body) {
@@ -29,7 +29,7 @@ public:
         beast::tcp_stream stream(ioc);
         ip::tcp::resolver resolver(ioc);
 
-        auto results = resolver.resolve(config_.host, std::to_string(config_.port));
+        auto results = resolver.resolve(config.host, std::to_string(config.port));
         stream.connect(results);
         http::request<http::string_body> req{http::verb::post, target, 10};
         req.set(http::field::host, "localhost");
@@ -45,14 +45,6 @@ public:
 
         return res.body();
     }
-
-private:
-    Config config_{
-        .host = "0.0.0.0",
-        .port = 3000,
-        .max_payload_size = kMaxPayloadSize,
-        .graph_schema_file = "../masternode/schema/graph.json",
-    };
 };
 
 bool IsUuid(const std::string &s) {
@@ -67,7 +59,11 @@ bool IsValidationError(const std::string &s) {
     return s.starts_with("Invalid document:");
 }
 
-TEST(TestMasterNode, UuidUnique) {
+bool IsSemanticError(const std::string &s) {
+    return s.starts_with("Semantic error:");
+}
+
+TEST(TestMasterNode, GraphIdUnique) {
     MasterNodeServer server;
     const int iter = 1000;
     std::string body = "{\"blocks\":[],\"connections\":[],\"files\":[]}";
@@ -80,7 +76,18 @@ TEST(TestMasterNode, UuidUnique) {
     ASSERT_EQ(results.size(), iter);
 }
 
-TEST(TestMasterNode, SubmitParseError) {
+TEST(TestMasterNode, SubmitLarge) {
+    MasterNodeServer server;
+    std::string body;
+    body.resize(server.config.max_payload_size, '.');
+    auto result = server.PostQuery("/submit", body);
+    ASSERT_TRUE(IsParseError(result));
+    body.push_back('.');
+    result = server.PostQuery("/submit", body);
+    ASSERT_TRUE(result.empty());
+}
+
+TEST(TestMasterNode, GraphParseError) {
     MasterNodeServer server;
     std::vector<std::string> bodies = {
         "", "{", "}", "{:}", "{,}", "{a:b}", "\"a\":\"b\"", "{[]:[]}", "{\"a\":\"b}", "{\"a\":2,}"};
@@ -90,7 +97,7 @@ TEST(TestMasterNode, SubmitParseError) {
     }
 }
 
-TEST(TestMasterNode, SubmitValidationError) {
+TEST(TestMasterNode, GraphValidationError) {
     MasterNodeServer server;
     std::vector<std::string> bodies = {
         "{}",
@@ -108,13 +115,7 @@ TEST(TestMasterNode, SubmitValidationError) {
     }
 }
 
-TEST(TestMasterNode, SubmitLarge) {
+TEST(TestMasterNode, GraphSemanticError) {
     MasterNodeServer server;
-    std::string body;
-    body.resize(kMaxPayloadSize, '.');
-    auto result = server.PostQuery("/submit", body);
-    ASSERT_TRUE(IsParseError(result));
-    body.push_back('.');
-    result = server.PostQuery("/submit", body);
-    ASSERT_TRUE(result.empty());
+    // TODO
 }

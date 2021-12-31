@@ -20,14 +20,14 @@ SchemaValidator::SchemaValidator(const char *filename) {
 rapidjson::Document SchemaValidator::ParseAndValidate(const std::string &json) {
     rapidjson::Document document;
     if (document.Parse(json.c_str()).HasParseError()) {
-        throw ParseError(FormattedError(document));
+        throw GraphParseError(FormattedError(document));
     }
     schema_validator_->Reset();
     if (!document.Accept(*schema_validator_)) {
         rapidjson::StringBuffer buffer;
         rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
         schema_validator_->GetError().Accept(writer);
-        throw ValidationError(buffer.GetString());
+        throw GraphValidationError(buffer.GetString());
     }
     return document;
 }

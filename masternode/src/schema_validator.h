@@ -8,17 +8,17 @@
 #include <rapidjson/document.h>
 #include <rapidjson/schema.h>
 
-struct ParseError : public std::exception {
+struct GraphParseError : public std::exception {
     std::string message;
 
-    explicit ParseError(std::string message = "") : message(std::move(message)) {
+    explicit GraphParseError(std::string message = "") : message(std::move(message)) {
     }
 };
 
-struct ValidationError : public std::exception {
+struct GraphValidationError : public std::exception {
     std::string message;
 
-    explicit ValidationError(std::string message = "") : message(std::move(message)) {
+    explicit GraphValidationError(std::string message = "") : message(std::move(message)) {
     }
 };
 

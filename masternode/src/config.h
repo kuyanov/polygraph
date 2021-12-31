@@ -7,6 +7,6 @@ struct Config {
     int port;
     unsigned int max_payload_size;
     std::string graph_schema_file;
-};
 
-Config ConfigFromFile(const char *filename);
+    Config(const char *filename);
+};

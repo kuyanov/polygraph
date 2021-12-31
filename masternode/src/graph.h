@@ -1,16 +1,21 @@
 #pragma once
 
+#include <stdexcept>
 #include <string>
-#include <unordered_map>
+#include <utility>
 
 #include <rapidjson/document.h>
 
-class GraphStorage {
-public:
-    bool Contains(const std::string &graph_id);
+struct GraphSemanticError : public std::exception {
+    std::string message;
 
-    void InitGraph(const std::string &graph_id, const rapidjson::Document &graph);
+    explicit GraphSemanticError(std::string message = "") : message(std::move(message)) {
+    }
+};
 
-private:
-    std::unordered_map<std::string, int> graphs_;
+struct Graph {
+    // TODO: fields
+
+    Graph() = default;
+    Graph(const rapidjson::Document &graph_document);
 };

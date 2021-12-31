@@ -6,9 +6,8 @@
 #include "config.h"
 #include "graph.h"
 #include "run.h"
+#include "scheduler.h"
 #include "schema_validator.h"
-#include "socket_group.h"
-#include "uuid.h"
 
 const char *http_bad_request = "400 Bad Request";
 const char *http_not_found = "404 Not Found";
@@ -16,8 +15,7 @@ const char *http_request_entity_too_large = "413 Request Entity Too Large";
 
 void Run(const Config &config) {
     static SchemaValidator graph_validator(config.graph_schema_file.c_str());
-    static GraphStorage graph_storage;
-    static SocketGroup users, runners;
+    static Scheduler scheduler;
 
     uWS::App().post("/submit", [&](auto *res, auto *req) {
         std::string graph_json;
@@ -33,25 +31,27 @@ void Run(const Config &config) {
                 return;
             }
             try {
-                auto graph = graph_validator.ParseAndValidate(graph_json);
-                std::string graph_id = GenerateUuid();
-                graph_storage.InitGraph(graph_id, graph);
+                auto graph_document = graph_validator.ParseAndValidate(graph_json);
+                auto graph = Graph(graph_document);
+                std::string graph_id = scheduler.AddGraph(graph);
                 res->end(graph_id);
-            } catch (const ParseError &error) {
+            } catch (const GraphParseError &error) {
                 res->writeStatus(http_bad_request)->end("Could not parse json: " + error.message);
-            } catch (const ValidationError &error) {
+            } catch (const GraphValidationError &error) {
                 res->writeStatus(http_bad_request)->end("Invalid document: " + error.message);
+            } catch (const GraphSemanticError &error) {
+                res->writeStatus(http_bad_request)->end("Semantic error: " + error.message);
             }
         });
-    }).ws<UserData>("/graph/:id", {
+    }).ws<UserPerSocketData>("/graph/:id", {
         .maxPayloadLength = config.max_payload_size,
         .upgrade = [&](auto *res, auto *req, auto *context) {
             std::string graph_id(req->getParameter(0));
-            if (!graph_storage.Contains(graph_id)) {
+            if (!scheduler.ExistsGraph(graph_id)) {
                 res->writeStatus(http_not_found)->end();
                 return;
             }
-            res->template upgrade<UserData>({ .group = graph_id },
+            res->template upgrade<UserPerSocketData>({ .graph_id = graph_id },
                 req->getHeader("sec-websocket-key"),
                 req->getHeader("sec-websocket-protocol"),
                 req->getHeader("sec-websocket-extensions"),
@@ -59,17 +59,17 @@ void Run(const Config &config) {
             );
         },
         .open = [&](auto *ws) {
-            users.Join(ws);
+            scheduler.JoinUser(ws);
         },
         .message = [&](auto *ws, std::string_view message, uWS::OpCode op_code) {
             if (message == "run") {
-                // TODO
+                scheduler.RunGraph(ws->getUserData()->graph_id);
             } else if (message == "stop") {
-                // TODO
+                scheduler.StopGraph(ws->getUserData()->graph_id);
             }
         },
         .close = [&](auto *ws, int code, std::string_view message) {
-            users.Leave(ws);
+            scheduler.LeaveUser(ws);
         }
     }).listen(config.host, config.port, [&](auto *listen_socket) {
         if (listen_socket) {
