@@ -8,5 +8,3 @@ endfunction()
 
 make_test(TestMasterNode test_masternode.cpp)
 target_link_libraries(TestMasterNode PRIVATE MasterNodeLib)
-
-# make_test(TestRunner test_runner.cpp)

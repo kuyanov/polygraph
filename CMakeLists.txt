@@ -12,8 +12,8 @@ find_package(Boost REQUIRED COMPONENTS system)
 add_library(RapidJSON INTERFACE)
 target_include_directories(RapidJSON INTERFACE contrib/rapidjson/include)
 
-add_subdirectory(contrib/googletest)
-
 add_subdirectory(masternode)
 add_subdirectory(runner)
+
+add_subdirectory(contrib/googletest)
 add_subdirectory(test)
