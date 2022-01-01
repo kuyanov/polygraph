@@ -3,7 +3,6 @@ function (make_test name)
     target_include_directories("${name}" PUBLIC ${Boost_INCLUDE_DIRS})
     target_link_libraries("${name}" PRIVATE Threads::Threads gtest_main)
     add_test(NAME "${name}" COMMAND "${name}")
-    set_tests_properties("${name}" PROPERTIES TIMEOUT 2)
 endfunction()
 
 make_test(TestMasterNode test_masternode.cpp)

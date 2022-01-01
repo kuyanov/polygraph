@@ -60,8 +60,14 @@ struct Graph {
         }
     };
 
+    struct Meta {
+        std::string runner_group;
+        int max_runners;
+    };
+
     std::vector<Block> blocks;
     std::vector<std::vector<Connection>> go;
+    Meta meta;
 
     Graph() = default;
     Graph(const rapidjson::Document &graph_document);

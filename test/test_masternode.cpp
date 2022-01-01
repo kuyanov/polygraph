@@ -64,7 +64,7 @@ const std::string kSemanticErrorPrefix = "Semantic error:";
 TEST(TestMasterNode, GraphIdUnique) {
     MasterNodeServer server;
     const int iter = 1000;
-    std::string body = "{\"blocks\":[],\"connections\":[]}";
+    std::string body = "{\"blocks\":[],\"connections\":[],\"meta\":{\"runner-group\":\"all\"}}";
     std::unordered_set<std::string> results;
     for (int i = 0; i < iter; i++) {
         auto result = server.PostQuery("/submit", body);
@@ -101,26 +101,33 @@ TEST(TestMasterNode, GraphParseError) {
 TEST(TestMasterNode, GraphValidationError) {
     CheckSubmitStartsWith("{}", kValidationErrorPrefix);
     CheckSubmitStartsWith("[]", kValidationErrorPrefix);
-    CheckSubmitStartsWith("{\"blocks\":[]}", kValidationErrorPrefix);
-    CheckSubmitStartsWith("{\"connections\":[]}", kValidationErrorPrefix);
-    CheckSubmitStartsWith("{\"blocks\":[],\"connections\":0}", kValidationErrorPrefix);
-    CheckSubmitStartsWith("{\"blocks\":[],\"connections\":{}}", kValidationErrorPrefix);
+    CheckSubmitStartsWith("{\"blocks\":[],\"meta\":{\"runner-group\":\"all\"}}",
+                          kValidationErrorPrefix);
+    CheckSubmitStartsWith("{\"connections\":[],\"meta\":{\"runner-group\":\"all\"}}",
+                          kValidationErrorPrefix);
+    CheckSubmitStartsWith("{\"blocks\":[],\"connections\":0,\"meta\":{\"runner-group\":\"all\"}}",
+                          kValidationErrorPrefix);
+    CheckSubmitStartsWith("{\"blocks\":[],\"connections\":{},\"meta\":{\"runner-group\":\"all\"}}",
+                          kValidationErrorPrefix);
+    CheckSubmitStartsWith("{\"blocks\":[],\"connections\":[],\"meta\":{}}", kValidationErrorPrefix);
     CheckSubmitStartsWith(
         "{\"blocks\":[{\"name\":\"block1\",\"inputs\":[{}],\"outputs\":[],\"tasks\":[]}],"
-        "\"connections\":[]}",
+        "\"connections\":[],\"meta\":{\"runner-group\":\"all\"}}",
         kValidationErrorPrefix);
 }
 
 TEST(TestMasterNode, GraphSemanticErrorDuplicatedInput) {
     CheckSubmitStartsWith(
         "{\"blocks\":[{\"name\":\"1\",\"inputs\":[{\"name\":\"a.in\"},{\"name\":\"a.in\"}],"
-        "\"outputs\":[],\"tasks\":[]}],\"connections\":[]}",
+        "\"outputs\":[],\"tasks\":[]}],\"connections\":[],"
+        "\"meta\":{\"runner-group\":\"all\"}}",
         kSemanticErrorPrefix + " Duplicated input name");
 }
 TEST(TestMasterNode, GraphSemanticErrorDuplicatedOutput) {
     CheckSubmitStartsWith(
         "{\"blocks\":[{\"name\":\"1\",\"inputs\":[],\"outputs\":[{\"name\":\"a.out\"},"
-        "{\"name\":\"a.out\"}],\"tasks\":[]}],\"connections\":[]}",
+        "{\"name\":\"a.out\"}],\"tasks\":[]}],\"connections\":[],"
+        "\"meta\":{\"runner-group\":\"all\"}}",
         kSemanticErrorPrefix + " Duplicated output name");
 }
 TEST(TestMasterNode, GraphSemanticErrorStartBlock) {
@@ -128,7 +135,8 @@ TEST(TestMasterNode, GraphSemanticErrorStartBlock) {
         "{\"blocks\":[{\"name\":\"1\",\"inputs\":[{\"name\":\"a.in\"}],"
         "\"outputs\":[{\"name\":\"a.out\"}],\"tasks\":[]}],"
         "\"connections\":[{\"start-block-id\":1,\"start-block-output\":\"a.out\","
-        "\"end-block-id\":0,\"end-block-input\":\"a.in\"}]}",
+        "\"end-block-id\":0,\"end-block-input\":\"a.in\"}],"
+        "\"meta\":{\"runner-group\":\"all\"}}",
         kSemanticErrorPrefix + " Invalid connection start block");
 }
 TEST(TestMasterNode, GraphSemanticErrorEndBlock) {
@@ -136,7 +144,8 @@ TEST(TestMasterNode, GraphSemanticErrorEndBlock) {
         "{\"blocks\":[{\"name\":\"1\",\"inputs\":[{\"name\":\"a.in\"}],"
         "\"outputs\":[{\"name\":\"a.out\"}],\"tasks\":[]}],"
         "\"connections\":[{\"start-block-id\":0,\"start-block-output\":\"a.out\","
-        "\"end-block-id\":-1,\"end-block-input\":\"a.in\"}]}",
+        "\"end-block-id\":-1,\"end-block-input\":\"a.in\"}],"
+        "\"meta\":{\"runner-group\":\"all\"}}",
         kSemanticErrorPrefix + " Invalid connection end block");
 }
 TEST(TestMasterNode, GraphSemanticErrorStartBlockOutput) {
@@ -144,7 +153,8 @@ TEST(TestMasterNode, GraphSemanticErrorStartBlockOutput) {
         "{\"blocks\":[{\"name\":\"1\",\"inputs\":[{\"name\":\"a.in\"}],"
         "\"outputs\":[{\"name\":\"a.out\"}],\"tasks\":[]}],"
         "\"connections\":[{\"start-block-id\":0,\"start-block-output\":\"b.out\","
-        "\"end-block-id\":0,\"end-block-input\":\"a.in\"}]}",
+        "\"end-block-id\":0,\"end-block-input\":\"a.in\"}],"
+        "\"meta\":{\"runner-group\":\"all\"}}",
         kSemanticErrorPrefix + " Invalid connection start block output");
 }
 TEST(TestMasterNode, GraphSemanticErrorEndBlockInput) {
@@ -152,6 +162,7 @@ TEST(TestMasterNode, GraphSemanticErrorEndBlockInput) {
         "{\"blocks\":[{\"name\":\"1\",\"inputs\":[{\"name\":\"a.in\"}],"
         "\"outputs\":[{\"name\":\"a.out\"}],\"tasks\":[]}],"
         "\"connections\":[{\"start-block-id\":0,\"start-block-output\":\"a.out\","
-        "\"end-block-id\":0,\"end-block-input\":\"b.in\"}]}",
+        "\"end-block-id\":0,\"end-block-input\":\"b.in\"}],"
+        "\"meta\":{\"runner-group\":\"all\"}}",
         kSemanticErrorPrefix + " Invalid connection end block input");
 }

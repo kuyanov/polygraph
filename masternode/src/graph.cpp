@@ -58,4 +58,8 @@ Graph::Graph(const rapidjson::Document &graph_document) {
         go[start_block_id].emplace_back(start_block_id, start_block_output, end_block_id,
                                         end_block_input);
     }
+    meta.runner_group = graph_document["meta"]["runner-group"].GetString();
+    meta.max_runners = graph_document["meta"].HasMember("max-runners")
+                           ? graph_document["meta"]["max-runners"].GetInt()
+                           : INT_MAX;
 }

@@ -1,13 +1,22 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["blocks", "connections"],
+  "required": [
+    "blocks",
+    "connections",
+    "meta"
+  ],
   "properties": {
     "blocks": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["name", "inputs", "outputs", "tasks"],
+        "required": [
+          "name",
+          "inputs",
+          "outputs",
+          "tasks"
+        ],
         "properties": {
           "name": {
             "type": "string"
@@ -16,7 +25,9 @@
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["name"],
+              "required": [
+                "name"
+              ],
               "properties": {
                 "name": {
                   "type": "string"
@@ -31,7 +42,9 @@
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["name"],
+              "required": [
+                "name"
+              ],
               "properties": {
                 "name": {
                   "type": "string"
@@ -46,7 +59,9 @@
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["argv"],
+              "required": [
+                "argv"
+              ],
               "properties": {
                 "argv": {
                   "type": "array",
@@ -88,7 +103,12 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["start-block-id", "start-block-output", "end-block-id", "end-block-input"],
+        "required": [
+          "start-block-id",
+          "start-block-output",
+          "end-block-id",
+          "end-block-input"
+        ],
         "properties": {
           "start-block-id": {
             "type": "integer"
@@ -102,6 +122,20 @@
           "end-block-input": {
             "type": "string"
           }
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "required": [
+        "runner-group"
+      ],
+      "properties": {
+        "runner-group": {
+          "type": "string"
+        },
+        "max-runners": {
+          "type": "integer"
         }
       }
     }
