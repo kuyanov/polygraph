@@ -1,3 +1,5 @@
+#include <unordered_map>
+
 #include "graph.h"
 
 std::optional<std::string> GetOptionalString(const rapidjson::Value &value, const char *member) {
@@ -9,54 +11,62 @@ std::optional<std::string> GetOptionalString(const rapidjson::Value &value, cons
 
 Graph::Graph(const rapidjson::Document &graph_document) {
     auto blocks_array = graph_document["blocks"].GetArray();
-    blocks.reserve(blocks_array.Size());
-    for (const auto &block_value : blocks_array) {
-        auto &block = blocks.emplace_back();
-        block.name = block_value["name"].GetString();
-        auto inputs_array = block_value["inputs"].GetArray();
-        block.inputs.reserve(inputs_array.Size());
-        for (const auto &input_value : inputs_array) {
-            std::string input_name = input_value["name"].GetString();
-            block.inputs.emplace_back(input_name, GetOptionalString(input_value, "bind-path"));
-            if (block.inputs_by_name.contains(input_name)) {
+    blocks.resize(blocks_array.Size());
+    std::vector<std::unordered_map<std::string, size_t>> inputs_by_name(blocks.size());
+    std::vector<std::unordered_map<std::string, size_t>> outputs_by_name(blocks.size());
+    for (size_t block_id = 0; block_id < blocks_array.Size(); ++block_id) {
+        auto &block = blocks[block_id];
+        block.name = blocks_array[block_id]["name"].GetString();
+        auto inputs_array = blocks_array[block_id]["inputs"].GetArray();
+        block.inputs.resize(inputs_array.Size());
+        for (size_t input_id = 0; input_id < inputs_array.Size(); ++input_id) {
+            std::string input_name = inputs_array[input_id]["name"].GetString();
+            if (inputs_by_name[block_id].contains(input_name)) {
                 throw GraphSemanticError("Duplicated input name");
             }
-            block.inputs_by_name[input_name] = &block.inputs.back();
+            inputs_by_name[block_id][input_name] = input_id;
+            block.inputs[input_id] = {
+                .name = input_name,
+                .bind_path = GetOptionalString(inputs_array[input_id], "bind-path")};
         }
-        auto outputs_array = block_value["outputs"].GetArray();
-        block.outputs.reserve(outputs_array.Size());
-        for (const auto &output_value : outputs_array) {
-            std::string output_name = output_value["name"].GetString();
-            block.outputs.emplace_back(output_name, GetOptionalString(output_value, "bind-path"));
-            if (block.outputs_by_name.contains(output_name)) {
+        auto outputs_array = blocks_array[block_id]["outputs"].GetArray();
+        block.outputs.resize(outputs_array.Size());
+        for (size_t output_id = 0; output_id < outputs_array.Size(); ++output_id) {
+            std::string output_name = outputs_array[output_id]["name"].GetString();
+            if (outputs_by_name[block_id].contains(output_name)) {
                 throw GraphSemanticError("Duplicated output name");
             }
-            block.outputs_by_name[output_name] = &block.outputs.back();
+            outputs_by_name[block_id][output_name] = output_id;
+            block.outputs[output_id] = {
+                .name = output_name,
+                .bind_path = GetOptionalString(outputs_array[output_id], "bind-path")};
         }
         block.tasks = std::make_shared<rapidjson::Document>();
-        block.tasks->CopyFrom(block_value["tasks"], block.tasks->GetAllocator());
+        block.tasks->CopyFrom(blocks_array[block_id]["tasks"], block.tasks->GetAllocator());
     }
     go.resize(blocks.size());
     auto connections_array = graph_document["connections"].GetArray();
     for (const auto &connection_value : connections_array) {
         int start_block_id = connection_value["start-block-id"].GetInt();
-        std::string start_block_output = connection_value["start-block-output"].GetString();
+        const char *start_block_output = connection_value["start-block-output"].GetString();
         int end_block_id = connection_value["end-block-id"].GetInt();
-        std::string end_block_input = connection_value["end-block-input"].GetString();
+        const char *end_block_input = connection_value["end-block-input"].GetString();
         if (start_block_id < 0 || start_block_id >= blocks.size()) {
             throw GraphSemanticError("Invalid connection start block");
         }
         if (end_block_id < 0 || end_block_id >= blocks.size()) {
             throw GraphSemanticError("Invalid connection end block");
         }
-        if (!blocks[start_block_id].outputs_by_name.contains(start_block_output)) {
+        auto start_block_output_iter = outputs_by_name[start_block_id].find(start_block_output);
+        if (start_block_output_iter == outputs_by_name[start_block_id].end()) {
             throw GraphSemanticError("Invalid connection start block output");
         }
-        if (!blocks[end_block_id].inputs_by_name.contains(end_block_input)) {
+        auto end_block_input_iter = inputs_by_name[end_block_id].find(end_block_input);
+        if (end_block_input_iter == inputs_by_name[end_block_id].end()) {
             throw GraphSemanticError("Invalid connection end block input");
         }
-        go[start_block_id].emplace_back(start_block_id, start_block_output, end_block_id,
-                                        end_block_input);
+        go[start_block_id].emplace_back(start_block_id, start_block_output_iter->second,
+                                        end_block_id, end_block_input_iter->second);
     }
     meta.runner_group = graph_document["meta"]["runner-group"].GetString();
     meta.max_runners = graph_document["meta"].HasMember("max-runners")

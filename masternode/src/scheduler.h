@@ -21,7 +21,7 @@ using UserWebSocket = uWS::WebSocket<false, true, UserPerSocketData>;
 
 class Scheduler {
 public:
-    std::string AddGraph(const Graph &graph);
+    std::string AddGraph(Graph &&graph);
     bool ExistsGraph(const std::string &graph_id);
     void RunGraph(const std::string &graph_id);
     void StopGraph(const std::string &graph_id);

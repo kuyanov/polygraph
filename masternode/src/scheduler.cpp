@@ -1,9 +1,9 @@
 #include "scheduler.h"
 #include "uuid.h"
 
-std::string Scheduler::AddGraph(const Graph &graph) {
+std::string Scheduler::AddGraph(Graph &&graph) {
     std::string graph_id = GenerateUuid();
-    graphs_[graph_id] = graph;
+    graphs_[graph_id] = std::move(graph);
     return graph_id;
 }
 

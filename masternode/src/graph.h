@@ -4,7 +4,6 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -21,42 +20,30 @@ struct Graph {
     struct BlockInput {
         std::string name;
         std::optional<std::string> bind_path;
-
-        BlockInput(std::string name, std::optional<std::string> bind_path)
-            : name(std::move(name)), bind_path(std::move(bind_path)) {
-        }
     };
 
     struct BlockOutput {
         std::string name;
         std::optional<std::string> bind_path;
-
-        BlockOutput(std::string name, std::optional<std::string> bind_path)
-            : name(std::move(name)), bind_path(std::move(bind_path)) {
-        }
     };
 
     struct Block {
         std::string name;
         std::vector<BlockInput> inputs;
-        std::unordered_map<std::string, BlockInput *> inputs_by_name;
         std::vector<BlockOutput> outputs;
-        std::unordered_map<std::string, BlockOutput *> outputs_by_name;
         std::shared_ptr<rapidjson::Document> tasks;
     };
 
     struct Connection {
-        int start_block_id;
-        std::string start_block_output;
-        int end_block_id;
-        std::string end_block_input;
+        int start_block_id, start_block_output_id;
+        int end_block_id, end_block_input_id;
 
-        Connection(int start_block_id, std::string start_block_output, int end_block_id,
-                   std::string end_block_input)
+        Connection(int start_block_id, int start_block_output_id, int end_block_id,
+                   int end_block_input_id)
             : start_block_id(start_block_id),
-              start_block_output(std::move(start_block_output)),
+              start_block_output_id(start_block_output_id),
               end_block_id(end_block_id),
-              end_block_input(std::move(end_block_input)) {
+              end_block_input_id(end_block_input_id) {
         }
     };
 

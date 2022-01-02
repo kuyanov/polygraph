@@ -33,7 +33,7 @@ void Run(const Config &config) {
             try {
                 auto graph_document = graph_validator.ParseAndValidate(graph_json);
                 auto graph = Graph(graph_document);
-                std::string graph_id = scheduler.AddGraph(graph);
+                std::string graph_id = scheduler.AddGraph(std::move(graph));
                 res->end(graph_id);
             } catch (const GraphParseError &error) {
                 res->writeStatus(http_bad_request)->end("Could not parse json: " + error.message);
