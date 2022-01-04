@@ -166,3 +166,12 @@ TEST(TestMasterNode, GraphSemanticErrorEndBlockInput) {
         "\"meta\":{\"runner-group\":\"all\"}}",
         kSemanticErrorPrefix + " Invalid connection end block input");
 }
+TEST(TestMasterNode, GraphSemanticErrorEndBlockInputBindPath) {
+    CheckSubmitStartsWith(
+        "{\"blocks\":[{\"name\":\"1\",\"inputs\":[{\"name\":\"a.in\",\"bind-path\":\"\"}],"
+        "\"outputs\":[{\"name\":\"a.out\"}],\"tasks\":[]}],"
+        "\"connections\":[{\"start-block-id\":0,\"start-block-output\":\"a.out\","
+        "\"end-block-id\":0,\"end-block-input\":\"a.in\"}],"
+        "\"meta\":{\"runner-group\":\"all\"}}",
+        kSemanticErrorPrefix + " Connection end block input cannot have bind path");
+}

@@ -65,6 +65,9 @@ Graph::Graph(const rapidjson::Document &graph_document) {
         if (end_block_input_iter == inputs_by_name[end_block_id].end()) {
             throw GraphSemanticError("Invalid connection end block input");
         }
+        if (blocks[end_block_id].inputs[end_block_input_iter->second].bind_path) {
+            throw GraphSemanticError("Connection end block input cannot have bind path");
+        }
         go[start_block_id].emplace_back(start_block_id, start_block_output_iter->second,
                                         end_block_id, end_block_input_iter->second);
     }
