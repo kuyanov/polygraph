@@ -1,7 +1,7 @@
 FROM ubuntu:latest
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y git build-essential cmake libboost-system-dev
+RUN apt-get update && apt-get upgrade -y && apt-get install -y git build-essential cmake libboost-system-dev libuv1.dev
 
 COPY . /PolyGraph
 WORKDIR /PolyGraph

@@ -98,9 +98,7 @@ void Run(const Config &config) {
             scheduler.LeaveUser(ws);
         }
     }).listen(config.host, config.port, [&](auto *listen_socket) {
-        if (listen_socket) {
-            std::cout << "Listening on " << config.host << ":" << config.port << std::endl;
-        } else {
+        if (!listen_socket) {
             std::cerr << "Failed to listen on " << config.host << ":" << config.port << std::endl;
         }
     }).run();
