@@ -1,20 +1,10 @@
 #pragma once
 
-#include <memory>
 #include <optional>
-#include <stdexcept>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <rapidjson/document.h>
-
-struct GraphSemanticError : public std::exception {
-    std::string message;
-
-    explicit GraphSemanticError(std::string message = "") : message(std::move(message)) {
-    }
-};
 
 struct Graph {
     struct BlockInput {
@@ -31,19 +21,18 @@ struct Graph {
         std::string name;
         std::vector<BlockInput> inputs;
         std::vector<BlockOutput> outputs;
-        std::shared_ptr<rapidjson::Document> tasks;
+        rapidjson::Document tasks;
     };
 
     struct Connection {
-        int start_block_id, start_block_output_id;
-        int end_block_id, end_block_input_id;
+        int start_block_id, start_output_id;
+        int end_block_id, end_input_id;
 
-        Connection(int start_block_id, int start_block_output_id, int end_block_id,
-                   int end_block_input_id)
+        Connection(int start_block_id, int start_output_id, int end_block_id, int end_input_id)
             : start_block_id(start_block_id),
-              start_block_output_id(start_block_output_id),
+              start_output_id(start_output_id),
               end_block_id(end_block_id),
-              end_block_input_id(end_block_input_id) {
+              end_input_id(end_input_id) {
         }
     };
 

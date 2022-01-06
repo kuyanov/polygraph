@@ -105,22 +105,22 @@
         "type": "object",
         "required": [
           "start-block-id",
-          "start-block-output",
+          "start-output-id",
           "end-block-id",
-          "end-block-input"
+          "end-input-id"
         ],
         "properties": {
           "start-block-id": {
             "type": "integer"
           },
-          "start-block-output": {
-            "type": "string"
+          "start-output-id": {
+            "type": "integer"
           },
           "end-block-id": {
             "type": "integer"
           },
-          "end-block-input": {
-            "type": "string"
+          "end-input-id": {
+            "type": "integer"
           }
         }
       }

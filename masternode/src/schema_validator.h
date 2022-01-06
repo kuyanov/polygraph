@@ -1,26 +1,10 @@
 #pragma once
 
 #include <optional>
-#include <stdexcept>
 #include <string>
-#include <utility>
 
 #include <rapidjson/document.h>
 #include <rapidjson/schema.h>
-
-struct GraphParseError : public std::exception {
-    std::string message;
-
-    explicit GraphParseError(std::string message = "") : message(std::move(message)) {
-    }
-};
-
-struct GraphValidationError : public std::exception {
-    std::string message;
-
-    explicit GraphValidationError(std::string message = "") : message(std::move(message)) {
-    }
-};
 
 inline std::string FormattedError(const rapidjson::Document &document) {
     return std::string(rapidjson::GetParseError_En(document.GetParseError())) + " (at position " +

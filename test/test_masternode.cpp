@@ -1,12 +1,17 @@
 #include <chrono>
+#include <optional>
 #include <string>
 #include <thread>
 #include <unordered_set>
+#include <vector>
 
 #include <boost/beast.hpp>
 #include <boost/lexical_cast.hpp>
 
 #include <gtest/gtest.h>
+
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
 
 #include "run.h"
 
@@ -47,6 +52,111 @@ public:
     }
 };
 
+struct UserGraph {
+    struct BlockInput {
+        std::string name;
+        std::optional<std::string> bind_path;
+    };
+
+    struct BlockOutput {
+        std::string name;
+        std::optional<std::string> bind_path;
+    };
+
+    struct Task {
+        std::string command;
+    };
+
+    struct Block {
+        std::string name;
+        std::vector<BlockInput> inputs;
+        std::vector<BlockOutput> outputs;
+        std::vector<Task> tasks;
+    };
+
+    struct Connection {
+        int start_block_id, start_output_id;
+        int end_block_id, end_input_id;
+    };
+
+    struct Meta {
+        std::string runner_group;
+        int max_runners = 1;
+    };
+
+    std::vector<Block> blocks;
+    std::vector<Connection> connections;
+    Meta meta;
+};
+
+std::string StringifyGraph(const UserGraph &graph) {
+    rapidjson::Document body(rapidjson::kObjectType);
+    auto &alloc = body.GetAllocator();
+    rapidjson::Value blocks(rapidjson::kArrayType);
+    for (const auto &graph_block : graph.blocks) {
+        rapidjson::Value block(rapidjson::kObjectType);
+        block.AddMember("name", rapidjson::Value().SetString(graph_block.name.c_str(), alloc),
+                        alloc);
+        rapidjson::Value inputs(rapidjson::kArrayType);
+        for (const auto &graph_input : graph_block.inputs) {
+            rapidjson::Value input(rapidjson::kObjectType);
+            input.AddMember("name", rapidjson::Value().SetString(graph_input.name.c_str(), alloc),
+                            alloc);
+            if (graph_input.bind_path) {
+                input.AddMember("bind-path",
+                                rapidjson::Value().SetString(graph_input.bind_path->c_str(), alloc),
+                                alloc);
+            }
+            inputs.PushBack(input, alloc);
+        }
+        block.AddMember("inputs", inputs, alloc);
+        rapidjson::Value outputs(rapidjson::kArrayType);
+        for (const auto &graph_output : graph_block.outputs) {
+            rapidjson::Value output(rapidjson::kObjectType);
+            output.AddMember("name", rapidjson::Value().SetString(graph_output.name.c_str(), alloc),
+                             alloc);
+            if (graph_output.bind_path) {
+                output.AddMember(
+                    "bind-path",
+                    rapidjson::Value().SetString(graph_output.bind_path->c_str(), alloc), alloc);
+            }
+            outputs.PushBack(output, alloc);
+        }
+        block.AddMember("outputs", outputs, alloc);
+        rapidjson::Value tasks(rapidjson::kArrayType);
+        for (const auto &graph_task : graph_block.tasks) {
+            rapidjson::Value task(rapidjson::kObjectType);
+            rapidjson::Value argv(rapidjson::kArrayType);
+            argv.PushBack(rapidjson::Value().SetString(graph_task.command.c_str(), alloc), alloc);
+            task.AddMember("argv", argv, alloc);
+            tasks.PushBack(task, alloc);
+        }
+        block.AddMember("tasks", tasks, alloc);
+        blocks.PushBack(block, alloc);
+    }
+    body.AddMember("blocks", blocks, alloc);
+    rapidjson::Value connections(rapidjson::kArrayType);
+    for (const auto &graph_connection : graph.connections) {
+        rapidjson::Value connection(rapidjson::kObjectType);
+        connection.AddMember("start-block-id", graph_connection.start_block_id, alloc);
+        connection.AddMember("start-output-id", graph_connection.start_output_id, alloc);
+        connection.AddMember("end-block-id", graph_connection.end_block_id, alloc);
+        connection.AddMember("end-input-id", graph_connection.end_input_id, alloc);
+        connections.PushBack(connection, alloc);
+    }
+    body.AddMember("connections", connections, alloc);
+    rapidjson::Value meta(rapidjson::kObjectType);
+    meta.AddMember("runner-group",
+                   rapidjson::Value().SetString(graph.meta.runner_group.c_str(), alloc), alloc);
+    meta.AddMember("max-runners", graph.meta.max_runners, alloc);
+    body.AddMember("meta", meta, alloc);
+
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    body.Accept(writer);
+    return buffer.GetString();
+}
+
 bool IsUuid(const std::string &s) {
     return s.size() == 36 && s[8] == '-' && s[13] == '-' && s[18] == '-' && s[23] == '-';
 }
@@ -63,18 +173,17 @@ const std::string kSemanticErrorPrefix = "Semantic error:";
 
 TEST(TestMasterNode, GraphIdUnique) {
     MasterNodeServer server;
-    const int iter = 1000;
-    std::string body = "{\"blocks\":[],\"connections\":[],\"meta\":{\"runner-group\":\"all\"}}";
+    std::string body = StringifyGraph({});
     std::unordered_set<std::string> results;
-    for (int i = 0; i < iter; i++) {
+    for (int i = 0; i < 1000; i++) {
         auto result = server.PostQuery("/submit", body);
         ASSERT_TRUE(IsUuid(result));
         results.insert(result);
     }
-    ASSERT_EQ(results.size(), iter);
+    ASSERT_EQ(results.size(), 1000);
 }
 
-TEST(TestMasterNode, SubmitMaxPayloadSize) {
+TEST(TestMasterNode, MaxPayloadSize) {
     MasterNodeServer server;
     std::string body;
     body.resize(server.config.max_payload_size, '.');
@@ -85,7 +194,7 @@ TEST(TestMasterNode, SubmitMaxPayloadSize) {
     ASSERT_TRUE(result.empty());
 }
 
-TEST(TestMasterNode, GraphParseError) {
+TEST(TestMasterNode, ParseError) {
     CheckSubmitStartsWith("", kParseErrorPrefix);
     CheckSubmitStartsWith("{", kParseErrorPrefix);
     CheckSubmitStartsWith("}", kParseErrorPrefix);
@@ -98,7 +207,7 @@ TEST(TestMasterNode, GraphParseError) {
     CheckSubmitStartsWith("{\"a\":2,}", kParseErrorPrefix);
 }
 
-TEST(TestMasterNode, GraphValidationError) {
+TEST(TestMasterNode, ValidationError) {
     CheckSubmitStartsWith("{}", kValidationErrorPrefix);
     CheckSubmitStartsWith("[]", kValidationErrorPrefix);
     CheckSubmitStartsWith("{\"blocks\":[],\"meta\":{\"runner-group\":\"all\"}}",
@@ -110,68 +219,28 @@ TEST(TestMasterNode, GraphValidationError) {
     CheckSubmitStartsWith("{\"blocks\":[],\"connections\":{},\"meta\":{\"runner-group\":\"all\"}}",
                           kValidationErrorPrefix);
     CheckSubmitStartsWith("{\"blocks\":[],\"connections\":[],\"meta\":{}}", kValidationErrorPrefix);
-    CheckSubmitStartsWith(
-        "{\"blocks\":[{\"name\":\"block1\",\"inputs\":[{}],\"outputs\":[],\"tasks\":[]}],"
-        "\"connections\":[],\"meta\":{\"runner-group\":\"all\"}}",
-        kValidationErrorPrefix);
 }
 
-TEST(TestMasterNode, GraphSemanticErrorDuplicatedInput) {
-    CheckSubmitStartsWith(
-        "{\"blocks\":[{\"name\":\"1\",\"inputs\":[{\"name\":\"a.in\"},{\"name\":\"a.in\"}],"
-        "\"outputs\":[],\"tasks\":[]}],\"connections\":[],"
-        "\"meta\":{\"runner-group\":\"all\"}}",
-        kSemanticErrorPrefix + " Duplicated input name");
+TEST(TestMasterNode, SemanticErrorDuplicated) {
+    CheckSubmitStartsWith(StringifyGraph({{{"1", {{"a.in"}, {"a.in"}}, {}}}}),
+                          kSemanticErrorPrefix + " Duplicated input name");
+    CheckSubmitStartsWith(StringifyGraph({{{"1", {}, {{"a.out"}, {"a.out"}}}}}),
+                          kSemanticErrorPrefix + " Duplicated output name");
 }
-TEST(TestMasterNode, GraphSemanticErrorDuplicatedOutput) {
-    CheckSubmitStartsWith(
-        "{\"blocks\":[{\"name\":\"1\",\"inputs\":[],\"outputs\":[{\"name\":\"a.out\"},"
-        "{\"name\":\"a.out\"}],\"tasks\":[]}],\"connections\":[],"
-        "\"meta\":{\"runner-group\":\"all\"}}",
-        kSemanticErrorPrefix + " Duplicated output name");
+
+TEST(TestMasterNode, SemanticErrorConnection) {
+    CheckSubmitStartsWith(StringifyGraph({{{"1", {{"a.in"}}, {{"a.out"}}}}, {{1, 0, 0, 0}}}),
+                          kSemanticErrorPrefix + " Invalid connection start block");
+    CheckSubmitStartsWith(StringifyGraph({{{"1", {{"a.in"}}, {{"a.out"}}}}, {{0, 1, 0, 0}}}),
+                          kSemanticErrorPrefix + " Invalid connection start block output");
+    CheckSubmitStartsWith(StringifyGraph({{{"1", {{"a.in"}}, {{"a.out"}}}}, {{0, 0, -1, 0}}}),
+                          kSemanticErrorPrefix + " Invalid connection end block");
+    CheckSubmitStartsWith(StringifyGraph({{{"1", {{"a.in"}}, {{"a.out"}}}}, {{0, 0, 0, -1}}}),
+                          kSemanticErrorPrefix + " Invalid connection end block input");
 }
-TEST(TestMasterNode, GraphSemanticErrorStartBlock) {
+
+TEST(TestMasterNode, SemanticErrorBindPath) {
     CheckSubmitStartsWith(
-        "{\"blocks\":[{\"name\":\"1\",\"inputs\":[{\"name\":\"a.in\"}],"
-        "\"outputs\":[{\"name\":\"a.out\"}],\"tasks\":[]}],"
-        "\"connections\":[{\"start-block-id\":1,\"start-block-output\":\"a.out\","
-        "\"end-block-id\":0,\"end-block-input\":\"a.in\"}],"
-        "\"meta\":{\"runner-group\":\"all\"}}",
-        kSemanticErrorPrefix + " Invalid connection start block");
-}
-TEST(TestMasterNode, GraphSemanticErrorEndBlock) {
-    CheckSubmitStartsWith(
-        "{\"blocks\":[{\"name\":\"1\",\"inputs\":[{\"name\":\"a.in\"}],"
-        "\"outputs\":[{\"name\":\"a.out\"}],\"tasks\":[]}],"
-        "\"connections\":[{\"start-block-id\":0,\"start-block-output\":\"a.out\","
-        "\"end-block-id\":-1,\"end-block-input\":\"a.in\"}],"
-        "\"meta\":{\"runner-group\":\"all\"}}",
-        kSemanticErrorPrefix + " Invalid connection end block");
-}
-TEST(TestMasterNode, GraphSemanticErrorStartBlockOutput) {
-    CheckSubmitStartsWith(
-        "{\"blocks\":[{\"name\":\"1\",\"inputs\":[{\"name\":\"a.in\"}],"
-        "\"outputs\":[{\"name\":\"a.out\"}],\"tasks\":[]}],"
-        "\"connections\":[{\"start-block-id\":0,\"start-block-output\":\"b.out\","
-        "\"end-block-id\":0,\"end-block-input\":\"a.in\"}],"
-        "\"meta\":{\"runner-group\":\"all\"}}",
-        kSemanticErrorPrefix + " Invalid connection start block output");
-}
-TEST(TestMasterNode, GraphSemanticErrorEndBlockInput) {
-    CheckSubmitStartsWith(
-        "{\"blocks\":[{\"name\":\"1\",\"inputs\":[{\"name\":\"a.in\"}],"
-        "\"outputs\":[{\"name\":\"a.out\"}],\"tasks\":[]}],"
-        "\"connections\":[{\"start-block-id\":0,\"start-block-output\":\"a.out\","
-        "\"end-block-id\":0,\"end-block-input\":\"b.in\"}],"
-        "\"meta\":{\"runner-group\":\"all\"}}",
-        kSemanticErrorPrefix + " Invalid connection end block input");
-}
-TEST(TestMasterNode, GraphSemanticErrorEndBlockInputBindPath) {
-    CheckSubmitStartsWith(
-        "{\"blocks\":[{\"name\":\"1\",\"inputs\":[{\"name\":\"a.in\",\"bind-path\":\"\"}],"
-        "\"outputs\":[{\"name\":\"a.out\"}],\"tasks\":[]}],"
-        "\"connections\":[{\"start-block-id\":0,\"start-block-output\":\"a.out\","
-        "\"end-block-id\":0,\"end-block-input\":\"a.in\"}],"
-        "\"meta\":{\"runner-group\":\"all\"}}",
+        StringifyGraph({{{"1", {{"a.in", ""}}, {{"a.out"}}}}, {{0, 0, 0, 0}}}),
         kSemanticErrorPrefix + " Connection end block input cannot have bind path");
 }
