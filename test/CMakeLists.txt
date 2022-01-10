@@ -6,4 +6,5 @@ function (make_test name)
 endfunction()
 
 make_test(TestMasterNode test_masternode.cpp)
+target_include_directories(TestMasterNode PUBLIC test)
 target_link_libraries(TestMasterNode PRIVATE MasterNodeLib)

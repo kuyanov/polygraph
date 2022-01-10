@@ -11,8 +11,13 @@
 
 #include "graph.h"
 
+class GraphState;
+class Group;
+
 struct RunnerPerSocketData {
     std::string runner_group;
+    GraphState *graph_ptr;
+    size_t block_id;
 };
 
 struct UserPerSocketData {
@@ -22,29 +27,37 @@ struct UserPerSocketData {
 using RunnerWebSocket = uWS::WebSocket<false, true, RunnerPerSocketData>;
 using UserWebSocket = uWS::WebSocket<false, true, UserPerSocketData>;
 
-class Scheduler {
+void SendRunRequest(const Graph::Block &block, RunnerWebSocket *ws);
+
+class GraphState : public Graph {
+public:
+    Group *group;
+    std::vector<int> cnt_free_inputs, cnt_ready_inputs;
+    int cnt_blocks_processing = 0;
+
+    GraphState() = default;
+    GraphState(Graph &&graph) : Graph(std::move(graph)) {
+    }
+
+    void EnqueueBlock(size_t block_id);
+    void DequeueBlock();
+
 private:
-    struct GraphState {
-        Graph graph;
-        std::vector<int> cnt_free_inputs, cnt_ready_inputs;
-        std::queue<size_t> blocks_ready;
-        int cnt_blocks_processing = 0;
+    std::queue<size_t> blocks_ready_;
+};
 
-        GraphState() = default;
-        GraphState(Graph &&graph) : graph(std::move(graph)) {
-        }
-    };
+class Group {
+public:
+    void AddRunner(RunnerWebSocket *ws);
+    void RemoveRunner(RunnerWebSocket *ws);
+    void EnqueueBlock(GraphState *graph_ptr, size_t block_id);
 
-    struct GroupState {
-        std::unordered_set<RunnerWebSocket *> runners_waiting;
-        std::queue<std::pair<std::string, size_t>> blocks_waiting;
-    };
+private:
+    std::unordered_set<RunnerWebSocket *> runners_waiting_;
+    std::queue<std::pair<GraphState *, size_t>> blocks_waiting_;
+};
 
-    void RunBlock(const std::string &graph_id, size_t block_id, RunnerWebSocket *ws);
-    void BlockSucceeded(const std::string &graph_id, size_t block_id, RunnerWebSocket *ws);
-
-    void EnqueueBlocks(const std::string &graph_id);
-
+class Scheduler {
 public:
     void JoinRunner(RunnerWebSocket *ws);
     void LeaveRunner(RunnerWebSocket *ws);
@@ -61,6 +74,6 @@ public:
 
 private:
     std::unordered_map<std::string, GraphState> graphs_;
-    std::unordered_map<std::string, GroupState> groups_;
+    std::unordered_map<std::string, Group> groups_;
     std::unordered_map<std::string, std::unordered_set<UserWebSocket *>> users_;
 };
