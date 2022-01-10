@@ -32,18 +32,25 @@ void SendRunRequest(const Graph::Block &block, RunnerWebSocket *ws);
 class GraphState : public Graph {
 public:
     Group *group;
-    std::vector<int> cnt_free_inputs, cnt_ready_inputs;
     int cnt_blocks_processing = 0;
 
     GraphState() = default;
     GraphState(Graph &&graph) : Graph(std::move(graph)) {
+        is_input_ready_.resize(blocks.size());
+        cnt_unready_inputs_.resize(blocks.size());
     }
 
     void EnqueueBlock(size_t block_id);
     void DequeueBlock();
 
+    void ResetInputs(size_t block_id);
+    bool SetInputReady(size_t block_id, size_t input_id);
+    bool AllInputsReady(size_t block_id) const;
+
 private:
     std::queue<size_t> blocks_ready_;
+    std::vector<std::vector<bool>> is_input_ready_;
+    std::vector<int> cnt_unready_inputs_;
 };
 
 class Group {
@@ -64,13 +71,13 @@ public:
     void JoinUser(UserWebSocket *ws);
     void LeaveUser(UserWebSocket *ws);
 
-    void RunnerCompleted(RunnerWebSocket *ws, std::string_view message);
-
     std::string AddGraph(Graph &&graph);
-    bool GraphExists(const std::string &graph_id);
+    bool GraphExists(const std::string &graph_id) const;
     void RunGraph(const std::string &graph_id);
-    bool GraphRunning(const std::string &graph_id);
     void StopGraph(const std::string &graph_id);
+    bool GraphRunning(const std::string &graph_id) const;
+
+    void RunnerCompleted(RunnerWebSocket *ws, std::string_view message);
 
 private:
     std::unordered_map<std::string, GraphState> graphs_;

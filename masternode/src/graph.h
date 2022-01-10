@@ -25,10 +25,11 @@ struct Graph {
     };
 
     struct Connection {
-        int start_block_id, start_output_id;
-        int end_block_id, end_input_id;
+        size_t start_block_id, start_output_id;
+        size_t end_block_id, end_input_id;
 
-        Connection(int start_block_id, int start_output_id, int end_block_id, int end_input_id)
+        Connection(size_t start_block_id, size_t start_output_id, size_t end_block_id,
+                   size_t end_input_id)
             : start_block_id(start_block_id),
               start_output_id(start_output_id),
               end_block_id(end_block_id),
