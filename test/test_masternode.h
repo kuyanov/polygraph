@@ -25,7 +25,7 @@ public:
     Config config;
 
     MasterNode() : config("../masternode/config/test.json") {
-        std::thread([this] { Run(config); }).detach();
+        std::thread([*this] { Run(config); }).detach();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
