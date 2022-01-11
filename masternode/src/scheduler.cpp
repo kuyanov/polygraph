@@ -2,7 +2,7 @@
 #include "uuid.h"
 
 void SendRunRequest(const Graph::Block &block, RunnerWebSocket *ws) {
-    // TODO
+    ws->send("hello");  // TODO
 }
 
 void GraphState::EnqueueBlock(size_t block_id) {
@@ -48,6 +48,20 @@ bool GraphState::AllInputsReady(size_t block_id) const {
     return cnt_unready_inputs_[block_id] == 0;
 }
 
+void GraphState::AddUser(UserWebSocket *ws) {
+    users_.insert(ws);
+}
+
+void GraphState::RemoveUser(UserWebSocket *ws) {
+    users_.erase(ws);
+}
+
+void GraphState::SendToAllUsers(std::string_view message) {
+    for (UserWebSocket *ws : users_) {
+        ws->send(message);
+    }
+}
+
 void Group::AddRunner(RunnerWebSocket *ws) {
     if (blocks_waiting_.empty()) {
         runners_waiting_.insert(ws);
@@ -87,12 +101,12 @@ void Scheduler::LeaveRunner(RunnerWebSocket *ws) {
 
 void Scheduler::JoinUser(UserWebSocket *ws) {
     std::string graph_id = ws->getUserData()->graph_id;
-    users_[graph_id].insert(ws);
+    graphs_[graph_id].AddUser(ws);
 }
 
 void Scheduler::LeaveUser(UserWebSocket *ws) {
     std::string graph_id = ws->getUserData()->graph_id;
-    users_[graph_id].erase(ws);
+    graphs_[graph_id].RemoveUser(ws);
 }
 
 std::string Scheduler::AddGraph(Graph &&graph) {
@@ -108,7 +122,7 @@ bool Scheduler::GraphExists(const std::string &graph_id) const {
 }
 
 void Scheduler::RunGraph(const std::string &graph_id) {
-    GraphState &graph = graphs_[graph_id];
+    auto &graph = graphs_[graph_id];
     for (size_t block_id = 0; block_id < graph.blocks.size(); ++block_id) {
         graph.ResetInputs(block_id);
         if (graph.AllInputsReady(block_id)) {
@@ -129,6 +143,7 @@ bool Scheduler::GraphRunning(const std::string &graph_id) const {
 void Scheduler::RunnerCompleted(RunnerWebSocket *ws, std::string_view message) {
     GraphState *graph_ptr = ws->getUserData()->graph_ptr;
     size_t start_block_id = ws->getUserData()->block_id;
+    graph_ptr->SendToAllUsers(message);  // TODO
     graph_ptr->DequeueBlock();
     graph_ptr->ResetInputs(start_block_id);
     for (const auto &[_, start_output_id, end_block_id, end_input_id] :

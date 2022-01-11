@@ -1,3 +1,4 @@
+#include <mutex>
 #include <string>
 #include <unordered_set>
 
@@ -10,8 +11,8 @@ const std::string kValidationErrorPrefix = "Invalid document:";
 const std::string kSemanticErrorPrefix = "Semantic error:";
 
 void CheckSubmitStartsWith(const std::string &body, const std::string &prefix) {
-    MasterNodeServer server;
-    auto result = server.PostQuery("/submit", body);
+    MasterNode server;
+    auto result = server.Submit(body);
     ASSERT_TRUE(result.starts_with(prefix));
 }
 
@@ -95,24 +96,41 @@ TEST(SemanticError, EndInputBindPath) {
 }
 
 TEST(Submit, GraphIdUnique) {
-    MasterNodeServer server;
+    MasterNode server;
     std::string body = StringifyGraph({});
-    std::unordered_set<std::string> results;
+    std::unordered_set<std::string> uuids;
     for (int i = 0; i < 1000; i++) {
-        auto result = server.PostQuery("/submit", body);
-        ASSERT_TRUE(IsUuid(result));
-        results.insert(result);
+        auto uuid = server.Submit(body);
+        ASSERT_TRUE(IsUuid(uuid));
+        uuids.insert(uuid);
     }
-    ASSERT_EQ(results.size(), 1000);
+    ASSERT_EQ(uuids.size(), 1000);
 }
 
 TEST(Submit, MaxPayloadSize) {
-    MasterNodeServer server;
+    MasterNode server;
     std::string body;
     body.resize(server.config.max_payload_size, '.');
-    auto result = server.PostQuery("/submit", body);
+    auto result = server.Submit(body);
     ASSERT_TRUE(result.starts_with(kParseErrorPrefix));
     body.push_back('.');
-    result = server.PostQuery("/submit", body);
+    result = server.Submit(body);
     ASSERT_TRUE(result.empty());
+}
+
+TEST(ExecutionOrder, SingleBlock) {
+    MasterNode server;
+    std::string body = StringifyGraph({{{"1", {}, {}, {{"cmd"}}}}});
+    auto uuid = server.Submit(body);
+    ASSERT_TRUE(IsUuid(uuid));
+    server.CreateRunner("all", [](const std::string &message) { ASSERT_EQ(message, "hello"); });
+
+    std::mutex user_mutex;
+    std::vector<std::string> order;
+    server.CreateUser(uuid, [&](const std::string &message) {
+        std::unique_lock<std::mutex> lock(user_mutex);
+        order.push_back(message);
+    });
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    ASSERT_EQ(order, std::vector<std::string>{"ok"});
 }

@@ -7,7 +7,6 @@
 #include <vector>
 
 #include <boost/beast.hpp>
-#include <boost/lexical_cast.hpp>
 
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
@@ -19,17 +18,18 @@ namespace asio = boost::asio;
 namespace ip = asio::ip;
 namespace beast = boost::beast;
 namespace http = beast::http;
+namespace websocket = beast::websocket;
 
-class MasterNodeServer {
+class MasterNode {
 public:
     Config config;
 
-    MasterNodeServer() : config("../masternode/config/test.json") {
-        std::thread([*this] { Run(config); }).detach();
+    MasterNode() : config("../masternode/config/test.json") {
+        std::thread([this] { Run(config); }).detach();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    std::string PostQuery(const std::string &target, const std::string &body) {
+    std::string Submit(const std::string &body) {
         asio::io_context ioc;
         beast::tcp_stream stream(ioc);
         ip::tcp::resolver resolver(ioc);
@@ -37,9 +37,9 @@ public:
         auto results = resolver.resolve(config.host, std::to_string(config.port));
         stream.connect(results);
 
-        http::request<http::string_body> req{http::verb::post, target, 10};
+        http::request<http::string_body> req{http::verb::post, "/submit", 10};
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
-        req.set(http::field::content_length, boost::lexical_cast<std::string>(body.size()));
+        req.set(http::field::content_length, std::to_string(body.size()));
         req.body() = body;
 
         http::write(stream, req);
@@ -49,6 +49,54 @@ public:
         http::read(stream, buffer, res);
 
         return res.body();
+    }
+
+    template <class Func>
+    void CreateRunner(const std::string &group, Func handler) {
+        std::thread([this, group, handler] {
+            asio::io_context ioc;
+            websocket::stream<ip::tcp::socket> ws(ioc);
+            ip::tcp::resolver resolver(ioc);
+
+            auto results = resolver.resolve(config.host, std::to_string(config.port));
+            connect(ws.next_layer(), results.begin(), results.end());
+
+            ws.handshake(config.host + ":" + std::to_string(config.port), "/runner/" + group);
+
+            beast::flat_buffer buffer;
+            ws.template async_read(buffer, [&](const beast::error_code &ec, size_t bytes_written) {
+                std::string message = beast::buffers_to_string(buffer.data());
+                handler(message);
+                ws.template write(asio::buffer(std::string("ok")));
+                buffer.clear();
+            });
+
+            ioc.run();
+        }).detach();
+    }
+
+    template <class Func>
+    void CreateUser(const std::string &graph_id, Func handler) {
+        std::thread([this, graph_id, handler] {
+            asio::io_context ioc;
+            websocket::stream<ip::tcp::socket> ws(ioc);
+            ip::tcp::resolver resolver(ioc);
+
+            auto results = resolver.resolve(config.host, std::to_string(config.port));
+            connect(ws.next_layer(), results.begin(), results.end());
+
+            ws.handshake(config.host, "/graph/" + graph_id);
+            ws.template write(asio::buffer(std::string("run")));
+
+            beast::flat_buffer buffer;
+            ws.template async_read(buffer, [&](const beast::error_code &ec, size_t bytes_written) {
+                std::string message = beast::buffers_to_string(buffer.data());
+                handler(message);
+                buffer.clear();
+            });
+
+            ioc.run();
+        }).detach();
     }
 };
 
@@ -80,7 +128,7 @@ struct UserGraph {
     };
 
     struct Meta {
-        std::string runner_group;
+        std::string runner_group = "all";
         int max_runners = 1;
     };
 

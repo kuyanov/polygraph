@@ -47,10 +47,15 @@ public:
     bool SetInputReady(size_t block_id, size_t input_id);
     bool AllInputsReady(size_t block_id) const;
 
+    void AddUser(UserWebSocket *ws);
+    void RemoveUser(UserWebSocket *ws);
+    void SendToAllUsers(std::string_view message);
+
 private:
     std::queue<size_t> blocks_ready_;
     std::vector<std::vector<bool>> is_input_ready_;
     std::vector<int> cnt_unready_inputs_;
+    std::unordered_set<UserWebSocket *> users_;
 };
 
 class Group {
@@ -82,5 +87,4 @@ public:
 private:
     std::unordered_map<std::string, GraphState> graphs_;
     std::unordered_map<std::string, Group> groups_;
-    std::unordered_map<std::string, std::unordered_set<UserWebSocket *>> users_;
 };
