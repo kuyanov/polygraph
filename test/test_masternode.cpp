@@ -1,5 +1,8 @@
-#include <mutex>
+#include <chrono>
+#include <condition_variable>
+#include <memory>
 #include <string>
+#include <thread>
 #include <unordered_set>
 
 #include <gtest/gtest.h>
@@ -11,8 +14,8 @@ const std::string kValidationErrorPrefix = "Invalid document:";
 const std::string kSemanticErrorPrefix = "Semantic error:";
 
 void CheckSubmitStartsWith(const std::string &body, const std::string &prefix) {
-    MasterNode server;
-    auto result = server.Submit(body);
+    auto server = std::make_shared<MasterNode>();
+    auto result = HttpSession(server).Post("/submit", body);
     ASSERT_TRUE(result.starts_with(prefix));
 }
 
@@ -96,11 +99,11 @@ TEST(SemanticError, EndInputBindPath) {
 }
 
 TEST(Submit, GraphIdUnique) {
-    MasterNode server;
+    auto server = std::make_shared<MasterNode>();
     std::string body = StringifyGraph({});
     std::unordered_set<std::string> uuids;
     for (int i = 0; i < 1000; i++) {
-        auto uuid = server.Submit(body);
+        auto uuid = HttpSession(server).Post("/submit", body);
         ASSERT_TRUE(IsUuid(uuid));
         uuids.insert(uuid);
     }
@@ -108,29 +111,48 @@ TEST(Submit, GraphIdUnique) {
 }
 
 TEST(Submit, MaxPayloadSize) {
-    MasterNode server;
+    auto server = std::make_shared<MasterNode>();
     std::string body;
-    body.resize(server.config.max_payload_size, '.');
-    auto result = server.Submit(body);
+    body.resize(server->config.max_payload_size, '.');
+    auto result = HttpSession(server).Post("/submit", body);
     ASSERT_TRUE(result.starts_with(kParseErrorPrefix));
     body.push_back('.');
-    result = server.Submit(body);
+    result = HttpSession(server).Post("/submit", body);
     ASSERT_TRUE(result.empty());
 }
 
 TEST(ExecutionOrder, SingleBlock) {
-    MasterNode server;
+    auto server = std::make_shared<MasterNode>();
     std::string body = StringifyGraph({{{"1", {}, {}, {{"cmd"}}}}});
-    auto uuid = server.Submit(body);
+    auto uuid = HttpSession(server).Post("/submit", body);
     ASSERT_TRUE(IsUuid(uuid));
-    server.CreateRunner("all", [](const std::string &message) { ASSERT_EQ(message, "hello"); });
 
-    std::mutex user_mutex;
     std::vector<std::string> order;
-    server.CreateUser(uuid, [&](const std::string &message) {
-        std::unique_lock<std::mutex> lock(user_mutex);
-        order.push_back(message);
-    });
+    std::condition_variable cv;
+    std::mutex user_mutex;
+
+    std::thread([&] {
+        WebsocketSession session(server, "/runner/all");
+        session.OnRead([&](const std::string &message) {
+            ASSERT_EQ(message, "hello");
+            session.Write("ok");
+        });
+        session.Run();
+    }).detach();
+
+    std::thread([&] {
+        WebsocketSession session(server, "/graph/" + uuid);
+        session.OnRead([&](const std::string &message) {
+            std::unique_lock<std::mutex> lock(user_mutex);
+            order.push_back(message);
+            cv.notify_one();
+        });
+        session.Write("run");
+        session.Run();
+    }).detach();
+
+    std::unique_lock<std::mutex> user_lock(user_mutex);
+    cv.wait(user_lock, [&] { return order.size() == 1; });
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     ASSERT_EQ(order, std::vector<std::string>{"ok"});
 }

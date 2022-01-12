@@ -6,6 +6,9 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y git build-essenti
 COPY . /PolyGraph
 WORKDIR /PolyGraph
 
-RUN rm -rf build && mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=ASan && make
+RUN rm -rf cmake-build-asan && mkdir cmake-build-asan && cd cmake-build-asan && cmake .. -DCMAKE_BUILD_TYPE=ASan && make
+RUN rm -rf cmake-build-tsan && mkdir cmake-build-tsan && cd cmake-build-tsan && cmake .. -DCMAKE_BUILD_TYPE=TSan && make
 
-ENTRYPOINT [ "bash", "-c", "cd test && ../build/test/TestMasterNode" ]
+ENTRYPOINT [ "bash", "-c", "cd test && \
+                            ../cmake-build-asan/test/TestMasterNode && \
+                            ../cmake-build-tsan/test/TestMasterNode" ]

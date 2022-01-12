@@ -1,9 +1,11 @@
 #pragma once
 
 #include <chrono>
+#include <memory>
 #include <optional>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include <boost/beast.hpp>
@@ -24,80 +26,80 @@ class MasterNode {
 public:
     Config config;
 
-    MasterNode() : config("../masternode/config/test.json") {
-        std::thread([*this] { Run(config); }).detach();
+    MasterNode(const Config &config = Config("../masternode/config/test.json")) : config(config) {
+        std::thread([*this] { Run(this->config); }).detach();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
+};
 
-    std::string Submit(const std::string &body) {
-        asio::io_context ioc;
-        beast::tcp_stream stream(ioc);
-        ip::tcp::resolver resolver(ioc);
+class HttpSession {
+public:
+    HttpSession(std::shared_ptr<MasterNode> server) : server_(std::move(server)), stream_(ioc_) {
+        ip::tcp::resolver resolver(ioc_);
+        auto results = resolver.resolve(server_->config.host, std::to_string(server_->config.port));
+        stream_.connect(results);
+    }
 
-        auto results = resolver.resolve(config.host, std::to_string(config.port));
-        stream.connect(results);
+    ~HttpSession() {
+        beast::error_code ec;
+        stream_.socket().shutdown(ip::tcp::socket::shutdown_both, ec);
+    }
 
-        http::request<http::string_body> req{http::verb::post, "/submit", 10};
+    std::string Post(const std::string &target, const std::string &body) {
+        http::request<http::string_body> req{http::verb::post, target, 10};
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
         req.set(http::field::content_length, std::to_string(body.size()));
         req.body() = body;
-
-        http::write(stream, req);
-
+        http::write(stream_, req);
         beast::flat_buffer buffer;
         http::response<http::string_body> res;
-        http::read(stream, buffer, res);
-
+        http::read(stream_, buffer, res);
         return res.body();
     }
 
-    template <class Func>
-    void CreateRunner(const std::string &group, Func handler) {
-        std::thread([this, group, handler] {
-            asio::io_context ioc;
-            websocket::stream<ip::tcp::socket> ws(ioc);
-            ip::tcp::resolver resolver(ioc);
+private:
+    std::shared_ptr<MasterNode> server_;
+    asio::io_context ioc_;
+    beast::tcp_stream stream_;
+};
 
-            auto results = resolver.resolve(config.host, std::to_string(config.port));
-            connect(ws.next_layer(), results.begin(), results.end());
+class WebsocketSession {
+public:
+    WebsocketSession(std::shared_ptr<MasterNode> server, const std::string &target)
+        : server_(std::move(server)), ws_(ioc_) {
+        ip::tcp::resolver resolver(ioc_);
+        auto results = resolver.resolve(server_->config.host, std::to_string(server_->config.port));
+        connect(ws_.next_layer(), results.begin(), results.end());
+        ws_.handshake(server_->config.host, target);
+    }
 
-            ws.handshake(config.host + ":" + std::to_string(config.port), "/runner/" + group);
+    ~WebsocketSession() {
+        ws_.close(websocket::close_code::normal);
+    }
 
-            beast::flat_buffer buffer;
-            ws.template async_read(buffer, [&](const beast::error_code &ec, size_t bytes_written) {
-                std::string message = beast::buffers_to_string(buffer.data());
-                handler(message);
-                ws.template write(asio::buffer(std::string("ok")));
-                buffer.clear();
-            });
-
-            ioc.run();
-        }).detach();
+    void Write(const std::string &message) {
+        ws_.write(asio::buffer(message));
     }
 
     template <class Func>
-    void CreateUser(const std::string &graph_id, Func handler) {
-        std::thread([this, graph_id, handler] {
-            asio::io_context ioc;
-            websocket::stream<ip::tcp::socket> ws(ioc);
-            ip::tcp::resolver resolver(ioc);
-
-            auto results = resolver.resolve(config.host, std::to_string(config.port));
-            connect(ws.next_layer(), results.begin(), results.end());
-
-            ws.handshake(config.host, "/graph/" + graph_id);
-            ws.template write(asio::buffer(std::string("run")));
-
-            beast::flat_buffer buffer;
-            ws.template async_read(buffer, [&](const beast::error_code &ec, size_t bytes_written) {
-                std::string message = beast::buffers_to_string(buffer.data());
-                handler(message);
-                buffer.clear();
-            });
-
-            ioc.run();
-        }).detach();
+    void OnRead(Func handler) {
+        ws_.template async_read(buffer_, [this, handler = std::move(handler)](
+                                             const beast::error_code &ec, size_t bytes_written) {
+            std::string message = beast::buffers_to_string(buffer_.data());
+            handler(message);
+            buffer_.clear();
+        });
     }
+
+    void Run() {
+        ioc_.run();
+    }
+
+private:
+    std::shared_ptr<MasterNode> server_;
+    asio::io_context ioc_;
+    websocket::stream<ip::tcp::socket> ws_;
+    beast::flat_buffer buffer_;
 };
 
 struct UserGraph {
