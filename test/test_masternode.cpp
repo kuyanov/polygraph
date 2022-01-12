@@ -153,6 +153,6 @@ TEST(ExecutionOrder, SingleBlock) {
 
     std::unique_lock<std::mutex> user_lock(user_mutex);
     cv.wait(user_lock, [&] { return order.size() == 1; });
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
     ASSERT_EQ(order, std::vector<std::string>{"ok"});
 }
