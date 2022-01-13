@@ -1,3 +1,4 @@
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <memory>
@@ -21,6 +22,81 @@ void CheckSubmitStartsWith(const std::string &body, const std::string &prefix) {
 
 bool IsUuid(const std::string &s) {
     return s.size() == 36 && s[8] == '-' && s[13] == '-' && s[18] == '-' && s[23] == '-';
+}
+
+long long Timestamp() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::system_clock::now().time_since_epoch())
+        .count();
+}
+
+void CheckGraphExecutionOrder(const UserGraph &graph, int cnt_users, int cnt_runners,
+                              int expected_iterations) {
+    auto server = std::make_shared<MasterNode>();
+    std::string body = StringifyGraph(graph);
+    auto uuid = HttpSession(server).Post("/submit", body);
+    ASSERT_TRUE(IsUuid(uuid));
+
+    std::vector<std::thread> runner_threads(cnt_runners);
+    std::vector<asio::io_context> runner_contexts(cnt_runners);
+    for (int runner_id = 0; runner_id < cnt_runners; ++runner_id) {
+        auto &ioc = runner_contexts[runner_id];
+        runner_threads[runner_id] = std::thread([&] {
+            WebsocketSession session(ioc, server, "/runner/all");
+            session.OnRead([&](const std::string &message) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                session.Write("ok");
+            });
+            ioc.run();
+        });
+    }
+
+    std::condition_variable completed;
+    std::atomic<int> cnt_users_connected = 0, cnt_users_completed = 0;
+    std::vector<std::thread> user_threads(cnt_users);
+    std::vector<asio::io_context> user_contexts(cnt_users);
+    for (int user_id = 0; user_id < cnt_users; ++user_id) {
+        auto &ioc = user_contexts[user_id];
+        user_threads[user_id] = std::thread([&] {
+            WebsocketSession session(ioc, server, "/graph/" + uuid);
+            int cnt_blocks_completed = 0;
+            session.OnRead([&](const std::string &message) {
+                if (message == "complete") {
+                    ++cnt_users_completed;
+                    completed.notify_one();
+                    ASSERT_EQ(cnt_blocks_completed, graph.blocks.size());
+                } else {
+                    ++cnt_blocks_completed;
+                }
+            });
+            if (++cnt_users_connected == cnt_users) {
+                session.Write("run");
+            }
+            ioc.run();
+        });
+    }
+
+    std::mutex user_mutex;
+    std::unique_lock<std::mutex> user_lock(user_mutex);
+    auto start_time = Timestamp();
+    completed.wait(user_lock, [&] {
+        return cnt_users_completed == cnt_users;
+    });
+    auto end_time = Timestamp();
+    ASSERT_TRUE(std::abs(end_time - start_time - 100 * expected_iterations) <= 50);
+
+    for (int user_id = 0; user_id < cnt_users; ++user_id) {
+        while (user_contexts[user_id].stopped()) {
+        }
+        user_contexts[user_id].stop();
+        user_threads[user_id].join();
+    }
+    for (int runner_id = 0; runner_id < cnt_runners; ++runner_id) {
+        while (runner_contexts[runner_id].stopped()) {
+        }
+        runner_contexts[runner_id].stop();
+        runner_threads[runner_id].join();
+    }
 }
 
 TEST(ParseError, Trivial) {
@@ -63,38 +139,38 @@ TEST(ValidationError, InvalidType) {
 }
 
 TEST(SemanticError, DuplicatedInput) {
-    CheckSubmitStartsWith(StringifyGraph({{{"1", {{"a.in"}, {"a.in"}}, {}}}}),
+    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}, {"a.in"}}, {}}}}),
                           kSemanticErrorPrefix + " Duplicated input name");
 }
 
 TEST(SemanticError, DuplicatedOutput) {
-    CheckSubmitStartsWith(StringifyGraph({{{"1", {}, {{"a.out"}, {"a.out"}}}}}),
+    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {{"a.out"}, {"a.out"}}}}}),
                           kSemanticErrorPrefix + " Duplicated output name");
 }
 
 TEST(SemanticError, ConnectionStartBlock) {
-    CheckSubmitStartsWith(StringifyGraph({{{"1", {{"a.in"}}, {{"a.out"}}}}, {{1, 0, 0, 0}}}),
+    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}}, {{"a.out"}}}}, {{1, 0, 0, 0}}}),
                           kSemanticErrorPrefix + " Invalid connection start block");
 }
 
 TEST(SemanticError, ConnectionStartOutput) {
-    CheckSubmitStartsWith(StringifyGraph({{{"1", {{"a.in"}}, {{"a.out"}}}}, {{0, 1, 0, 0}}}),
+    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}}, {{"a.out"}}}}, {{0, 1, 0, 0}}}),
                           kSemanticErrorPrefix + " Invalid connection start block output");
 }
 
 TEST(SemanticError, ConnectionEndBlock) {
-    CheckSubmitStartsWith(StringifyGraph({{{"1", {{"a.in"}}, {{"a.out"}}}}, {{0, 0, -1, 0}}}),
+    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}}, {{"a.out"}}}}, {{0, 0, -1, 0}}}),
                           kSemanticErrorPrefix + " Invalid connection end block");
 }
 
 TEST(SemanticError, ConnectionEndInput) {
-    CheckSubmitStartsWith(StringifyGraph({{{"1", {{"a.in"}}, {{"a.out"}}}}, {{0, 0, 0, -1}}}),
+    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}}, {{"a.out"}}}}, {{0, 0, 0, -1}}}),
                           kSemanticErrorPrefix + " Invalid connection end block input");
 }
 
 TEST(SemanticError, EndInputBindPath) {
     CheckSubmitStartsWith(
-        StringifyGraph({{{"1", {{"a.in", ""}}, {{"a.out"}}}}, {{0, 0, 0, 0}}}),
+        StringifyGraph({{{"", {{"a.in", ""}}, {{"a.out"}}}}, {{0, 0, 0, 0}}}),
         kSemanticErrorPrefix + " Connection end block input cannot have bind path");
 }
 
@@ -121,38 +197,32 @@ TEST(Submit, MaxPayloadSize) {
     ASSERT_TRUE(result.empty());
 }
 
+TEST(ExecutionOrder, Empty) {
+    UserGraph graph = {};
+    CheckGraphExecutionOrder(graph, 1, 1, 0);
+}
+
 TEST(ExecutionOrder, SingleBlock) {
-    auto server = std::make_shared<MasterNode>();
-    std::string body = StringifyGraph({{{"1", {}, {}, {{"cmd"}}}}});
-    auto uuid = HttpSession(server).Post("/submit", body);
-    ASSERT_TRUE(IsUuid(uuid));
+    UserGraph graph = {{{}}};
+    CheckGraphExecutionOrder(graph, 1, 1, 1);
+    CheckGraphExecutionOrder(graph, 10, 1, 1);
+    CheckGraphExecutionOrder(graph, 1, 10, 1);
+    CheckGraphExecutionOrder(graph, 10, 10, 1);
+}
 
-    std::vector<std::string> order;
-    std::condition_variable cv;
-    std::mutex user_mutex;
+TEST(ExecutionOrder, Bamboo) {
+    UserGraph graph = {{{"0", {}, {{}}}, {"1", {{}}, {{}}}, {"2", {{}}, {{}}}},
+                       {{0, 0, 1, 0}, {1, 0, 2, 0}}};
+    CheckGraphExecutionOrder(graph, 1, 1, 3);
+    CheckGraphExecutionOrder(graph, 10, 1, 3);
+    CheckGraphExecutionOrder(graph, 1, 10, 3);
+    CheckGraphExecutionOrder(graph, 10, 10, 3);
+}
 
-    std::thread([&] {
-        WebsocketSession session(server, "/runner/all");
-        session.OnRead([&](const std::string &message) {
-            ASSERT_EQ(message, "hello");
-            session.Write("ok");
-        });
-        session.Run();
-    }).detach();
-
-    std::thread([&] {
-        WebsocketSession session(server, "/graph/" + uuid);
-        session.OnRead([&](const std::string &message) {
-            std::unique_lock<std::mutex> lock(user_mutex);
-            order.push_back(message);
-            cv.notify_one();
-        });
-        session.Write("run");
-        session.Run();
-    }).detach();
-
-    std::unique_lock<std::mutex> user_lock(user_mutex);
-    cv.wait(user_lock, [&] { return order.size() == 1; });
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    ASSERT_EQ(order, std::vector<std::string>{"ok"});
+TEST(ExecutionOrder, Parallel) {
+    UserGraph graph = {{{"0"}, {"1"}, {"2"}}};
+    CheckGraphExecutionOrder(graph, 1, 1, 3);
+    CheckGraphExecutionOrder(graph, 10, 1, 3);
+    CheckGraphExecutionOrder(graph, 1, 3, 1);
+    CheckGraphExecutionOrder(graph, 10, 3, 1);
 }

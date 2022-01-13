@@ -28,7 +28,7 @@ public:
 
     MasterNode(const Config &config = Config("../masternode/config/test.json")) : config(config) {
         std::thread([*this] { Run(this->config); }).detach();
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
     }
 };
 
@@ -65,9 +65,10 @@ private:
 
 class WebsocketSession {
 public:
-    WebsocketSession(std::shared_ptr<MasterNode> server, const std::string &target)
-        : server_(std::move(server)), ws_(ioc_) {
-        ip::tcp::resolver resolver(ioc_);
+    WebsocketSession(asio::io_context &ioc, std::shared_ptr<MasterNode> server,
+                     const std::string &target)
+        : server_(std::move(server)), ws_(ioc) {
+        ip::tcp::resolver resolver(ioc);
         auto results = resolver.resolve(server_->config.host, std::to_string(server_->config.port));
         connect(ws_.next_layer(), results.begin(), results.end());
         ws_.handshake(server_->config.host, target);
@@ -81,23 +82,18 @@ public:
         ws_.write(asio::buffer(message));
     }
 
-    template <class Func>
-    void OnRead(Func handler) {
+    void OnRead(auto handler) {
         ws_.template async_read(buffer_, [this, handler = std::move(handler)](
                                              const beast::error_code &ec, size_t bytes_written) {
             std::string message = beast::buffers_to_string(buffer_.data());
             handler(message);
             buffer_.clear();
+            OnRead(handler);
         });
-    }
-
-    void Run() {
-        ioc_.run();
     }
 
 private:
     std::shared_ptr<MasterNode> server_;
-    asio::io_context ioc_;
     websocket::stream<ip::tcp::socket> ws_;
     beast::flat_buffer buffer_;
 };
@@ -131,7 +127,7 @@ struct UserGraph {
 
     struct Meta {
         std::string runner_group = "all";
-        int max_runners = 1;
+        int max_runners = INT_MAX;
     };
 
     std::vector<Block> blocks;

@@ -129,6 +129,9 @@ void Scheduler::RunGraph(const std::string &graph_id) {
             graph.EnqueueBlock(block_id);
         }
     }
+    if (graph.cnt_blocks_processing == 0) {
+        graph.SendToAllUsers("complete");
+    }
 }
 
 void Scheduler::StopGraph(const std::string &graph_id) {
@@ -143,6 +146,7 @@ bool Scheduler::GraphRunning(const std::string &graph_id) const {
 void Scheduler::RunnerCompleted(RunnerWebSocket *ws, std::string_view message) {
     GraphState *graph_ptr = ws->getUserData()->graph_ptr;
     size_t start_block_id = ws->getUserData()->block_id;
+    graph_ptr->group->AddRunner(ws);
     graph_ptr->SendToAllUsers(message);  // TODO
     graph_ptr->DequeueBlock();
     graph_ptr->ResetInputs(start_block_id);
@@ -152,5 +156,8 @@ void Scheduler::RunnerCompleted(RunnerWebSocket *ws, std::string_view message) {
             graph_ptr->AllInputsReady(end_block_id)) {
             graph_ptr->EnqueueBlock(end_block_id);
         }
+    }
+    if (graph_ptr->cnt_blocks_processing == 0) {
+        graph_ptr->SendToAllUsers("complete");
     }
 }
