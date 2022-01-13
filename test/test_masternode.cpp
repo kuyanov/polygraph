@@ -1,7 +1,6 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
-#include <memory>
 #include <string>
 #include <thread>
 #include <unordered_set>
@@ -10,13 +9,17 @@
 
 #include "test_masternode.h"
 
+static MasterNode server;
+
+const std::string kHost = server.config.host;
+const int kPort = server.config.port;
+
 const std::string kParseErrorPrefix = "Could not parse json:";
 const std::string kValidationErrorPrefix = "Invalid document:";
 const std::string kSemanticErrorPrefix = "Semantic error:";
 
 void CheckSubmitStartsWith(const std::string &body, const std::string &prefix) {
-    auto server = std::make_shared<MasterNode>();
-    auto result = HttpSession(server).Post("/submit", body);
+    auto result = HttpSession(kHost, kPort).Post("/submit", body);
     ASSERT_TRUE(result.starts_with(prefix));
 }
 
@@ -32,9 +35,8 @@ long long Timestamp() {
 
 void CheckGraphExecutionOrder(const UserGraph &graph, int cnt_users, int cnt_runners,
                               int expected_iterations) {
-    auto server = std::make_shared<MasterNode>();
     std::string body = StringifyGraph(graph);
-    auto uuid = HttpSession(server).Post("/submit", body);
+    auto uuid = HttpSession(kHost, kPort).Post("/submit", body);
     ASSERT_TRUE(IsUuid(uuid));
 
     std::vector<std::thread> runner_threads(cnt_runners);
@@ -42,7 +44,7 @@ void CheckGraphExecutionOrder(const UserGraph &graph, int cnt_users, int cnt_run
     for (int runner_id = 0; runner_id < cnt_runners; ++runner_id) {
         auto &ioc = runner_contexts[runner_id];
         runner_threads[runner_id] = std::thread([&] {
-            WebsocketSession session(ioc, server, "/runner/all");
+            WebsocketSession session(ioc, kHost, kPort, "/runner/" + graph.meta.runner_group);
             session.OnRead([&](const std::string &message) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 session.Write("ok");
@@ -58,7 +60,7 @@ void CheckGraphExecutionOrder(const UserGraph &graph, int cnt_users, int cnt_run
     for (int user_id = 0; user_id < cnt_users; ++user_id) {
         auto &ioc = user_contexts[user_id];
         user_threads[user_id] = std::thread([&] {
-            WebsocketSession session(ioc, server, "/graph/" + uuid);
+            WebsocketSession session(ioc, kHost, kPort, "/graph/" + uuid);
             int cnt_blocks_completed = 0;
             session.OnRead([&](const std::string &message) {
                 if (message == "complete") {
@@ -79,21 +81,15 @@ void CheckGraphExecutionOrder(const UserGraph &graph, int cnt_users, int cnt_run
     std::mutex user_mutex;
     std::unique_lock<std::mutex> user_lock(user_mutex);
     auto start_time = Timestamp();
-    completed.wait(user_lock, [&] {
-        return cnt_users_completed == cnt_users;
-    });
+    completed.wait(user_lock, [&] { return cnt_users_completed == cnt_users; });
     auto end_time = Timestamp();
     ASSERT_TRUE(std::abs(end_time - start_time - 100 * expected_iterations) <= 50);
 
     for (int user_id = 0; user_id < cnt_users; ++user_id) {
-        while (user_contexts[user_id].stopped()) {
-        }
         user_contexts[user_id].stop();
         user_threads[user_id].join();
     }
     for (int runner_id = 0; runner_id < cnt_runners; ++runner_id) {
-        while (runner_contexts[runner_id].stopped()) {
-        }
         runner_contexts[runner_id].stop();
         runner_threads[runner_id].join();
     }
@@ -175,11 +171,10 @@ TEST(SemanticError, EndInputBindPath) {
 }
 
 TEST(Submit, GraphIdUnique) {
-    auto server = std::make_shared<MasterNode>();
     std::string body = StringifyGraph({});
     std::unordered_set<std::string> uuids;
     for (int i = 0; i < 1000; i++) {
-        auto uuid = HttpSession(server).Post("/submit", body);
+        auto uuid = HttpSession(kHost, kPort).Post("/submit", body);
         ASSERT_TRUE(IsUuid(uuid));
         uuids.insert(uuid);
     }
@@ -187,13 +182,12 @@ TEST(Submit, GraphIdUnique) {
 }
 
 TEST(Submit, MaxPayloadSize) {
-    auto server = std::make_shared<MasterNode>();
     std::string body;
-    body.resize(server->config.max_payload_size, '.');
-    auto result = HttpSession(server).Post("/submit", body);
+    body.resize(server.config.max_payload_size, '.');
+    auto result = HttpSession(kHost, kPort).Post("/submit", body);
     ASSERT_TRUE(result.starts_with(kParseErrorPrefix));
     body.push_back('.');
-    result = HttpSession(server).Post("/submit", body);
+    result = HttpSession(kHost, kPort).Post("/submit", body);
     ASSERT_TRUE(result.empty());
 }
 

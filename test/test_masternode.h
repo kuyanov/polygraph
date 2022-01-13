@@ -1,7 +1,6 @@
 #pragma once
 
 #include <chrono>
-#include <memory>
 #include <optional>
 #include <string>
 #include <thread>
@@ -34,9 +33,9 @@ public:
 
 class HttpSession {
 public:
-    HttpSession(std::shared_ptr<MasterNode> server) : server_(std::move(server)), stream_(ioc_) {
+    HttpSession(const std::string &host, int port) : stream_(ioc_) {
         ip::tcp::resolver resolver(ioc_);
-        auto results = resolver.resolve(server_->config.host, std::to_string(server_->config.port));
+        auto results = resolver.resolve(host, std::to_string(port));
         stream_.connect(results);
     }
 
@@ -58,20 +57,19 @@ public:
     }
 
 private:
-    std::shared_ptr<MasterNode> server_;
     asio::io_context ioc_;
     beast::tcp_stream stream_;
 };
 
 class WebsocketSession {
 public:
-    WebsocketSession(asio::io_context &ioc, std::shared_ptr<MasterNode> server,
+    WebsocketSession(asio::io_context &ioc, const std::string &host, int port,
                      const std::string &target)
-        : server_(std::move(server)), ws_(ioc) {
+        : ws_(ioc) {
         ip::tcp::resolver resolver(ioc);
-        auto results = resolver.resolve(server_->config.host, std::to_string(server_->config.port));
+        auto results = resolver.resolve(host, std::to_string(port));
         connect(ws_.next_layer(), results.begin(), results.end());
-        ws_.handshake(server_->config.host, target);
+        ws_.handshake(host, target);
     }
 
     ~WebsocketSession() {
@@ -82,7 +80,8 @@ public:
         ws_.write(asio::buffer(message));
     }
 
-    void OnRead(auto handler) {
+    template <class Func>
+    void OnRead(Func handler) {
         ws_.template async_read(buffer_, [this, handler = std::move(handler)](
                                              const beast::error_code &ec, size_t bytes_written) {
             std::string message = beast::buffers_to_string(buffer_.data());
@@ -93,7 +92,6 @@ public:
     }
 
 private:
-    std::shared_ptr<MasterNode> server_;
     websocket::stream<ip::tcp::socket> ws_;
     beast::flat_buffer buffer_;
 };
