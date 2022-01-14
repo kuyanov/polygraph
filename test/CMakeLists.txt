@@ -5,6 +5,4 @@ function (make_test name)
     add_test(NAME "${name}" COMMAND "${name}")
 endfunction()
 
-make_test(TestMasterNode test_masternode.cpp)
-target_include_directories(TestMasterNode PUBLIC test)
-target_link_libraries(TestMasterNode PRIVATE MasterNodeLib)
+add_subdirectory(masternode)

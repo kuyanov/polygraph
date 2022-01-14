@@ -1,99 +1,15 @@
-#include <atomic>
-#include <chrono>
-#include <condition_variable>
 #include <string>
-#include <thread>
 #include <unordered_set>
 
 #include <gtest/gtest.h>
 
-#include "test_masternode.h"
-
-static MasterNode server;
-
-const std::string kHost = server.config.host;
-const int kPort = server.config.port;
+#include "helper.h"
+#include "networking.h"
+#include "user_graph.h"
 
 const std::string kParseErrorPrefix = "Could not parse json:";
 const std::string kValidationErrorPrefix = "Invalid document:";
 const std::string kSemanticErrorPrefix = "Semantic error:";
-
-void CheckSubmitStartsWith(const std::string &body, const std::string &prefix) {
-    auto result = HttpSession(kHost, kPort).Post("/submit", body);
-    ASSERT_TRUE(result.starts_with(prefix));
-}
-
-bool IsUuid(const std::string &s) {
-    return s.size() == 36 && s[8] == '-' && s[13] == '-' && s[18] == '-' && s[23] == '-';
-}
-
-long long Timestamp() {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::system_clock::now().time_since_epoch())
-        .count();
-}
-
-void CheckGraphExecutionOrder(const UserGraph &graph, int cnt_users, int cnt_runners,
-                              int expected_iterations) {
-    std::string body = StringifyGraph(graph);
-    auto uuid = HttpSession(kHost, kPort).Post("/submit", body);
-    ASSERT_TRUE(IsUuid(uuid));
-
-    std::vector<std::thread> runner_threads(cnt_runners);
-    std::vector<asio::io_context> runner_contexts(cnt_runners);
-    for (int runner_id = 0; runner_id < cnt_runners; ++runner_id) {
-        auto &ioc = runner_contexts[runner_id];
-        runner_threads[runner_id] = std::thread([&] {
-            WebsocketSession session(ioc, kHost, kPort, "/runner/" + graph.meta.runner_group);
-            session.OnRead([&](const std::string &message) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                session.Write("ok");
-            });
-            ioc.run();
-        });
-    }
-
-    std::condition_variable completed;
-    std::atomic<int> cnt_users_connected = 0, cnt_users_completed = 0;
-    std::vector<std::thread> user_threads(cnt_users);
-    std::vector<asio::io_context> user_contexts(cnt_users);
-    for (int user_id = 0; user_id < cnt_users; ++user_id) {
-        auto &ioc = user_contexts[user_id];
-        user_threads[user_id] = std::thread([&] {
-            WebsocketSession session(ioc, kHost, kPort, "/graph/" + uuid);
-            int cnt_blocks_completed = 0;
-            session.OnRead([&](const std::string &message) {
-                if (message == "complete") {
-                    ++cnt_users_completed;
-                    completed.notify_one();
-                    ASSERT_EQ(cnt_blocks_completed, graph.blocks.size());
-                } else {
-                    ++cnt_blocks_completed;
-                }
-            });
-            if (++cnt_users_connected == cnt_users) {
-                session.Write("run");
-            }
-            ioc.run();
-        });
-    }
-
-    std::mutex user_mutex;
-    std::unique_lock<std::mutex> user_lock(user_mutex);
-    auto start_time = Timestamp();
-    completed.wait(user_lock, [&] { return cnt_users_completed == cnt_users; });
-    auto end_time = Timestamp();
-    ASSERT_TRUE(std::abs(end_time - start_time - 100 * expected_iterations) <= 50);
-
-    for (int user_id = 0; user_id < cnt_users; ++user_id) {
-        user_contexts[user_id].stop();
-        user_threads[user_id].join();
-    }
-    for (int runner_id = 0; runner_id < cnt_runners; ++runner_id) {
-        runner_contexts[runner_id].stop();
-        runner_threads[runner_id].join();
-    }
-}
 
 TEST(ParseError, Trivial) {
     CheckSubmitStartsWith("", kParseErrorPrefix);
@@ -183,7 +99,7 @@ TEST(Submit, GraphIdUnique) {
 
 TEST(Submit, MaxPayloadSize) {
     std::string body;
-    body.resize(server.config.max_payload_size, '.');
+    body.resize(MasterNode::Instance().config.max_payload_size, '.');
     auto result = HttpSession(kHost, kPort).Post("/submit", body);
     ASSERT_TRUE(result.starts_with(kParseErrorPrefix));
     body.push_back('.');

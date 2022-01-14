@@ -1,0 +1,2 @@
+make_test(TestMasterNode test_masternode.cpp)
+target_link_libraries(TestMasterNode PRIVATE MasterNodeLib)
