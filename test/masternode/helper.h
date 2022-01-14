@@ -31,8 +31,7 @@ long long Timestamp() {
         .count();
 }
 
-void CheckGraphExecutionOrder(const UserGraph &graph, int cnt_users, int cnt_runners,
-                              int cnt_layers) {
+void CheckGraphExecution(const UserGraph &graph, int cnt_users, int cnt_runners, int runs, int time) {
     std::string body = StringifyGraph(graph);
     auto uuid = HttpSession(kHost, kPort).Post("/submit", body);
     ASSERT_TRUE(IsUuid(uuid));
@@ -64,7 +63,7 @@ void CheckGraphExecutionOrder(const UserGraph &graph, int cnt_users, int cnt_run
                 if (message == "complete") {
                     ++cnt_users_completed;
                     completed.notify_one();
-                    ASSERT_EQ(cnt_blocks_completed, graph.blocks.size());
+                    ASSERT_EQ(cnt_blocks_completed, runs);
                 } else {
                     ++cnt_blocks_completed;
                 }
@@ -81,7 +80,8 @@ void CheckGraphExecutionOrder(const UserGraph &graph, int cnt_users, int cnt_run
     auto start_time = Timestamp();
     completed.wait(user_lock, [&] { return cnt_users_completed == cnt_users; });
     auto end_time = Timestamp();
-    ASSERT_TRUE(std::abs(end_time - start_time - 100 * cnt_layers) <= 50);
+    auto error = end_time - start_time - 100 * time;
+    ASSERT_TRUE(error >= 0 && error <= 80);
 
     for (int user_id = 0; user_id < cnt_users; ++user_id) {
         user_contexts[user_id].stop();

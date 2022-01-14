@@ -107,32 +107,84 @@ TEST(Submit, MaxPayloadSize) {
     ASSERT_TRUE(result.empty());
 }
 
-TEST(ExecutionOrder, Empty) {
+TEST(Execution, Empty) {
     UserGraph graph = {};
-    CheckGraphExecutionOrder(graph, 1, 1, 0);
+    CheckGraphExecution(graph, 1, 1, 0, 0);
 }
 
-TEST(ExecutionOrder, SingleBlock) {
+TEST(Execution, SingleBlock) {
     UserGraph graph = {{{}}};
-    CheckGraphExecutionOrder(graph, 1, 1, 1);
-    CheckGraphExecutionOrder(graph, 10, 1, 1);
-    CheckGraphExecutionOrder(graph, 1, 10, 1);
-    CheckGraphExecutionOrder(graph, 10, 10, 1);
+    CheckGraphExecution(graph, 5, 1, 1, 1);
+    CheckGraphExecution(graph, 5, 10, 1, 1);
 }
 
-TEST(ExecutionOrder, Bamboo) {
+TEST(Execution, Bamboo) {
     UserGraph graph = {{{"0", {}, {{}}}, {"1", {{}}, {{}}}, {"2", {{}}, {{}}}},
                        {{0, 0, 1, 0}, {1, 0, 2, 0}}};
-    CheckGraphExecutionOrder(graph, 1, 1, 3);
-    CheckGraphExecutionOrder(graph, 10, 1, 3);
-    CheckGraphExecutionOrder(graph, 1, 10, 3);
-    CheckGraphExecutionOrder(graph, 10, 10, 3);
+    CheckGraphExecution(graph, 5, 1, 3, 3);
+    CheckGraphExecution(graph, 5, 10, 3, 3);
 }
 
-TEST(ExecutionOrder, Parallel) {
+TEST(Execution, Parallel) {
     UserGraph graph = {{{"0"}, {"1"}, {"2"}}};
-    CheckGraphExecutionOrder(graph, 1, 1, 3);
-    CheckGraphExecutionOrder(graph, 10, 1, 3);
-    CheckGraphExecutionOrder(graph, 1, 3, 1);
-    CheckGraphExecutionOrder(graph, 10, 3, 1);
+    CheckGraphExecution(graph, 5, 1, 3, 3);
+    CheckGraphExecution(graph, 5, 3, 3, 1);
+}
+
+TEST(Execution, MaxRunners) {
+    UserGraph graph = {{{"0", {}, {{}}},
+                        {"1", {{}}, {{}}},
+                        {"2", {{}}, {{}}},
+                        {"3", {{}}, {{}}},
+                        {"4", {{}}, {{}}},
+                        {"5", {{"1"}, {"2"}, {"3"}, {"4"}}}},
+                       {{0, 0, 1, 0},
+                        {0, 0, 2, 0},
+                        {0, 0, 3, 0},
+                        {0, 0, 4, 0},
+                        {1, 0, 5, 0},
+                        {2, 0, 5, 1},
+                        {3, 0, 5, 2},
+                        {4, 0, 5, 3}}};
+    CheckGraphExecution(graph, 3, 1, 6, 6);
+    CheckGraphExecution(graph, 3, 2, 6, 4);
+    CheckGraphExecution(graph, 3, 3, 6, 4);
+    CheckGraphExecution(graph, 3, 4, 6, 3);
+    CheckGraphExecution(graph, 3, 6, 6, 3);
+    graph.meta.max_runners = 4;
+    CheckGraphExecution(graph, 3, 4, 6, 3);
+    graph.meta.max_runners = 3;
+    CheckGraphExecution(graph, 3, 4, 6, 4);
+    graph.meta.max_runners = 2;
+    CheckGraphExecution(graph, 3, 4, 6, 4);
+    graph.meta.max_runners = 1;
+    CheckGraphExecution(graph, 3, 4, 6, 6);
+}
+
+TEST(Execution, FiniteLoop1) {
+    UserGraph graph = {
+        {{"0", {}, {{}}}, {"1", {{}}, {{}}}, {"2", {{}}, {{}}}, {"3", {{"0"}, {"1"}}, {{}}}},
+        {{0, 0, 1, 0}, {1, 0, 2, 0}, {0, 0, 3, 0}, {0, 0, 3, 1}, {2, 0, 3, 1}, {3, 0, 3, 0}}};
+    CheckGraphExecution(graph, 3, 2, 5, 4);
+}
+
+TEST(Execution, FiniteLoop2) {
+    UserGraph graph = {{{"0", {}, {{}}},
+                        {"1", {{}}, {{}}},
+                        {"2", {{}}, {{"0"}, {"1"}}},
+                        {"3", {{}}, {{}}},
+                        {"4", {{}}, {{}}},
+                        {"5", {{"0"}, {"1"}}, {{}}},
+                        {"6", {{}}, {{}}}},
+                       {{0, 0, 1, 0},
+                        {1, 0, 2, 0},
+                        {2, 0, 3, 0},
+                        {3, 0, 4, 0},
+                        {0, 0, 5, 0},
+                        {0, 0, 5, 1},
+                        {2, 1, 5, 0},
+                        {4, 0, 5, 0},
+                        {5, 0, 6, 0},
+                        {6, 0, 5, 1}}};
+    CheckGraphExecution(graph, 3, 2, 11, 7);
 }

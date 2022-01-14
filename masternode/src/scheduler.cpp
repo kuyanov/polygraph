@@ -15,11 +15,12 @@ void GraphState::EnqueueBlock(size_t block_id) {
 }
 
 void GraphState::DequeueBlock() {
-    --cnt_blocks_processing;
     if (!blocks_ready_.empty()) {
         size_t block_id = blocks_ready_.front();
         blocks_ready_.pop();
         group->EnqueueBlock(this, block_id);
+    } else {
+        --cnt_blocks_processing;
     }
 }
 
