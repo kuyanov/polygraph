@@ -20,7 +20,7 @@ public:
     Config config;
 
     static MasterNode &Instance() {
-        static MasterNode server("../masternode/config/test.json");
+        static MasterNode server("config/config.json");
         return server;
     }
 

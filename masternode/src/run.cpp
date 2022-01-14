@@ -15,7 +15,7 @@ const char *http_not_found = "404 Not Found";
 const char *http_request_entity_too_large = "413 Request Entity Too Large";
 
 void Run(const Config &config) {
-    static SchemaValidator graph_validator(config.graph_schema_file.c_str());
+    static SchemaValidator graph_validator("schema/graph.json");
     static Scheduler scheduler;
 
     uWS::App().post("/submit", [&](auto *res, auto *req) {

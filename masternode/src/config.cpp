@@ -14,5 +14,4 @@ Config::Config(const char *filename) {
     host = config["host"].GetString();
     port = config["port"].GetInt();
     max_payload_size = config["max-payload-size"].GetUint();
-    graph_schema_file = config["graph-schema-file"].GetString();
 }
