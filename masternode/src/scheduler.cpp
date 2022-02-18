@@ -67,7 +67,7 @@ void Group::AddRunner(RunnerWebSocket *ws) {
     if (blocks_waiting_.empty()) {
         runners_waiting_.insert(ws);
     } else {
-        const auto &[graph_ptr, block_id] = blocks_waiting_.front();
+        auto [graph_ptr, block_id] = blocks_waiting_.front();
         blocks_waiting_.pop();
         ws->getUserData()->graph_ptr = graph_ptr;
         ws->getUserData()->block_id = block_id;
