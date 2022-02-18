@@ -1,1 +1,1 @@
-# PolyGraph
+# polygraph
