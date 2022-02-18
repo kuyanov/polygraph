@@ -109,26 +109,26 @@ TEST(Submit, MaxPayloadSize) {
 
 TEST(Execution, Empty) {
     UserGraph graph = {};
-    CheckGraphExecution(graph, 1, 1, 0, 0);
+    CheckGraphExecution(graph, 1, 1, 0, 100, 0);
 }
 
 TEST(Execution, SingleBlock) {
     UserGraph graph = {{{}}};
-    CheckGraphExecution(graph, 5, 1, 1, 1);
-    CheckGraphExecution(graph, 5, 10, 1, 1);
+    CheckGraphExecution(graph, 5, 1, 1, 100, 100);
+    CheckGraphExecution(graph, 5, 10, 1, 100, 100);
 }
 
 TEST(Execution, Bamboo) {
     UserGraph graph = {{{"0", {}, {{}}}, {"1", {{}}, {{}}}, {"2", {{}}, {{}}}},
                        {{0, 0, 1, 0}, {1, 0, 2, 0}}};
-    CheckGraphExecution(graph, 5, 1, 3, 3);
-    CheckGraphExecution(graph, 5, 10, 3, 3);
+    CheckGraphExecution(graph, 5, 1, 3, 100, 300);
+    CheckGraphExecution(graph, 5, 10, 3, 100, 300);
 }
 
 TEST(Execution, Parallel) {
     UserGraph graph = {{{"0"}, {"1"}, {"2"}}};
-    CheckGraphExecution(graph, 5, 1, 3, 3);
-    CheckGraphExecution(graph, 5, 3, 3, 1);
+    CheckGraphExecution(graph, 5, 1, 3, 100, 300);
+    CheckGraphExecution(graph, 5, 3, 3, 100, 100);
 }
 
 TEST(Execution, MaxRunners) {
@@ -146,26 +146,26 @@ TEST(Execution, MaxRunners) {
                         {2, 0, 5, 1},
                         {3, 0, 5, 2},
                         {4, 0, 5, 3}}};
-    CheckGraphExecution(graph, 3, 1, 6, 6);
-    CheckGraphExecution(graph, 3, 2, 6, 4);
-    CheckGraphExecution(graph, 3, 3, 6, 4);
-    CheckGraphExecution(graph, 3, 4, 6, 3);
-    CheckGraphExecution(graph, 3, 6, 6, 3);
+    CheckGraphExecution(graph, 3, 1, 6, 100, 600);
+    CheckGraphExecution(graph, 3, 2, 6, 100, 400);
+    CheckGraphExecution(graph, 3, 3, 6, 100, 400);
+    CheckGraphExecution(graph, 3, 4, 6, 100, 300);
+    CheckGraphExecution(graph, 3, 6, 6, 100, 300);
     graph.meta.max_runners = 4;
-    CheckGraphExecution(graph, 3, 4, 6, 3);
+    CheckGraphExecution(graph, 3, 4, 6, 100, 300);
     graph.meta.max_runners = 3;
-    CheckGraphExecution(graph, 3, 4, 6, 4);
+    CheckGraphExecution(graph, 3, 4, 6, 100, 400);
     graph.meta.max_runners = 2;
-    CheckGraphExecution(graph, 3, 4, 6, 4);
+    CheckGraphExecution(graph, 3, 4, 6, 100, 400);
     graph.meta.max_runners = 1;
-    CheckGraphExecution(graph, 3, 4, 6, 6);
+    CheckGraphExecution(graph, 3, 4, 6, 100, 600);
 }
 
 TEST(Execution, FiniteLoop1) {
     UserGraph graph = {
         {{"0", {}, {{}}}, {"1", {{}}, {{}}}, {"2", {{}}, {{}}}, {"3", {{"0"}, {"1"}}, {{}}}},
         {{0, 0, 1, 0}, {1, 0, 2, 0}, {0, 0, 3, 0}, {0, 0, 3, 1}, {2, 0, 3, 1}, {3, 0, 3, 0}}};
-    CheckGraphExecution(graph, 3, 2, 5, 4);
+    CheckGraphExecution(graph, 3, 2, 5, 100, 400);
 }
 
 TEST(Execution, FiniteLoop2) {
@@ -186,5 +186,13 @@ TEST(Execution, FiniteLoop2) {
                         {4, 0, 5, 0},
                         {5, 0, 6, 0},
                         {6, 0, 5, 1}}};
-    CheckGraphExecution(graph, 3, 2, 11, 7);
+    CheckGraphExecution(graph, 3, 2, 11, 100, 700);
+}
+
+TEST(Execution, Stress) {
+    std::vector<UserGraph::Block> blocks(100);
+    UserGraph graph = {blocks, {}};
+    for (int i = 0; i < 200; i++) {
+        CheckGraphExecution(graph, 4, 1, 100, 0, -1);
+    }
 }

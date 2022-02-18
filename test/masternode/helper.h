@@ -31,7 +31,8 @@ long long Timestamp() {
         .count();
 }
 
-void CheckGraphExecution(const UserGraph &graph, int cnt_users, int cnt_runners, int runs, int time) {
+void CheckGraphExecution(const UserGraph &graph, int cnt_users, int cnt_runners, int exp_runs,
+                         int runner_delay, int exp_delay) {
     std::string body = StringifyGraph(graph);
     auto uuid = HttpSession(kHost, kPort).Post("/submit", body);
     ASSERT_TRUE(IsUuid(uuid));
@@ -43,7 +44,7 @@ void CheckGraphExecution(const UserGraph &graph, int cnt_users, int cnt_runners,
         runner_threads[runner_id] = std::thread([&] {
             WebsocketSession session(ioc, kHost, kPort, "/runner/" + graph.meta.runner_group);
             session.OnRead([&](const std::string &message) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                std::this_thread::sleep_for(std::chrono::milliseconds(runner_delay));
                 session.Write("ok");
             });
             ioc.run();
@@ -61,9 +62,10 @@ void CheckGraphExecution(const UserGraph &graph, int cnt_users, int cnt_runners,
             int cnt_blocks_completed = 0;
             session.OnRead([&](const std::string &message) {
                 if (message == "complete") {
-                    ++cnt_users_completed;
-                    completed.notify_one();
-                    ASSERT_EQ(cnt_blocks_completed, runs);
+                    if (++cnt_users_completed == cnt_users) {
+                        completed.notify_one();
+                    }
+                    ASSERT_EQ(cnt_blocks_completed, exp_runs);
                 } else {
                     ++cnt_blocks_completed;
                 }
@@ -80,8 +82,10 @@ void CheckGraphExecution(const UserGraph &graph, int cnt_users, int cnt_runners,
     auto start_time = Timestamp();
     completed.wait(user_lock, [&] { return cnt_users_completed == cnt_users; });
     auto end_time = Timestamp();
-    auto error = end_time - start_time - 100 * time;
-    ASSERT_TRUE(error >= 0 && error <= 80);
+    if (exp_delay != -1) {
+        auto error = end_time - start_time - exp_delay;
+        ASSERT_TRUE(error >= 0 && error < runner_delay);
+    }
 
     for (int user_id = 0; user_id < cnt_users; ++user_id) {
         user_contexts[user_id].stop();
