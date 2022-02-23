@@ -5,14 +5,11 @@
 
 #include "config.h"
 #include "error.h"
+#include "global.h"
 #include "graph.h"
 #include "run.h"
 #include "scheduler.h"
 #include "schema_validator.h"
-
-const char *http_bad_request = "400 Bad Request";
-const char *http_not_found = "404 Not Found";
-const char *http_request_entity_too_large = "413 Request Entity Too Large";
 
 void Run(const Config &config) {
     static SchemaValidator graph_validator("schema/graph.json");
@@ -24,7 +21,7 @@ void Run(const Config &config) {
         res->onData([&, res, graph_json = std::move(graph_json)]
                     (std::string_view chunk, bool is_last) mutable {
             if (graph_json.size() + chunk.size() > config.max_payload_size) {
-                res->writeStatus(http_request_entity_too_large)->end("", true);
+                res->writeStatus(http::request_entity_too_large)->end("", true);
                 return;
             }
             graph_json.append(chunk);
@@ -37,11 +34,11 @@ void Run(const Config &config) {
                 std::string graph_id = scheduler.AddGraph(std::move(graph));
                 res->end(graph_id);
             } catch (const ParseError &error) {
-                res->writeStatus(http_bad_request)->end("Could not parse json: " + error.message);
+                res->writeStatus(http::bad_request)->end("Could not parse json: " + error.message);
             } catch (const ValidationError &error) {
-                res->writeStatus(http_bad_request)->end("Invalid document: " + error.message);
+                res->writeStatus(http::bad_request)->end("Invalid document: " + error.message);
             } catch (const SemanticError &error) {
-                res->writeStatus(http_bad_request)->end("Semantic error: " + error.message);
+                res->writeStatus(http::bad_request)->end("Semantic error: " + error.message);
             }
         });
     }).ws<RunnerPerSocketData>("/runner/:group", {
@@ -69,7 +66,7 @@ void Run(const Config &config) {
         .upgrade = [&](auto *res, auto *req, auto *context) {
             std::string graph_id(req->getParameter(0));
             if (!scheduler.GraphExists(graph_id)) {
-                res->writeStatus(http_not_found)->end();
+                res->writeStatus(http::not_found)->end();
                 return;
             }
             res->template upgrade<UserPerSocketData>({ .graph_id = graph_id },

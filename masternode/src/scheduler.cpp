@@ -1,3 +1,4 @@
+#include "global.h"
 #include "scheduler.h"
 #include "uuid.h"
 
@@ -131,7 +132,7 @@ void Scheduler::RunGraph(const std::string &graph_id) {
         }
     }
     if (graph.cnt_blocks_processing == 0) {
-        graph.SendToAllUsers("complete");
+        graph.SendToAllUsers(signals::runner_complete);
     }
 }
 
@@ -159,6 +160,6 @@ void Scheduler::RunnerCompleted(RunnerWebSocket *ws, std::string_view message) {
         }
     }
     if (graph_ptr->cnt_blocks_processing == 0) {
-        graph_ptr->SendToAllUsers("complete");
+        graph_ptr->SendToAllUsers(signals::runner_complete);
     }
 }
