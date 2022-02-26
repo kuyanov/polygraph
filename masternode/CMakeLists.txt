@@ -14,6 +14,10 @@ target_compile_definitions(uSockets PRIVATE LIBUS_NO_SSL LIBUS_USE_LIBUV)
 target_include_directories(uSockets PUBLIC ${LIBUV_INCLUDE_DIR} ${USOCKETS_SRC_DIR})
 target_link_libraries(uSockets PRIVATE Threads::Threads ${LIBUV_LIBRARY})
 
+if (WIN32)
+        target_link_libraries(uSockets PRIVATE userenv iphlpapi)
+endif()
+
 add_library(uWebSockets INTERFACE)
 target_compile_definitions(uWebSockets INTERFACE UWS_NO_ZLIB)
 target_include_directories(uWebSockets INTERFACE ${UWEBSOCKETS_SRC_DIR})
