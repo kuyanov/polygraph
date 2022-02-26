@@ -73,7 +73,8 @@ public:
     }
 
     ~WebsocketSession() {
-        ws_.close(websocket::close_code::normal);
+        beast::error_code ec;
+        ws_.close(websocket::close_code::normal, ec);
     }
 
     void Write(const std::string &message) {
