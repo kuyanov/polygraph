@@ -2,5 +2,6 @@
 #include "run.h"
 
 int main() {
-    Run(Config("config/config.json"));
+    Config config(std::string(MASTERNODE_ROOT_DIR) + "/config.json");
+    Run(config);
 }

@@ -12,7 +12,7 @@
 #include "schema_validator.h"
 
 void Run(const Config &config) {
-    static SchemaValidator graph_validator("schema/graph.json");
+    static SchemaValidator graph_validator(std::string(MASTERNODE_ROOT_DIR) + "/schema/graph.json");
     static Scheduler scheduler;
 
     uWS::App().post("/submit", [&](auto *res, auto *req) {

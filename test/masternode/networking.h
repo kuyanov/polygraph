@@ -7,6 +7,7 @@
 
 #include <boost/beast.hpp>
 
+#include "config.h"
 #include "run.h"
 
 namespace asio = boost::asio;
@@ -20,7 +21,8 @@ public:
     Config config;
 
     static MasterNode &Instance() {
-        static MasterNode server("config/config.json");
+        static Config config(std::string(TEST_MASTERNODE_ROOT_DIR) + "/config.json");
+        static MasterNode server(config);
         return server;
     }
 

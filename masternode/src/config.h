@@ -7,5 +7,5 @@ struct Config {
     int port;
     unsigned int max_payload_size;
 
-    Config(const char *filename);
+    Config(const std::string &config_path);
 };

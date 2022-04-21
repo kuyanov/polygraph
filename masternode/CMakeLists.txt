@@ -1,5 +1,6 @@
-set(USOCKETS_SRC_DIR ../contrib/uWebSockets/uSockets/src)
-set(UWEBSOCKETS_SRC_DIR ../contrib/uWebSockets/src)
+set(USOCKETS_SRC_DIR ${CMAKE_SOURCE_DIR}/contrib/uWebSockets/uSockets/src)
+set(UWEBSOCKETS_SRC_DIR ${CMAKE_SOURCE_DIR}/contrib/uWebSockets/src)
+set(MASTERNODE_ROOT_DIR ${CMAKE_SOURCE_DIR}/masternode)
 
 find_path(LIBUV_INCLUDE_DIR NAMES uv.h)
 find_library(LIBUV_LIBRARY NAMES uv libuv)
@@ -26,6 +27,7 @@ target_link_libraries(uWebSockets INTERFACE uSockets)
 add_library(MasterNodeLib)
 file(GLOB MASTERNODE_SOURCES src/*.cpp)
 target_sources(MasterNodeLib PRIVATE ${MASTERNODE_SOURCES})
+target_compile_definitions(MasterNodeLib PUBLIC MASTERNODE_ROOT_DIR="${MASTERNODE_ROOT_DIR}")
 target_include_directories(MasterNodeLib PUBLIC src)
 target_link_libraries(MasterNodeLib PRIVATE uWebSockets RapidJSON)
 

@@ -1,4 +1,5 @@
 #include <fstream>
+#include <string>
 
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/writer.h>
@@ -6,15 +7,20 @@
 #include "error.h"
 #include "schema_validator.h"
 
-SchemaValidator::SchemaValidator(const char *filename) {
-    std::ifstream schema_ifs(filename);
+std::string FormattedError(const rapidjson::Document &document) {
+    return std::string(rapidjson::GetParseError_En(document.GetParseError())) + " (at position " +
+           std::to_string(document.GetErrorOffset()) + ")";
+}
+
+SchemaValidator::SchemaValidator(const std::string &schema_path) {
+    std::ifstream schema_ifs(schema_path);
     rapidjson::IStreamWrapper schema_isw(schema_ifs);
-    rapidjson::Document document;
-    document.ParseStream(schema_isw);
-    if (document.HasParseError()) {
-        throw std::runtime_error("Could not parse json schema: " + FormattedError(document));
+    rapidjson::Document schema_document;
+    schema_document.ParseStream(schema_isw);
+    if (schema_document.HasParseError()) {
+        throw std::runtime_error("Could not parse json schema: " + FormattedError(schema_document));
     }
-    schema_document_.emplace(document);
+    schema_document_.emplace(schema_document);
     schema_validator_.emplace(*schema_document_);
 }
 

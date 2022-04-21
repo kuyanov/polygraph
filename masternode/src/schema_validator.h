@@ -6,16 +6,11 @@
 #include <rapidjson/document.h>
 #include <rapidjson/schema.h>
 
-inline std::string FormattedError(const rapidjson::Document &document) {
-    return std::string(rapidjson::GetParseError_En(document.GetParseError())) + " (at position " +
-           std::to_string(document.GetErrorOffset()) + ")";
-}
-
 class SchemaValidator {
 public:
-    explicit SchemaValidator(const char *filename);
+    explicit SchemaValidator(const std::string &schema_path);
 
-    rapidjson::Document ParseAndValidate(const std::string &graph_json);
+    rapidjson::Document ParseAndValidate(const std::string &json);
 
 private:
     std::optional<rapidjson::SchemaDocument> schema_document_;

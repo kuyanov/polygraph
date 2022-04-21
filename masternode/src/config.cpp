@@ -5,13 +5,13 @@
 
 #include "config.h"
 
-Config::Config(const char *filename) {
-    std::ifstream config_ifs(filename);
+Config::Config(const std::string &config_path) {
+    std::ifstream config_ifs(config_path);
     rapidjson::IStreamWrapper config_isw(config_ifs);
-    rapidjson::Document config;
-    config.ParseStream(config_isw);
+    rapidjson::Document config_document;
+    config_document.ParseStream(config_isw);
 
-    host = config["host"].GetString();
-    port = config["port"].GetInt();
-    max_payload_size = config["max-payload-size"].GetUint();
+    host = config_document["host"].GetString();
+    port = config_document["port"].GetInt();
+    max_payload_size = config_document["max-payload-size"].GetUint();
 }
