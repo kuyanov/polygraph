@@ -10,11 +10,12 @@
 
 #include <gtest/gtest.h>
 
+#include "config.h"
 #include "networking.h"
 #include "user_graph.h"
 
-const std::string kHost = MasterNode::Instance().config.host;
-const int kPort = MasterNode::Instance().config.port;
+const std::string kHost = Config::Instance().host;
+const int kPort = Config::Instance().port;
 
 void CheckSubmitStartsWith(const std::string &body, const std::string &prefix) {
     auto result = HttpSession(kHost, kPort).Post("/submit", body);

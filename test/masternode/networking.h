@@ -7,7 +7,6 @@
 
 #include <boost/beast.hpp>
 
-#include "config.h"
 #include "run.h"
 
 namespace asio = boost::asio;
@@ -18,17 +17,8 @@ namespace websocket = beast::websocket;
 
 class MasterNode {
 public:
-    Config config;
-
-    static MasterNode &Instance() {
-        static Config config(std::string(TEST_MASTERNODE_ROOT_DIR) + "/config.json");
-        static MasterNode server(config);
-        return server;
-    }
-
-private:
-    MasterNode(const Config &config) : config(config) {
-        std::thread([*this] { Run(this->config); }).detach();
+    MasterNode() {
+        std::thread([] { Run(); }).detach();
         std::this_thread::sleep_for(std::chrono::milliseconds(30));
     }
 };

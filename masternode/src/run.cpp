@@ -11,8 +11,8 @@
 #include "scheduler.h"
 #include "schema_validator.h"
 
-void Run(const Config &config) {
-    static SchemaValidator graph_validator(std::string(MASTERNODE_ROOT_DIR) + "/schema/graph.json");
+void Run() {
+    static SchemaValidator graph_validator(std::string(SCHEMA_DIR) + "/graph.json");
     static Scheduler scheduler;
 
     uWS::App().post("/submit", [&](auto *res, auto *req) {
@@ -20,7 +20,7 @@ void Run(const Config &config) {
         res->onAborted([] {});
         res->onData([&, res, graph_json = std::move(graph_json)]
                     (std::string_view chunk, bool is_last) mutable {
-            if (graph_json.size() + chunk.size() > config.max_payload_size) {
+            if (graph_json.size() + chunk.size() > Config::Instance().max_payload_size) {
                 res->writeStatus(http::request_entity_too_large)->end("", true);
                 return;
             }
@@ -42,7 +42,7 @@ void Run(const Config &config) {
             }
         });
     }).ws<RunnerPerSocketData>("/runner/:group", {
-        .maxPayloadLength = config.max_payload_size,
+        .maxPayloadLength = Config::Instance().max_payload_size,
         .upgrade = [&](auto *res, auto *req, auto *context) {
             std::string runner_group(req->getParameter(0));
             res->template upgrade<RunnerPerSocketData>({ .runner_group = runner_group },
@@ -62,7 +62,7 @@ void Run(const Config &config) {
             scheduler.LeaveRunner(ws);
         }
     }).ws<UserPerSocketData>("/graph/:id", {
-        .maxPayloadLength = config.max_payload_size,
+        .maxPayloadLength = Config::Instance().max_payload_size,
         .upgrade = [&](auto *res, auto *req, auto *context) {
             std::string graph_id(req->getParameter(0));
             if (!scheduler.GraphExists(graph_id)) {
@@ -94,11 +94,13 @@ void Run(const Config &config) {
         .close = [&](auto *ws, int code, std::string_view message) {
             scheduler.LeaveUser(ws);
         }
-    }).listen(config.host, config.port, [&](auto *listen_socket) {
+    }).listen(Config::Instance().host, Config::Instance().port, [&](auto *listen_socket) {
         if (listen_socket) {
-            std::cout << "Listening on " << config.host << ":" << config.port << std::endl;
+            std::cout << "Listening on " << Config::Instance().host << ":"
+                      << Config::Instance().port << std::endl;
         } else {
-            std::cerr << "Failed to listen on " << config.host << ":" << config.port << std::endl;
+            std::cerr << "Failed to listen on " << Config::Instance().host << ":"
+                      << Config::Instance().port << std::endl;
         }
     }).run();
 }

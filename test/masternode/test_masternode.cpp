@@ -11,6 +11,8 @@ const std::string kParseErrorPrefix = "Could not parse json:";
 const std::string kValidationErrorPrefix = "Invalid document:";
 const std::string kSemanticErrorPrefix = "Semantic error:";
 
+static MasterNode _;
+
 TEST(ParseError, Trivial) {
     CheckSubmitStartsWith("", kParseErrorPrefix);
     CheckSubmitStartsWith("{", kParseErrorPrefix);
@@ -99,7 +101,7 @@ TEST(Submit, GraphIdUnique) {
 
 TEST(Submit, MaxPayloadSize) {
     std::string body;
-    body.resize(MasterNode::Instance().config.max_payload_size, '.');
+    body.resize(Config::Instance().max_payload_size, '.');
     auto result = HttpSession(kHost, kPort).Post("/submit", body);
     ASSERT_TRUE(result.starts_with(kParseErrorPrefix));
     body.push_back('.');
