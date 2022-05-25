@@ -3,89 +3,94 @@
 
 #include <gtest/gtest.h>
 
+#include "constants.h"
 #include "helper.h"
 #include "networking.h"
 #include "user_graph.h"
 
-const std::string kParseErrorPrefix = "Could not parse json:";
-const std::string kValidationErrorPrefix = "Invalid document:";
-const std::string kSemanticErrorPrefix = "Semantic error:";
-
 static MasterNode _;
 
 TEST(ParseError, Trivial) {
-    CheckSubmitStartsWith("", kParseErrorPrefix);
-    CheckSubmitStartsWith("{", kParseErrorPrefix);
-    CheckSubmitStartsWith("}", kParseErrorPrefix);
-    CheckSubmitStartsWith("{:}", kParseErrorPrefix);
-    CheckSubmitStartsWith("{,}", kParseErrorPrefix);
-    CheckSubmitStartsWith("{a:b}", kParseErrorPrefix);
-    CheckSubmitStartsWith("\"a\":\"b\"", kParseErrorPrefix);
-    CheckSubmitStartsWith("{[]:[]}", kParseErrorPrefix);
-    CheckSubmitStartsWith("{\"a\":\"b}", kParseErrorPrefix);
-    CheckSubmitStartsWith("{\"a\":2,}", kParseErrorPrefix);
+    CheckSubmitStartsWith("", errors::kParseErrorPrefix);
+    CheckSubmitStartsWith("{", errors::kParseErrorPrefix);
+    CheckSubmitStartsWith("}", errors::kParseErrorPrefix);
+    CheckSubmitStartsWith("{:}", errors::kParseErrorPrefix);
+    CheckSubmitStartsWith("{,}", errors::kParseErrorPrefix);
+    CheckSubmitStartsWith("{a:b}", errors::kParseErrorPrefix);
+    CheckSubmitStartsWith("\"a\":\"b\"", errors::kParseErrorPrefix);
+    CheckSubmitStartsWith("{[]:[]}", errors::kParseErrorPrefix);
+    CheckSubmitStartsWith("{\"a\":\"b}", errors::kParseErrorPrefix);
+    CheckSubmitStartsWith("{\"a\":2,}", errors::kParseErrorPrefix);
 }
 
 TEST(ValidationError, Trivial) {
-    CheckSubmitStartsWith("{}", kValidationErrorPrefix);
-    CheckSubmitStartsWith("[]", kValidationErrorPrefix);
+    CheckSubmitStartsWith("{}", errors::kValidationErrorPrefix);
+    CheckSubmitStartsWith("[]", errors::kValidationErrorPrefix);
 }
 
 TEST(ValidationError, ConnectionsMissing) {
     CheckSubmitStartsWith("{\"blocks\":[],\"meta\":{\"runner-group\":\"all\"}}",
-                          kValidationErrorPrefix);
+                          errors::kValidationErrorPrefix);
 }
 
 TEST(ValidationError, BlocksMissing) {
     CheckSubmitStartsWith("{\"connections\":[],\"meta\":{\"runner-group\":\"all\"}}",
-                          kValidationErrorPrefix);
+                          errors::kValidationErrorPrefix);
 }
 
 TEST(ValidationError, RunnerGroupMissing) {
-    CheckSubmitStartsWith("{\"blocks\":[],\"connections\":[],\"meta\":{}}", kValidationErrorPrefix);
+    CheckSubmitStartsWith("{\"blocks\":[],\"connections\":[],\"meta\":{}}",
+                          errors::kValidationErrorPrefix);
 }
 
 TEST(ValidationError, InvalidType) {
     CheckSubmitStartsWith("{\"blocks\":[],\"connections\":0,\"meta\":{\"runner-group\":\"all\"}}",
-                          kValidationErrorPrefix);
+                          errors::kValidationErrorPrefix);
     CheckSubmitStartsWith("{\"blocks\":[],\"connections\":{},\"meta\":{\"runner-group\":\"all\"}}",
-                          kValidationErrorPrefix);
+                          errors::kValidationErrorPrefix);
 }
 
-TEST(SemanticError, DuplicatedInput) {
+TEST(SemanticError, DuplicatedInputOutput) {
     CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}, {"a.in"}}, {}}}}),
-                          kSemanticErrorPrefix + " Duplicated input name");
+                          errors::kSemanticErrorPrefix + errors::kDuplicatedIOName);
+    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {{"a.out"}, {"a.out"}}}}}),
+                          errors::kSemanticErrorPrefix + errors::kDuplicatedIOName);
 }
 
-TEST(SemanticError, DuplicatedOutput) {
-    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {{"a.out"}, {"a.out"}}}}}),
-                          kSemanticErrorPrefix + " Duplicated output name");
+TEST(SemanticError, DuplicatedExternal) {
+    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {}, {{"a.ext"}, {"a.ext"}}}}}),
+                          errors::kSemanticErrorPrefix + errors::kDuplicatedExternalName);
+    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}, {"a"}}, {{"a.out"}, {"a"}}, {{"a"}}}}}),
+                          errors::kSemanticErrorPrefix + errors::kDuplicatedExternalName);
 }
 
 TEST(SemanticError, ConnectionStartBlock) {
-    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}}, {{"a.out"}}}}, {{1, 0, 0, 0}}}),
-                          kSemanticErrorPrefix + " Invalid connection start block");
+    CheckSubmitStartsWith(
+        StringifyGraph({{{"", {{"a.in"}}, {}}, {"", {}, {{"a.out"}}}}, {{2, 0, 0, 0}}}),
+        errors::kSemanticErrorPrefix + errors::kInvalidStartBlock);
 }
 
 TEST(SemanticError, ConnectionStartOutput) {
-    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}}, {{"a.out"}}}}, {{0, 1, 0, 0}}}),
-                          kSemanticErrorPrefix + " Invalid connection start block output");
+    CheckSubmitStartsWith(
+        StringifyGraph({{{"", {{"a.in"}}, {}}, {"", {}, {{"a.out"}}}}, {{1, 1, 0, 0}}}),
+        errors::kSemanticErrorPrefix + errors::kInvalidStartBlockOutput);
 }
 
 TEST(SemanticError, ConnectionEndBlock) {
-    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}}, {{"a.out"}}}}, {{0, 0, -1, 0}}}),
-                          kSemanticErrorPrefix + " Invalid connection end block");
+    CheckSubmitStartsWith(
+        StringifyGraph({{{"", {{"a.in"}}, {}}, {"", {}, {{"a.out"}}}}, {{1, 0, -1, 0}}}),
+        errors::kSemanticErrorPrefix + errors::kInvalidEndBlock);
 }
 
 TEST(SemanticError, ConnectionEndInput) {
-    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}}, {{"a.out"}}}}, {{0, 0, 0, -1}}}),
-                          kSemanticErrorPrefix + " Invalid connection end block input");
+    CheckSubmitStartsWith(
+        StringifyGraph({{{"", {{"a.in"}}, {}}, {"", {}, {{"a.out"}}}}, {{1, 0, 0, -1}}}),
+        errors::kSemanticErrorPrefix + errors::kInvalidEndBlockInput);
 }
 
-TEST(SemanticError, EndInputBindPath) {
-    CheckSubmitStartsWith(
-        StringifyGraph({{{"", {{"a.in", ""}}, {{"a.out"}}}}, {{0, 0, 0, 0}}}),
-        kSemanticErrorPrefix + " Connection end block input cannot have bind path");
+TEST(SemanticError, Loop) {
+    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}}, {{"a.out"}}}}, {{0, 0, 0, 0}}}),
+                          errors::kSemanticErrorPrefix + errors::kLoopsNotSupported);
 }
 
 TEST(Submit, GraphIdUnique) {
@@ -103,7 +108,7 @@ TEST(Submit, MaxPayloadSize) {
     std::string body;
     body.resize(Config::Instance().max_payload_size, '.');
     auto result = HttpSession(kHost, kPort).Post("/submit", body);
-    ASSERT_TRUE(result.starts_with(kParseErrorPrefix));
+    ASSERT_TRUE(result.starts_with(errors::kParseErrorPrefix));
     body.push_back('.');
     result = HttpSession(kHost, kPort).Post("/submit", body);
     ASSERT_TRUE(result.empty());
@@ -163,14 +168,7 @@ TEST(Execution, MaxRunners) {
     CheckGraphExecution(graph, 3, 4, 6, 100, 600);
 }
 
-TEST(Execution, FiniteLoop1) {
-    UserGraph graph = {
-        {{"0", {}, {{}}}, {"1", {{}}, {{}}}, {"2", {{}}, {{}}}, {"3", {{"0"}, {"1"}}, {{}}}},
-        {{0, 0, 1, 0}, {1, 0, 2, 0}, {0, 0, 3, 0}, {0, 0, 3, 1}, {2, 0, 3, 1}, {3, 0, 3, 0}}};
-    CheckGraphExecution(graph, 3, 2, 5, 100, 400);
-}
-
-TEST(Execution, FiniteLoop2) {
+TEST(Execution, FiniteCycle) {
     UserGraph graph = {{{"0", {}, {{}}},
                         {"1", {{}}, {{}}},
                         {"2", {{}}, {{"0"}, {"1"}}},

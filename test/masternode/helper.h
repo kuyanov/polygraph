@@ -11,6 +11,7 @@
 #include <gtest/gtest.h>
 
 #include "config.h"
+#include "constants.h"
 #include "networking.h"
 #include "user_graph.h"
 
@@ -62,7 +63,7 @@ void CheckGraphExecution(const UserGraph &graph, int cnt_users, int cnt_runners,
             WebsocketSession session(ioc, kHost, kPort, "/graph/" + uuid);
             int cnt_blocks_completed = 0;
             session.OnRead([&](const std::string &message) {
-                if (message == "complete") {
+                if (message == signals::kGraphComplete) {
                     if (++cnt_users_completed == cnt_users) {
                         completed.notify_one();
                     }
@@ -72,7 +73,7 @@ void CheckGraphExecution(const UserGraph &graph, int cnt_users, int cnt_runners,
                 }
             });
             if (++cnt_users_connected == cnt_users) {
-                session.Write("run");
+                session.Write(signals::kGraphRun);
             }
             ioc.run();
         });

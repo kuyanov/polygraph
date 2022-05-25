@@ -1,11 +1,10 @@
 #include <iostream>
-#include <utility>
 
 #include <App.h>
 
 #include "config.h"
+#include "constants.h"
 #include "error.h"
-#include "global.h"
 #include "graph.h"
 #include "run.h"
 #include "scheduler.h"
@@ -21,7 +20,7 @@ void Run() {
         res->onData([&, res, graph_json = std::move(graph_json)]
                     (std::string_view chunk, bool is_last) mutable {
             if (graph_json.size() + chunk.size() > Config::Instance().max_payload_size) {
-                res->writeStatus(http::request_entity_too_large)->end("", true);
+                res->writeStatus(http_response::kRequestEntityTooLarge)->end("", true);
                 return;
             }
             graph_json.append(chunk);
@@ -34,11 +33,14 @@ void Run() {
                 std::string graph_id = scheduler.AddGraph(std::move(graph));
                 res->end(graph_id);
             } catch (const ParseError &error) {
-                res->writeStatus(http::bad_request)->end("Could not parse json: " + error.message);
+                res->writeStatus(http_response::kBadRequest)->end(
+                    errors::kParseErrorPrefix + error.message);
             } catch (const ValidationError &error) {
-                res->writeStatus(http::bad_request)->end("Invalid document: " + error.message);
+                res->writeStatus(http_response::kBadRequest)->end(
+                    errors::kValidationErrorPrefix + error.message);
             } catch (const SemanticError &error) {
-                res->writeStatus(http::bad_request)->end("Semantic error: " + error.message);
+                res->writeStatus(http_response::kBadRequest)->end(
+                    errors::kSemanticErrorPrefix + error.message);
             }
         });
     }).ws<RunnerPerSocketData>("/runner/:group", {
@@ -61,15 +63,15 @@ void Run() {
         .close = [&](auto *ws, int code, std::string_view message) {
             scheduler.LeaveRunner(ws);
         }
-    }).ws<UserPerSocketData>("/graph/:id", {
+    }).ws<ClientPerSocketData>("/graph/:id", {
         .maxPayloadLength = Config::Instance().max_payload_size,
         .upgrade = [&](auto *res, auto *req, auto *context) {
             std::string graph_id(req->getParameter(0));
             if (!scheduler.GraphExists(graph_id)) {
-                res->writeStatus(http::not_found)->end();
+                res->writeStatus(http_response::kNotFound)->end();
                 return;
             }
-            res->template upgrade<UserPerSocketData>({ .graph_id = graph_id },
+            res->template upgrade<ClientPerSocketData>({ .graph_id = graph_id },
                 req->getHeader("sec-websocket-key"),
                 req->getHeader("sec-websocket-protocol"),
                 req->getHeader("sec-websocket-extensions"),
@@ -77,22 +79,22 @@ void Run() {
             );
         },
         .open = [&](auto *ws) {
-            scheduler.JoinUser(ws);
+            scheduler.JoinClient(ws);
         },
         .message = [&](auto *ws, std::string_view message, uWS::OpCode op_code) {
             std::string graph_id = ws->getUserData()->graph_id;
-            if (message == "run") {
+            if (message == signals::kGraphRun) {
                 if (!scheduler.GraphRunning(graph_id)) {
                     scheduler.RunGraph(graph_id);
                 }
-            } else if (message == "stop") {
+            } else if (message == signals::kGraphStop) {
                 if (scheduler.GraphRunning(graph_id)) {
                     scheduler.StopGraph(graph_id);
                 }
             }
         },
         .close = [&](auto *ws, int code, std::string_view message) {
-            scheduler.LeaveUser(ws);
+            scheduler.LeaveClient(ws);
         }
     }).listen(Config::Instance().host, Config::Instance().port, [&](auto *listen_socket) {
         if (listen_socket) {

@@ -15,6 +15,7 @@
           "name",
           "inputs",
           "outputs",
+          "externals",
           "tasks"
         ],
         "properties": {
@@ -31,9 +32,6 @@
               "properties": {
                 "name": {
                   "type": "string"
-                },
-                "bind-path": {
-                  "type": "string"
                 }
               }
             }
@@ -48,8 +46,23 @@
               "properties": {
                 "name": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "externals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "user-path"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
                 },
-                "bind-path": {
+                "user-path": {
                   "type": "string"
                 }
               }
@@ -128,7 +141,8 @@
     "meta": {
       "type": "object",
       "required": [
-        "runner-group"
+        "runner-group",
+        "max-runners"
       ],
       "properties": {
         "runner-group": {

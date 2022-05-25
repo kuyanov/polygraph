@@ -20,12 +20,12 @@ struct RunnerPerSocketData {
     size_t block_id;
 };
 
-struct UserPerSocketData {
+struct ClientPerSocketData {
     std::string graph_id;
 };
 
 using RunnerWebSocket = uWS::WebSocket<false, true, RunnerPerSocketData>;
-using UserWebSocket = uWS::WebSocket<false, true, UserPerSocketData>;
+using ClientWebSocket = uWS::WebSocket<false, true, ClientPerSocketData>;
 
 void SendRunRequest(const Graph::Block &block, RunnerWebSocket *ws);
 
@@ -35,10 +35,7 @@ public:
     int cnt_blocks_processing = 0;
 
     GraphState() = default;
-    GraphState(Graph &&graph) : Graph(std::move(graph)) {
-        is_input_ready_.resize(blocks.size());
-        cnt_unready_inputs_.resize(blocks.size());
-    }
+    GraphState(Graph &&graph);
 
     void EnqueueBlock(size_t block_id);
     void DequeueBlock();
@@ -47,15 +44,15 @@ public:
     bool SetInputReady(size_t block_id, size_t input_id);
     bool AllInputsReady(size_t block_id) const;
 
-    void AddUser(UserWebSocket *ws);
-    void RemoveUser(UserWebSocket *ws);
-    void SendToAllUsers(std::string_view message);
+    void AddClient(ClientWebSocket *ws);
+    void RemoveClient(ClientWebSocket *ws);
+    void SendToAllClients(std::string_view message);
 
 private:
     std::queue<size_t> blocks_ready_;
     std::vector<std::vector<bool>> is_input_ready_;
-    std::vector<int> cnt_unready_inputs_;
-    std::unordered_set<UserWebSocket *> users_;
+    std::vector<size_t> cnt_missing_inputs_;
+    std::unordered_set<ClientWebSocket *> clients_;
 };
 
 class Group {
@@ -73,8 +70,8 @@ class Scheduler {
 public:
     void JoinRunner(RunnerWebSocket *ws);
     void LeaveRunner(RunnerWebSocket *ws);
-    void JoinUser(UserWebSocket *ws);
-    void LeaveUser(UserWebSocket *ws);
+    void JoinClient(ClientWebSocket *ws);
+    void LeaveClient(ClientWebSocket *ws);
 
     std::string AddGraph(Graph &&graph);
     bool GraphExists(const std::string &graph_id) const;

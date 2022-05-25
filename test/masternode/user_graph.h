@@ -1,6 +1,5 @@
 #pragma once
 
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -10,12 +9,15 @@
 struct UserGraph {
     struct BlockInput {
         std::string name;
-        std::optional<std::string> bind_path;
     };
 
     struct BlockOutput {
         std::string name;
-        std::optional<std::string> bind_path;
+    };
+
+    struct BlockExternal {
+        std::string name;
+        std::string user_path;
     };
 
     struct Task {
@@ -26,6 +28,7 @@ struct UserGraph {
         std::string name;
         std::vector<BlockInput> inputs;
         std::vector<BlockOutput> outputs;
+        std::vector<BlockExternal> externals;
         std::vector<Task> tasks;
     };
 
@@ -57,11 +60,6 @@ std::string StringifyGraph(const UserGraph &graph) {
             rapidjson::Value input(rapidjson::kObjectType);
             input.AddMember("name", rapidjson::Value().SetString(graph_input.name.c_str(), alloc),
                             alloc);
-            if (graph_input.bind_path) {
-                input.AddMember("bind-path",
-                                rapidjson::Value().SetString(graph_input.bind_path->c_str(), alloc),
-                                alloc);
-            }
             inputs.PushBack(input, alloc);
         }
         block.AddMember("inputs", inputs, alloc);
@@ -70,14 +68,20 @@ std::string StringifyGraph(const UserGraph &graph) {
             rapidjson::Value output(rapidjson::kObjectType);
             output.AddMember("name", rapidjson::Value().SetString(graph_output.name.c_str(), alloc),
                              alloc);
-            if (graph_output.bind_path) {
-                output.AddMember(
-                    "bind-path",
-                    rapidjson::Value().SetString(graph_output.bind_path->c_str(), alloc), alloc);
-            }
             outputs.PushBack(output, alloc);
         }
         block.AddMember("outputs", outputs, alloc);
+        rapidjson::Value externals(rapidjson::kArrayType);
+        for (const auto &graph_external : graph_block.externals) {
+            rapidjson::Value external(rapidjson::kObjectType);
+            external.AddMember(
+                "name", rapidjson::Value().SetString(graph_external.name.c_str(), alloc), alloc);
+            external.AddMember(
+                "user-path", rapidjson::Value().SetString(graph_external.user_path.c_str(), alloc),
+                alloc);
+            externals.PushBack(external, alloc);
+        }
+        block.AddMember("externals", externals, alloc);
         rapidjson::Value tasks(rapidjson::kArrayType);
         for (const auto &graph_task : graph_block.tasks) {
             rapidjson::Value task(rapidjson::kObjectType);

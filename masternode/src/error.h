@@ -2,7 +2,6 @@
 
 #include <stdexcept>
 #include <string>
-#include <utility>
 
 struct ParseError : public std::exception {
     std::string message;

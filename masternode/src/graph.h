@@ -1,6 +1,5 @@
 #pragma once
 
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -9,18 +8,22 @@
 struct Graph {
     struct BlockInput {
         std::string name;
-        std::optional<std::string> bind_path;
     };
 
     struct BlockOutput {
         std::string name;
-        std::optional<std::string> bind_path;
+    };
+
+    struct BlockExternal {
+        std::string name;
+        std::string user_path;
     };
 
     struct Block {
         std::string name;
         std::vector<BlockInput> inputs;
         std::vector<BlockOutput> outputs;
+        std::vector<BlockExternal> externals;
         rapidjson::Document tasks;
     };
 
@@ -43,7 +46,7 @@ struct Graph {
     };
 
     std::vector<Block> blocks;
-    std::vector<std::vector<Connection>> go;
+    std::vector<std::vector<Connection>> connections;
     Meta meta;
 
     Graph() = default;

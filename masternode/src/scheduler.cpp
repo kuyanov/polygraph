@@ -1,9 +1,14 @@
-#include "global.h"
+#include "constants.h"
 #include "scheduler.h"
 #include "uuid.h"
 
 void SendRunRequest(const Graph::Block &block, RunnerWebSocket *ws) {
     ws->send("hello");  // TODO
+}
+
+GraphState::GraphState(Graph &&graph) : Graph(std::move(graph)) {
+    is_input_ready_.resize(blocks.size());
+    cnt_missing_inputs_.resize(blocks.size());
 }
 
 void GraphState::EnqueueBlock(size_t block_id) {
@@ -26,40 +31,33 @@ void GraphState::DequeueBlock() {
 }
 
 void GraphState::ResetInputs(size_t block_id) {
-    const auto &inputs = blocks[block_id].inputs;
-    is_input_ready_[block_id].assign(inputs.size(), true);
-    cnt_unready_inputs_[block_id] = 0;
-    for (size_t input_id = 0; input_id < inputs.size(); ++input_id) {
-        if (!inputs[input_id].bind_path) {
-            is_input_ready_[block_id][input_id] = false;
-            ++cnt_unready_inputs_[block_id];
-        }
-    }
+    is_input_ready_[block_id].assign(blocks[block_id].inputs.size(), false);
+    cnt_missing_inputs_[block_id] = blocks[block_id].inputs.size();
 }
 
 bool GraphState::SetInputReady(size_t block_id, size_t input_id) {
     if (!is_input_ready_[block_id][input_id]) {
         is_input_ready_[block_id][input_id] = true;
-        --cnt_unready_inputs_[block_id];
+        --cnt_missing_inputs_[block_id];
         return true;
     }
     return false;
 }
 
 bool GraphState::AllInputsReady(size_t block_id) const {
-    return cnt_unready_inputs_[block_id] == 0;
+    return cnt_missing_inputs_[block_id] == 0;
 }
 
-void GraphState::AddUser(UserWebSocket *ws) {
-    users_.insert(ws);
+void GraphState::AddClient(ClientWebSocket *ws) {
+    clients_.insert(ws);
 }
 
-void GraphState::RemoveUser(UserWebSocket *ws) {
-    users_.erase(ws);
+void GraphState::RemoveClient(ClientWebSocket *ws) {
+    clients_.erase(ws);
 }
 
-void GraphState::SendToAllUsers(std::string_view message) {
-    for (UserWebSocket *ws : users_) {
+void GraphState::SendToAllClients(std::string_view message) {
+    for (ClientWebSocket *ws : clients_) {
         ws->send(message);
     }
 }
@@ -101,14 +99,14 @@ void Scheduler::LeaveRunner(RunnerWebSocket *ws) {
     groups_[runner_group].RemoveRunner(ws);
 }
 
-void Scheduler::JoinUser(UserWebSocket *ws) {
+void Scheduler::JoinClient(ClientWebSocket *ws) {
     std::string graph_id = ws->getUserData()->graph_id;
-    graphs_[graph_id].AddUser(ws);
+    graphs_[graph_id].AddClient(ws);
 }
 
-void Scheduler::LeaveUser(UserWebSocket *ws) {
+void Scheduler::LeaveClient(ClientWebSocket *ws) {
     std::string graph_id = ws->getUserData()->graph_id;
-    graphs_[graph_id].RemoveUser(ws);
+    graphs_[graph_id].RemoveClient(ws);
 }
 
 std::string Scheduler::AddGraph(Graph &&graph) {
@@ -132,7 +130,7 @@ void Scheduler::RunGraph(const std::string &graph_id) {
         }
     }
     if (graph.cnt_blocks_processing == 0) {
-        graph.SendToAllUsers(signals::runner_complete);
+        graph.SendToAllClients(signals::kGraphComplete);
     }
 }
 
@@ -149,17 +147,17 @@ void Scheduler::RunnerCompleted(RunnerWebSocket *ws, std::string_view message) {
     GraphState *graph_ptr = ws->getUserData()->graph_ptr;
     size_t start_block_id = ws->getUserData()->block_id;
     graph_ptr->group->AddRunner(ws);
-    graph_ptr->SendToAllUsers(message);  // TODO
+    graph_ptr->SendToAllClients(message);  // TODO
     graph_ptr->DequeueBlock();
-    graph_ptr->ResetInputs(start_block_id);
+    graph_ptr->ResetInputs(start_block_id);  // TODO: use filesystem
     for (const auto &[_, start_output_id, end_block_id, end_input_id] :
-         graph_ptr->go[start_block_id]) {
+         graph_ptr->connections[start_block_id]) {
         if (graph_ptr->SetInputReady(end_block_id, end_input_id) &&
             graph_ptr->AllInputsReady(end_block_id)) {
             graph_ptr->EnqueueBlock(end_block_id);
         }
     }
     if (graph_ptr->cnt_blocks_processing == 0) {
-        graph_ptr->SendToAllUsers(signals::runner_complete);
+        graph_ptr->SendToAllClients(signals::kGraphComplete);
     }
 }
