@@ -41,6 +41,7 @@ struct Graph {
     };
 
     struct Meta {
+        std::string name;
         std::string runner_group;
         int max_runners;
     };

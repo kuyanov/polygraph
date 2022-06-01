@@ -16,8 +16,8 @@ const std::string kParseErrorPrefix = "Could not parse json: ";
 const std::string kValidationErrorPrefix = "Invalid document: ";
 const std::string kSemanticErrorPrefix = "Semantic error: ";
 
-const std::string kDuplicatedIOName = "Duplicated input/output name";
-const std::string kDuplicatedExternalName = "Duplicated external name";
+const std::string kDuplicatedFilename = "Duplicated filename";
+const std::string kEmptyFilename = "Empty filename";
 const std::string kInvalidStartBlock = "Invalid connection start block";
 const std::string kInvalidStartBlockOutput = "Invalid connection start block output";
 const std::string kInvalidEndBlock = "Invalid connection end block";

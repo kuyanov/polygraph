@@ -141,10 +141,14 @@
     "meta": {
       "type": "object",
       "required": [
+        "name",
         "runner-group",
         "max-runners"
       ],
       "properties": {
+        "name": {
+          "type": "string"
+        },
         "runner-group": {
           "type": "string"
         },

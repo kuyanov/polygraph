@@ -28,40 +28,41 @@ TEST(ValidationError, Trivial) {
     CheckSubmitStartsWith("[]", errors::kValidationErrorPrefix);
 }
 
-TEST(ValidationError, ConnectionsMissing) {
-    CheckSubmitStartsWith("{\"blocks\":[],\"meta\":{\"runner-group\":\"all\"}}",
-                          errors::kValidationErrorPrefix);
-}
-
-TEST(ValidationError, BlocksMissing) {
-    CheckSubmitStartsWith("{\"connections\":[],\"meta\":{\"runner-group\":\"all\"}}",
-                          errors::kValidationErrorPrefix);
-}
-
-TEST(ValidationError, RunnerGroupMissing) {
-    CheckSubmitStartsWith("{\"blocks\":[],\"connections\":[],\"meta\":{}}",
-                          errors::kValidationErrorPrefix);
+TEST(ValidationError, MetaMissing) {
+    CheckSubmitStartsWith("{\"blocks\":[],\"connections\":[]}", errors::kValidationErrorPrefix);
 }
 
 TEST(ValidationError, InvalidType) {
-    CheckSubmitStartsWith("{\"blocks\":[],\"connections\":0,\"meta\":{\"runner-group\":\"all\"}}",
-                          errors::kValidationErrorPrefix);
-    CheckSubmitStartsWith("{\"blocks\":[],\"connections\":{},\"meta\":{\"runner-group\":\"all\"}}",
-                          errors::kValidationErrorPrefix);
+    CheckSubmitStartsWith(
+        "{\"blocks\":[],\"connections\":0,\"meta\":{\"name\":\"\",\"runner-group\":\"all\",\"max-"
+        "runners\":1}}",
+        errors::kValidationErrorPrefix);
+    CheckSubmitStartsWith(
+        "{\"blocks\":[],\"connections\":{},\"meta\":{\"name\":\"\",\"runner-group\":\"all\",\"max-"
+        "runners\":1}}",
+        errors::kValidationErrorPrefix);
 }
 
-TEST(SemanticError, DuplicatedInputOutput) {
-    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}, {"a.in"}}, {}}}}),
-                          errors::kSemanticErrorPrefix + errors::kDuplicatedIOName);
-    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {{"a.out"}, {"a.out"}}}}}),
-                          errors::kSemanticErrorPrefix + errors::kDuplicatedIOName);
-}
-
-TEST(SemanticError, DuplicatedExternal) {
+TEST(SemanticError, DuplicatedFilename) {
+    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}, {"a.in"}}, {}, {}}}}),
+                          errors::kSemanticErrorPrefix + errors::kDuplicatedFilename);
+    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {{"a.out"}, {"a.out"}}, {}}}}),
+                          errors::kSemanticErrorPrefix + errors::kDuplicatedFilename);
     CheckSubmitStartsWith(StringifyGraph({{{"", {}, {}, {{"a.ext"}, {"a.ext"}}}}}),
-                          errors::kSemanticErrorPrefix + errors::kDuplicatedExternalName);
-    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}, {"a"}}, {{"a.out"}, {"a"}}, {{"a"}}}}}),
-                          errors::kSemanticErrorPrefix + errors::kDuplicatedExternalName);
+                          errors::kSemanticErrorPrefix + errors::kDuplicatedFilename);
+    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}, {"a"}}, {{"a.out"}, {"a"}}, {}}}}),
+                          errors::kSemanticErrorPrefix + errors::kDuplicatedFilename);
+    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}, {"a"}}, {}, {{"a.ext"}, {"a"}}}}}),
+                          errors::kSemanticErrorPrefix + errors::kDuplicatedFilename);
+}
+
+TEST(SemanticError, EmptyFilename) {
+    CheckSubmitStartsWith(StringifyGraph({{{"", {{}}, {}, {}}}}),
+                          errors::kSemanticErrorPrefix + errors::kEmptyFilename);
+    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {{}}, {}}}}),
+                          errors::kSemanticErrorPrefix + errors::kEmptyFilename);
+    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {}, {{}}}}}),
+                          errors::kSemanticErrorPrefix + errors::kEmptyFilename);
 }
 
 TEST(SemanticError, ConnectionStartBlock) {
@@ -126,8 +127,9 @@ TEST(Execution, SingleBlock) {
 }
 
 TEST(Execution, Bamboo) {
-    UserGraph graph = {{{"0", {}, {{}}}, {"1", {{}}, {{}}}, {"2", {{}}, {{}}}},
-                       {{0, 0, 1, 0}, {1, 0, 2, 0}}};
+    UserGraph graph = {
+        {{"0", {}, {{"a.out"}}}, {"1", {{"a.in"}}, {{"a.out"}}}, {"2", {{"a.in"}}, {}}},
+        {{0, 0, 1, 0}, {1, 0, 2, 0}}};
     CheckGraphExecution(graph, 5, 1, 3, 100, 300);
     CheckGraphExecution(graph, 5, 10, 3, 100, 300);
 }
@@ -139,12 +141,12 @@ TEST(Execution, Parallel) {
 }
 
 TEST(Execution, MaxRunners) {
-    UserGraph graph = {{{"0", {}, {{}}},
-                        {"1", {{}}, {{}}},
-                        {"2", {{}}, {{}}},
-                        {"3", {{}}, {{}}},
-                        {"4", {{}}, {{}}},
-                        {"5", {{"1"}, {"2"}, {"3"}, {"4"}}}},
+    UserGraph graph = {{{"0", {}, {{"o1234"}}},
+                        {"1", {{"i0"}}, {{"o5"}}},
+                        {"2", {{"i0"}}, {{"o5"}}},
+                        {"3", {{"i0"}}, {{"o5"}}},
+                        {"4", {{"i0"}}, {{"o5"}}},
+                        {"5", {{"i1"}, {"i2"}, {"i3"}, {"i4"}}}},
                        {{0, 0, 1, 0},
                         {0, 0, 2, 0},
                         {0, 0, 3, 0},
@@ -169,13 +171,13 @@ TEST(Execution, MaxRunners) {
 }
 
 TEST(Execution, FiniteCycle) {
-    UserGraph graph = {{{"0", {}, {{}}},
-                        {"1", {{}}, {{}}},
-                        {"2", {{}}, {{"0"}, {"1"}}},
-                        {"3", {{}}, {{}}},
-                        {"4", {{}}, {{}}},
-                        {"5", {{"0"}, {"1"}}, {{}}},
-                        {"6", {{}}, {{}}}},
+    UserGraph graph = {{{"0", {}, {{"o155"}}},
+                        {"1", {{"i0"}}, {{"o2"}}},
+                        {"2", {{"i1"}}, {{"o3"}, {"o5"}}},
+                        {"3", {{"i2"}}, {{"o4"}}},
+                        {"4", {{"i3"}}, {{"o5"}}},
+                        {"5", {{"i024"}, {"i06"}}, {{"o6"}}},
+                        {"6", {{"i5"}}, {{"o5"}}}},
                        {{0, 0, 1, 0},
                         {1, 0, 2, 0},
                         {2, 0, 3, 0},
@@ -192,7 +194,7 @@ TEST(Execution, FiniteCycle) {
 TEST(Execution, Stress) {
     std::vector<UserGraph::Block> blocks(100);
     UserGraph graph = {blocks, {}};
-    for (int i = 0; i < 200; i++) {
+    for (int i = 0; i < 100; i++) {
         CheckGraphExecution(graph, 4, 1, 100, 0, -1);
     }
 }

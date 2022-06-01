@@ -4,49 +4,41 @@
 #include "error.h"
 #include "graph.h"
 
-template <class JsonArray, class BlockIO>
-void CheckAndFillIOs(JsonArray ios_array, std::vector<BlockIO> &block_ios,
-                     std::unordered_set<std::string> &io_names) {
-    block_ios.resize(ios_array.Size());
-    for (size_t io_id = 0; io_id < ios_array.Size(); ++io_id) {
-        std::string io_name = ios_array[io_id]["name"].GetString();
-        if (io_names.contains(io_name)) {
-            throw SemanticError(errors::kDuplicatedIOName);
-        }
-        io_names.insert(io_name);
-        block_ios[io_id] = {.name = io_name};
-    }
-}
-
-template <class JsonArray>
-void CheckAndFillExternals(JsonArray externals_array,
-                           std::vector<Graph::BlockExternal> &block_externals,
-                           const std::unordered_set<std::string> &input_names,
-                           const std::unordered_set<std::string> &output_names) {
-    block_externals.resize(externals_array.Size());
-    std::unordered_set<std::string> external_names;
-    for (size_t external_id = 0; external_id < externals_array.Size(); ++external_id) {
-        std::string external_name = externals_array[external_id]["name"].GetString();
-        std::string user_path = externals_array[external_id]["user-path"].GetString();
-        if (input_names.contains(external_name) || output_names.contains(external_name) ||
-            external_names.contains(external_name)) {
-            throw SemanticError(errors::kDuplicatedExternalName);
-        }
-        external_names.insert(external_name);
-        block_externals[external_id] = {.name = external_name, .user_path = user_path};
-    }
-}
-
 template <class JsonArray>
 void CheckAndFillBlocks(JsonArray blocks_array, std::vector<Graph::Block> &blocks) {
     blocks.resize(blocks_array.Size());
     for (size_t block_id = 0; block_id < blocks_array.Size(); ++block_id) {
         auto &block = blocks[block_id];
-        std::unordered_set<std::string> input_names, output_names;
-        CheckAndFillIOs(blocks_array[block_id]["inputs"].GetArray(), block.inputs, input_names);
-        CheckAndFillIOs(blocks_array[block_id]["outputs"].GetArray(), block.outputs, output_names);
-        CheckAndFillExternals(blocks_array[block_id]["externals"].GetArray(), block.externals,
-                              input_names, output_names);
+        std::unordered_set<std::string> names_set;
+        auto inputs_array = blocks_array[block_id]["inputs"].GetArray();
+        block.inputs.resize(inputs_array.Size());
+        for (size_t input_id = 0; input_id < inputs_array.Size(); ++input_id) {
+            std::string input_name = inputs_array[input_id]["name"].GetString();
+            names_set.insert(input_name);
+            block.inputs[input_id] = {.name = input_name};
+        }
+        auto outputs_array = blocks_array[block_id]["outputs"].GetArray();
+        block.outputs.resize(outputs_array.Size());
+        for (size_t output_id = 0; output_id < outputs_array.Size(); ++output_id) {
+            std::string output_name = outputs_array[output_id]["name"].GetString();
+            names_set.insert(output_name);
+            block.outputs[output_id] = {.name = output_name};
+        }
+        auto externals_array = blocks_array[block_id]["externals"].GetArray();
+        block.externals.resize(externals_array.Size());
+        for (size_t external_id = 0; external_id < externals_array.Size(); ++external_id) {
+            std::string external_name = externals_array[external_id]["name"].GetString();
+            std::string user_path = externals_array[external_id]["user-path"].GetString();
+            names_set.insert(external_name);
+            block.externals[external_id] = {.name = external_name, .user_path = user_path};
+        }
+        if (names_set.contains("")) {
+            throw SemanticError(errors::kEmptyFilename);
+        }
+        if (names_set.size() !=
+            block.inputs.size() + block.outputs.size() + block.externals.size()) {
+            throw SemanticError(errors::kDuplicatedFilename);
+        }
         block.tasks.CopyFrom(blocks_array[block_id]["tasks"], block.tasks.GetAllocator());
     }
 }
@@ -83,6 +75,7 @@ void CheckAndFillConnections(JsonArray connections_array,
 
 template <class JsonObject>
 void CheckAndFillMeta(JsonObject meta_object, Graph::Meta &meta) {
+    meta.name = meta_object["name"].GetString();
     meta.runner_group = meta_object["runner-group"].GetString();
     meta.max_runners = meta_object["max-runners"].GetInt();
     if (meta.max_runners < 1) {

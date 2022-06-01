@@ -1,20 +1,63 @@
+#include <filesystem>
+
 #include "constants.h"
 #include "scheduler.h"
 #include "uuid.h"
 
-void SendRunRequest(const Graph::Block &block, RunnerWebSocket *ws) {
-    ws->send("hello");  // TODO
-}
+static std::filesystem::path sandbox_path = SANDBOX_DIR;
 
 GraphState::GraphState(Graph &&graph) : Graph(std::move(graph)) {
-    is_input_ready_.resize(blocks.size());
-    cnt_missing_inputs_.resize(blocks.size());
+    blocks_state_.resize(blocks.size());
+}
+
+void GraphState::Run() {
+    for (size_t block_id = 0; block_id < blocks.size(); ++block_id) {
+        if (BlockReadyToRun(block_id)) {
+            EnqueueBlock(block_id);
+        }
+    }
+    if (!IsRunning()) {
+        SendToAllClients(signals::kGraphComplete);
+    }
+}
+
+void GraphState::Stop() {
+    // TODO
+}
+
+bool GraphState::IsRunning() const {
+    return cnt_blocks_processing_ > 0;
+}
+
+void GraphState::RunBlock(size_t block_id, RunnerWebSocket *ws) {
+    PrepareBlockContainer(block_id);
+    ws->getUserData()->graph_ptr = this;
+    ws->getUserData()->block_id = block_id;
+    std::string container_name = GetContainerName(block_id);
+    ws->send(container_name);  // TODO
+}
+
+void GraphState::CompleteBlock(RunnerWebSocket *ws, std::string_view message) {
+    size_t block_id = ws->getUserData()->block_id;
+    runner_group_ptr->AddRunner(ws);
+    SendToAllClients(message);  // TODO
+    DequeueBlock();
+    for (const auto &connection : connections[block_id]) {
+        if (TransferFile(connection) && BlockReadyToRun(connection.end_block_id)) {
+            EnqueueBlock(connection.end_block_id);
+        }
+    }
+    blocks_state_[block_id].cnt_inputs_ready = 0;
+    ++blocks_state_[block_id].cnt_runs;
+    if (!IsRunning()) {
+        SendToAllClients(signals::kGraphComplete);
+    }
 }
 
 void GraphState::EnqueueBlock(size_t block_id) {
-    if (cnt_blocks_processing < meta.max_runners) {
-        group->EnqueueBlock(this, block_id);
-        ++cnt_blocks_processing;
+    if (cnt_blocks_processing_ < meta.max_runners) {
+        runner_group_ptr->EnqueueBlock(this, block_id);
+        ++cnt_blocks_processing_;
     } else {
         blocks_ready_.push(block_id);
     }
@@ -24,28 +67,43 @@ void GraphState::DequeueBlock() {
     if (!blocks_ready_.empty()) {
         size_t block_id = blocks_ready_.front();
         blocks_ready_.pop();
-        group->EnqueueBlock(this, block_id);
+        runner_group_ptr->EnqueueBlock(this, block_id);
     } else {
-        --cnt_blocks_processing;
+        --cnt_blocks_processing_;
     }
 }
 
-void GraphState::ResetInputs(size_t block_id) {
-    is_input_ready_[block_id].assign(blocks[block_id].inputs.size(), false);
-    cnt_missing_inputs_[block_id] = blocks[block_id].inputs.size();
+void GraphState::PrepareBlockContainer(size_t block_id) {
+    std::string container_name = GetContainerName(block_id);
+    if (!std::filesystem::exists(sandbox_path / container_name)) {
+        std::filesystem::create_directories(sandbox_path / container_name);
+    }
+    // TODO: externals & make inputs read-only
 }
 
-bool GraphState::SetInputReady(size_t block_id, size_t input_id) {
-    if (!is_input_ready_[block_id][input_id]) {
-        is_input_ready_[block_id][input_id] = true;
-        --cnt_missing_inputs_[block_id];
+bool GraphState::TransferFile(const Connection &connection) {
+    std::string start_container_name = GetContainerName(connection.start_block_id);
+    std::string start_output_name =
+        blocks[connection.start_block_id].outputs[connection.start_output_id].name;
+    std::string end_container_name = GetContainerName(connection.end_block_id);
+    std::string end_input_name =
+        blocks[connection.end_block_id].inputs[connection.end_input_id].name;
+    if (!std::filesystem::exists(sandbox_path / end_container_name)) {
+        std::filesystem::create_directories(sandbox_path / end_container_name);
+    }
+    try {
+        std::filesystem::copy(sandbox_path / start_container_name / start_output_name,
+                              sandbox_path / end_container_name / end_input_name,
+                              std::filesystem::copy_options::create_hard_links);
+        ++blocks_state_[connection.end_block_id].cnt_inputs_ready;
         return true;
+    } catch (std::filesystem::filesystem_error &error) {
+        return false;
     }
-    return false;
 }
 
-bool GraphState::AllInputsReady(size_t block_id) const {
-    return cnt_missing_inputs_[block_id] == 0;
+bool GraphState::BlockReadyToRun(size_t block_id) const {
+    return blocks_state_[block_id].cnt_inputs_ready == blocks[block_id].inputs.size();
 }
 
 void GraphState::AddClient(ClientWebSocket *ws) {
@@ -62,30 +120,31 @@ void GraphState::SendToAllClients(std::string_view message) {
     }
 }
 
-void Group::AddRunner(RunnerWebSocket *ws) {
+std::string GraphState::GetContainerName(size_t block_id) const {
+    return graph_id + "_" + std::to_string(block_id) + "_" +
+           std::to_string(blocks_state_[block_id].cnt_runs);
+}
+
+void RunnerGroup::AddRunner(RunnerWebSocket *ws) {
     if (blocks_waiting_.empty()) {
         runners_waiting_.insert(ws);
     } else {
         auto [graph_ptr, block_id] = blocks_waiting_.front();
         blocks_waiting_.pop();
-        ws->getUserData()->graph_ptr = graph_ptr;
-        ws->getUserData()->block_id = block_id;
-        SendRunRequest(graph_ptr->blocks[block_id], ws);
+        graph_ptr->RunBlock(block_id, ws);
     }
 }
 
-void Group::RemoveRunner(RunnerWebSocket *ws) {
+void RunnerGroup::RemoveRunner(RunnerWebSocket *ws) {
     runners_waiting_.erase(ws);
 }
 
-void Group::EnqueueBlock(GraphState *graph_ptr, size_t block_id) {
+void RunnerGroup::EnqueueBlock(GraphState *graph_ptr, size_t block_id) {
     if (runners_waiting_.empty()) {
         blocks_waiting_.emplace(graph_ptr, block_id);
     } else {
         RunnerWebSocket *ws = runners_waiting_.extract(runners_waiting_.begin()).value();
-        ws->getUserData()->graph_ptr = graph_ptr;
-        ws->getUserData()->block_id = block_id;
-        SendRunRequest(graph_ptr->blocks[block_id], ws);
+        graph_ptr->RunBlock(block_id, ws);
     }
 }
 
@@ -100,64 +159,27 @@ void Scheduler::LeaveRunner(RunnerWebSocket *ws) {
 }
 
 void Scheduler::JoinClient(ClientWebSocket *ws) {
-    std::string graph_id = ws->getUserData()->graph_id;
-    graphs_[graph_id].AddClient(ws);
+    ws->getUserData()->graph_ptr->AddClient(ws);
 }
 
 void Scheduler::LeaveClient(ClientWebSocket *ws) {
-    std::string graph_id = ws->getUserData()->graph_id;
-    graphs_[graph_id].RemoveClient(ws);
+    ws->getUserData()->graph_ptr->RemoveClient(ws);
 }
 
 std::string Scheduler::AddGraph(Graph &&graph) {
     std::string graph_id = GenerateUuid();
     GraphState graph_state = std::move(graph);
-    graph_state.group = &groups_[graph_state.meta.runner_group];
+    graph_state.graph_id = graph_id;
+    graph_state.runner_group_ptr = &groups_[graph_state.meta.runner_group];
     graphs_[graph_id] = std::move(graph_state);
     return graph_id;
 }
 
-bool Scheduler::GraphExists(const std::string &graph_id) const {
-    return graphs_.contains(graph_id);
-}
-
-void Scheduler::RunGraph(const std::string &graph_id) {
-    auto &graph = graphs_[graph_id];
-    for (size_t block_id = 0; block_id < graph.blocks.size(); ++block_id) {
-        graph.ResetInputs(block_id);
-        if (graph.AllInputsReady(block_id)) {
-            graph.EnqueueBlock(block_id);
-        }
-    }
-    if (graph.cnt_blocks_processing == 0) {
-        graph.SendToAllClients(signals::kGraphComplete);
-    }
-}
-
-void Scheduler::StopGraph(const std::string &graph_id) {
-    // TODO
-}
-
-bool Scheduler::GraphRunning(const std::string &graph_id) const {
-    auto it = graphs_.find(graph_id);
-    return it != graphs_.end() && it->second.cnt_blocks_processing > 0;
-}
-
-void Scheduler::RunnerCompleted(RunnerWebSocket *ws, std::string_view message) {
-    GraphState *graph_ptr = ws->getUserData()->graph_ptr;
-    size_t start_block_id = ws->getUserData()->block_id;
-    graph_ptr->group->AddRunner(ws);
-    graph_ptr->SendToAllClients(message);  // TODO
-    graph_ptr->DequeueBlock();
-    graph_ptr->ResetInputs(start_block_id);  // TODO: use filesystem
-    for (const auto &[_, start_output_id, end_block_id, end_input_id] :
-         graph_ptr->connections[start_block_id]) {
-        if (graph_ptr->SetInputReady(end_block_id, end_input_id) &&
-            graph_ptr->AllInputsReady(end_block_id)) {
-            graph_ptr->EnqueueBlock(end_block_id);
-        }
-    }
-    if (graph_ptr->cnt_blocks_processing == 0) {
-        graph_ptr->SendToAllClients(signals::kGraphComplete);
+GraphState *Scheduler::FindGraph(const std::string &graph_id) {
+    auto iter = graphs_.find(graph_id);
+    if (iter == graphs_.end()) {
+        return nullptr;
+    } else {
+        return &iter->second;
     }
 }

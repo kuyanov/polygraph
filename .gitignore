@@ -34,3 +34,7 @@
 # Build files
 build
 cmake-build-*
+
+# Temporary files
+sandbox
+user

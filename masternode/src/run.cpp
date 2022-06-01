@@ -58,7 +58,8 @@ void Run() {
             scheduler.JoinRunner(ws);
         },
         .message = [&](auto *ws, std::string_view message, uWS::OpCode op_code) {
-            scheduler.RunnerCompleted(ws, message);
+            GraphState *graph_ptr = ws->getUserData()->graph_ptr;
+            graph_ptr->CompleteBlock(ws, message);
         },
         .close = [&](auto *ws, int code, std::string_view message) {
             scheduler.LeaveRunner(ws);
@@ -67,11 +68,12 @@ void Run() {
         .maxPayloadLength = Config::Instance().max_payload_size,
         .upgrade = [&](auto *res, auto *req, auto *context) {
             std::string graph_id(req->getParameter(0));
-            if (!scheduler.GraphExists(graph_id)) {
+            GraphState *graph_ptr = scheduler.FindGraph(graph_id);
+            if (!graph_ptr) {
                 res->writeStatus(http_response::kNotFound)->end();
                 return;
             }
-            res->template upgrade<ClientPerSocketData>({ .graph_id = graph_id },
+            res->template upgrade<ClientPerSocketData>({ .graph_ptr = graph_ptr },
                 req->getHeader("sec-websocket-key"),
                 req->getHeader("sec-websocket-protocol"),
                 req->getHeader("sec-websocket-extensions"),
@@ -82,14 +84,14 @@ void Run() {
             scheduler.JoinClient(ws);
         },
         .message = [&](auto *ws, std::string_view message, uWS::OpCode op_code) {
-            std::string graph_id = ws->getUserData()->graph_id;
+            GraphState *graph_ptr = ws->getUserData()->graph_ptr;
             if (message == signals::kGraphRun) {
-                if (!scheduler.GraphRunning(graph_id)) {
-                    scheduler.RunGraph(graph_id);
+                if (!graph_ptr->IsRunning()) {
+                    graph_ptr->Run();
                 }
             } else if (message == signals::kGraphStop) {
-                if (scheduler.GraphRunning(graph_id)) {
-                    scheduler.StopGraph(graph_id);
+                if (graph_ptr->IsRunning()) {
+                    graph_ptr->Stop();
                 }
             }
         },

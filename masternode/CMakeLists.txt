@@ -26,8 +26,10 @@ target_link_libraries(uWebSockets INTERFACE uSockets)
 add_library(MasterNodeLib)
 file(GLOB MASTERNODE_SOURCES src/*.cpp)
 target_sources(MasterNodeLib PRIVATE ${MASTERNODE_SOURCES})
-target_compile_definitions(MasterNodeLib PRIVATE
-        SCHEMA_DIR="${CMAKE_SOURCE_DIR}/masternode/schema")
+target_compile_definitions(MasterNodeLib PUBLIC
+        SCHEMA_DIR="${CMAKE_SOURCE_DIR}/masternode/schema"
+        SANDBOX_DIR="${CMAKE_SOURCE_DIR}/sandbox"
+        USER_DIR="${CMAKE_SOURCE_DIR}/user")
 target_include_directories(MasterNodeLib PUBLIC src)
 target_link_libraries(MasterNodeLib PRIVATE uWebSockets RapidJSON)
 

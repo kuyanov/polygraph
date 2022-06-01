@@ -38,6 +38,7 @@ struct UserGraph {
     };
 
     struct Meta {
+        std::string name = "sample graph";
         std::string runner_group = "all";
         int max_runners = INT_MAX;
     };
@@ -47,11 +48,10 @@ struct UserGraph {
     Meta meta;
 };
 
-std::string StringifyGraph(const UserGraph &graph) {
-    rapidjson::Document body(rapidjson::kObjectType);
-    auto &alloc = body.GetAllocator();
+template <class Allocator>
+rapidjson::Value BuildBlocks(const std::vector<UserGraph::Block> &graph_blocks, Allocator &alloc) {
     rapidjson::Value blocks(rapidjson::kArrayType);
-    for (const auto &graph_block : graph.blocks) {
+    for (const auto &graph_block : graph_blocks) {
         rapidjson::Value block(rapidjson::kObjectType);
         block.AddMember("name", rapidjson::Value().SetString(graph_block.name.c_str(), alloc),
                         alloc);
@@ -93,9 +93,14 @@ std::string StringifyGraph(const UserGraph &graph) {
         block.AddMember("tasks", tasks, alloc);
         blocks.PushBack(block, alloc);
     }
-    body.AddMember("blocks", blocks, alloc);
+    return blocks;
+}
+
+template <class Allocator>
+rapidjson::Value BuildConnections(const std::vector<UserGraph::Connection> &graph_connections,
+                                  Allocator &alloc) {
     rapidjson::Value connections(rapidjson::kArrayType);
-    for (const auto &graph_connection : graph.connections) {
+    for (const auto &graph_connection : graph_connections) {
         rapidjson::Value connection(rapidjson::kObjectType);
         connection.AddMember("start-block-id", graph_connection.start_block_id, alloc);
         connection.AddMember("start-output-id", graph_connection.start_output_id, alloc);
@@ -103,13 +108,25 @@ std::string StringifyGraph(const UserGraph &graph) {
         connection.AddMember("end-input-id", graph_connection.end_input_id, alloc);
         connections.PushBack(connection, alloc);
     }
-    body.AddMember("connections", connections, alloc);
-    rapidjson::Value meta(rapidjson::kObjectType);
-    meta.AddMember("runner-group",
-                   rapidjson::Value().SetString(graph.meta.runner_group.c_str(), alloc), alloc);
-    meta.AddMember("max-runners", graph.meta.max_runners, alloc);
-    body.AddMember("meta", meta, alloc);
+    return connections;
+}
 
+template <class Allocator>
+rapidjson::Value BuildMeta(const UserGraph::Meta &graph_meta, Allocator &alloc) {
+    rapidjson::Value meta(rapidjson::kObjectType);
+    meta.AddMember("name", rapidjson::Value().SetString(graph_meta.name.c_str(), alloc), alloc);
+    meta.AddMember("runner-group",
+                   rapidjson::Value().SetString(graph_meta.runner_group.c_str(), alloc), alloc);
+    meta.AddMember("max-runners", graph_meta.max_runners, alloc);
+    return meta;
+}
+
+std::string StringifyGraph(const UserGraph &graph) {
+    rapidjson::Document body(rapidjson::kObjectType);
+    auto &alloc = body.GetAllocator();
+    body.AddMember("blocks", BuildBlocks(graph.blocks, alloc), alloc);
+    body.AddMember("connections", BuildConnections(graph.connections, alloc), alloc);
+    body.AddMember("meta", BuildMeta(graph.meta, alloc), alloc);
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
     body.Accept(writer);

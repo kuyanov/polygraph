@@ -3,6 +3,8 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <filesystem>
+#include <fstream>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -17,6 +19,8 @@
 
 const std::string kHost = Config::Instance().host;
 const int kPort = Config::Instance().port;
+
+static std::filesystem::path sandbox_path = SANDBOX_DIR;
 
 void CheckSubmitStartsWith(const std::string &body, const std::string &prefix) {
     auto result = HttpSession(kHost, kPort).Post("/submit", body);
@@ -33,6 +37,12 @@ long long Timestamp() {
         .count();
 }
 
+size_t ParseBlockId(const std::string &container_name) {
+    size_t l = container_name.find('_');
+    size_t r = container_name.find('_', l + 1);
+    return std::stoul(container_name.substr(l + 1, r - l - 1));
+}
+
 void CheckGraphExecution(const UserGraph &graph, int cnt_users, int cnt_runners, int exp_runs,
                          int runner_delay, int exp_delay) {
     std::string body = StringifyGraph(graph);
@@ -46,7 +56,18 @@ void CheckGraphExecution(const UserGraph &graph, int cnt_users, int cnt_runners,
         runner_threads[runner_id] = std::thread([&] {
             WebsocketSession session(ioc, kHost, kPort, "/runner/" + graph.meta.runner_group);
             session.OnRead([&](const std::string &message) {
+                std::string container_name = message;
+                size_t block_id = ParseBlockId(container_name);
+                for (const auto &input : graph.blocks[block_id].inputs) {
+                    ASSERT_TRUE(
+                        std::filesystem::exists(sandbox_path / container_name / input.name));
+                }
                 std::this_thread::sleep_for(std::chrono::milliseconds(runner_delay));
+                for (const auto &output : graph.blocks[block_id].outputs) {
+                    ASSERT_TRUE(
+                        !std::filesystem::exists(sandbox_path / container_name / output.name));
+                    std::ofstream(sandbox_path / container_name / output.name) << "content";
+                }
                 session.Write("ok");
             });
             ioc.run();
