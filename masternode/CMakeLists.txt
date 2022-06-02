@@ -34,6 +34,5 @@ target_include_directories(MasterNodeLib PUBLIC src)
 target_link_libraries(MasterNodeLib PRIVATE uWebSockets RapidJSON)
 
 add_executable(MasterNode main.cpp)
-add_compile_definitions(MasterNode PRIVATE
-        CONFIG_FILE="${CMAKE_SOURCE_DIR}/masternode/config.json")
+add_compile_definitions(CONFIG_FILE="${CMAKE_SOURCE_DIR}/masternode/config.json")
 target_link_libraries(MasterNode PRIVATE MasterNodeLib)

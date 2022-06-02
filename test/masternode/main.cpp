@@ -8,8 +8,6 @@
 #include "networking.h"
 #include "user_graph.h"
 
-static MasterNode _;
-
 TEST(ParseError, Trivial) {
     CheckSubmitStartsWith("", errors::kParseErrorPrefix);
     CheckSubmitStartsWith("{", errors::kParseErrorPrefix);
@@ -197,4 +195,10 @@ TEST(Execution, Stress) {
     for (int i = 0; i < 100; i++) {
         CheckGraphExecution(graph, 4, 1, 100, 0, -1);
     }
+}
+
+int main(int argc, char **argv) {
+    [[maybe_unused]] MasterNode server;
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

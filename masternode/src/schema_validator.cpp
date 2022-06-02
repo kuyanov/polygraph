@@ -4,6 +4,7 @@
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/writer.h>
 
+#include "constants.h"
 #include "error.h"
 #include "schema_validator.h"
 
@@ -12,8 +13,8 @@ std::string FormattedError(const rapidjson::Document &document) {
            std::to_string(document.GetErrorOffset()) + ")";
 }
 
-SchemaValidator::SchemaValidator(const std::string &schema_file) {
-    std::ifstream schema_ifs(schema_file);
+SchemaValidator::SchemaValidator(const std::string &filename) {
+    std::ifstream schema_ifs((filesystem::kSchemaPath / filename).string());
     rapidjson::IStreamWrapper schema_isw(schema_ifs);
     rapidjson::Document schema_document;
     schema_document.ParseStream(schema_isw);
