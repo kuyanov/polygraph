@@ -8,7 +8,7 @@
 
 class SchemaValidator {
 public:
-    explicit SchemaValidator(const std::string &schema_path);
+    explicit SchemaValidator(const std::string &schema_file);
 
     rapidjson::Document ParseAndValidate(const std::string &json);
 

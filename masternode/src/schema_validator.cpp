@@ -12,8 +12,8 @@ std::string FormattedError(const rapidjson::Document &document) {
            std::to_string(document.GetErrorOffset()) + ")";
 }
 
-SchemaValidator::SchemaValidator(const std::string &schema_path) {
-    std::ifstream schema_ifs(schema_path);
+SchemaValidator::SchemaValidator(const std::string &schema_file) {
+    std::ifstream schema_ifs(schema_file);
     rapidjson::IStreamWrapper schema_isw(schema_ifs);
     rapidjson::Document schema_document;
     schema_document.ParseStream(schema_isw);

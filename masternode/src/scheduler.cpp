@@ -4,8 +4,6 @@
 #include "scheduler.h"
 #include "uuid.h"
 
-static std::filesystem::path sandbox_path = SANDBOX_DIR;
-
 GraphState::GraphState(Graph &&graph) : Graph(std::move(graph)) {
     blocks_state_.resize(blocks.size());
 }
@@ -75,8 +73,8 @@ void GraphState::DequeueBlock() {
 
 void GraphState::PrepareBlockContainer(size_t block_id) {
     std::string container_name = GetContainerName(block_id);
-    if (!std::filesystem::exists(sandbox_path / container_name)) {
-        std::filesystem::create_directories(sandbox_path / container_name);
+    if (!std::filesystem::exists(filesystem::kSandboxPath / container_name)) {
+        std::filesystem::create_directories(filesystem::kSandboxPath / container_name);
     }
     // TODO: externals & make inputs read-only
 }
@@ -88,12 +86,12 @@ bool GraphState::TransferFile(const Connection &connection) {
     std::string end_container_name = GetContainerName(connection.end_block_id);
     std::string end_input_name =
         blocks[connection.end_block_id].inputs[connection.end_input_id].name;
-    if (!std::filesystem::exists(sandbox_path / end_container_name)) {
-        std::filesystem::create_directories(sandbox_path / end_container_name);
+    if (!std::filesystem::exists(filesystem::kSandboxPath / end_container_name)) {
+        std::filesystem::create_directories(filesystem::kSandboxPath / end_container_name);
     }
     try {
-        std::filesystem::copy(sandbox_path / start_container_name / start_output_name,
-                              sandbox_path / end_container_name / end_input_name,
+        std::filesystem::copy(filesystem::kSandboxPath / start_container_name / start_output_name,
+                              filesystem::kSandboxPath / end_container_name / end_input_name,
                               std::filesystem::copy_options::create_hard_links);
         ++blocks_state_[connection.end_block_id].cnt_inputs_ready;
         return true;

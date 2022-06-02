@@ -20,8 +20,6 @@
 const std::string kHost = Config::Instance().host;
 const int kPort = Config::Instance().port;
 
-static std::filesystem::path sandbox_path = SANDBOX_DIR;
-
 void CheckSubmitStartsWith(const std::string &body, const std::string &prefix) {
     auto result = HttpSession(kHost, kPort).Post("/submit", body);
     ASSERT_TRUE(result.starts_with(prefix));
@@ -59,14 +57,15 @@ void CheckGraphExecution(const UserGraph &graph, int cnt_users, int cnt_runners,
                 std::string container_name = message;
                 size_t block_id = ParseBlockId(container_name);
                 for (const auto &input : graph.blocks[block_id].inputs) {
-                    ASSERT_TRUE(
-                        std::filesystem::exists(sandbox_path / container_name / input.name));
+                    ASSERT_TRUE(std::filesystem::exists(filesystem::kSandboxPath / container_name /
+                                                        input.name));
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(runner_delay));
                 for (const auto &output : graph.blocks[block_id].outputs) {
-                    ASSERT_TRUE(
-                        !std::filesystem::exists(sandbox_path / container_name / output.name));
-                    std::ofstream(sandbox_path / container_name / output.name) << "content";
+                    ASSERT_TRUE(!std::filesystem::exists(filesystem::kSandboxPath / container_name /
+                                                         output.name));
+                    std::ofstream(filesystem::kSandboxPath / container_name / output.name)
+                        << "content";
                 }
                 session.Write("ok");
             });

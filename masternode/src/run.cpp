@@ -11,7 +11,7 @@
 #include "schema_validator.h"
 
 void Run() {
-    static SchemaValidator graph_validator(std::string(SCHEMA_DIR) + "/graph.json");
+    static SchemaValidator graph_validator(filesystem::kSchemaPath / "graph.json");
     static Scheduler scheduler;
 
     uWS::App().post("/submit", [&](auto *res, auto *req) {
