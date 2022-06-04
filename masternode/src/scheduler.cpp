@@ -89,13 +89,20 @@ bool GraphState::TransferFile(const Connection &connection) {
     if (!std::filesystem::exists(filesystem::kSandboxPath / end_container_name)) {
         std::filesystem::create_directories(filesystem::kSandboxPath / end_container_name);
     }
+    std::filesystem::path start_output_path =
+        filesystem::kSandboxPath / start_container_name / start_output_name;
+    std::filesystem::path end_input_path =
+        filesystem::kSandboxPath / end_container_name / end_input_name;
+    if (!std::filesystem::exists(start_output_path) || std::filesystem::exists(end_input_path)) {
+        return false;
+    }
     try {
-        std::filesystem::copy(filesystem::kSandboxPath / start_container_name / start_output_name,
-                              filesystem::kSandboxPath / end_container_name / end_input_name,
-                              std::filesystem::copy_options::create_hard_links);
+        std::filesystem::copy(start_output_path, end_input_path,
+                              std::filesystem::copy_options::create_hard_links |
+                                  std::filesystem::copy_options::recursive);
         ++blocks_state_[connection.end_block_id].cnt_inputs_ready;
         return true;
-    } catch (std::filesystem::filesystem_error &error) {
+    } catch (const std::filesystem::filesystem_error &error) {
         return false;
     }
 }
