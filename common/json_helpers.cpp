@@ -37,7 +37,7 @@ std::string FormattedError(const rapidjson::Document &document) {
 }
 
 SchemaValidator::SchemaValidator(const std::string &filename) {
-    auto schema_document = ReadJSON(filesystem::kSchemaPath / filename);
+    auto schema_document = ReadJSON((filesystem::kSchemaPath / filename).string());
     if (schema_document.HasParseError()) {
         throw std::runtime_error("Could not parse json schema: " + FormattedError(schema_document));
     }
