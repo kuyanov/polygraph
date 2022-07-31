@@ -3,11 +3,12 @@
 #include <string>
 #include <vector>
 
-#include <rapidjson/document.h>
+#include "rapidjson/document.h"
 
 struct Graph {
     struct BlockInput {
         std::string name;
+        bool allow_exec;
     };
 
     struct BlockOutput {
@@ -17,6 +18,8 @@ struct Graph {
     struct BlockExternal {
         std::string name;
         std::string user_path;
+        bool allow_write;
+        bool allow_exec;
     };
 
     struct Block {
@@ -24,7 +27,7 @@ struct Graph {
         std::vector<BlockInput> inputs;
         std::vector<BlockOutput> outputs;
         std::vector<BlockExternal> externals;
-        rapidjson::Document tasks;
+        rapidjson::Document tasks{rapidjson::kArrayType};
     };
 
     struct Connection {
@@ -42,7 +45,7 @@ struct Graph {
 
     struct Meta {
         std::string name;
-        std::string runner_group;
+        std::string partition;
         int max_runners;
     };
 

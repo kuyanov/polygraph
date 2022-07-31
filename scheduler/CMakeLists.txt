@@ -23,16 +23,12 @@ target_compile_definitions(uWebSockets INTERFACE UWS_NO_ZLIB)
 target_include_directories(uWebSockets INTERFACE ${UWEBSOCKETS_SRC_DIR})
 target_link_libraries(uWebSockets INTERFACE uSockets)
 
-add_library(MasterNodeLib)
-file(GLOB MASTERNODE_SOURCES src/*.cpp)
-target_sources(MasterNodeLib PRIVATE ${MASTERNODE_SOURCES})
-target_compile_definitions(MasterNodeLib PUBLIC
-        SCHEMA_DIR="${CMAKE_SOURCE_DIR}/masternode/schema"
-        SANDBOX_DIR="${CMAKE_SOURCE_DIR}/sandbox"
-        USER_DIR="${CMAKE_SOURCE_DIR}/user")
-target_include_directories(MasterNodeLib PUBLIC src)
-target_link_libraries(MasterNodeLib PRIVATE uWebSockets RapidJSON)
+add_library(SchedulerLib)
+file(GLOB SCHEDULER_SOURCES src/*.cpp)
+target_sources(SchedulerLib PRIVATE ${SCHEDULER_SOURCES})
+target_include_directories(SchedulerLib PUBLIC src)
+target_link_libraries(SchedulerLib PRIVATE Common uWebSockets RapidJSON)
 
-add_executable(MasterNode main.cpp)
-add_compile_definitions(CONFIG_FILE="${CMAKE_SOURCE_DIR}/masternode/config.json")
-target_link_libraries(MasterNode PRIVATE MasterNodeLib)
+add_executable(Scheduler main.cpp)
+add_compile_definitions(CONFIG_FILE="${CMAKE_SOURCE_DIR}/scheduler/config.json")
+target_link_libraries(Scheduler PRIVATE SchedulerLib)

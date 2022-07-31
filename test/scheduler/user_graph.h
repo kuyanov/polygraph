@@ -3,12 +3,14 @@
 #include <string>
 #include <vector>
 
-#include <rapidjson/document.h>
-#include <rapidjson/writer.h>
+#include "rapidjson/document.h"
+
+#include "json_helpers.h"
 
 struct UserGraph {
     struct BlockInput {
         std::string name;
+        bool allow_exec = false;
     };
 
     struct BlockOutput {
@@ -18,6 +20,8 @@ struct UserGraph {
     struct BlockExternal {
         std::string name;
         std::string user_path;
+        bool allow_write = false;
+        bool allow_exec = false;
     };
 
     struct Task {
@@ -29,7 +33,7 @@ struct UserGraph {
         std::vector<BlockInput> inputs;
         std::vector<BlockOutput> outputs;
         std::vector<BlockExternal> externals;
-        std::vector<Task> tasks;
+        std::vector<Task> tasks = {{"test"}};
     };
 
     struct Connection {
@@ -39,7 +43,7 @@ struct UserGraph {
 
     struct Meta {
         std::string name = "sample graph";
-        std::string runner_group = "all";
+        std::string partition = "all";
         int max_runners = INT_MAX;
     };
 
@@ -60,6 +64,8 @@ rapidjson::Value BuildBlocks(const std::vector<UserGraph::Block> &graph_blocks, 
             rapidjson::Value input(rapidjson::kObjectType);
             input.AddMember("name", rapidjson::Value().SetString(graph_input.name.c_str(), alloc),
                             alloc);
+            input.AddMember("allow-exec", rapidjson::Value().SetBool(graph_input.allow_exec),
+                            alloc);
             inputs.PushBack(input, alloc);
         }
         block.AddMember("inputs", inputs, alloc);
@@ -79,6 +85,10 @@ rapidjson::Value BuildBlocks(const std::vector<UserGraph::Block> &graph_blocks, 
             external.AddMember(
                 "user-path", rapidjson::Value().SetString(graph_external.user_path.c_str(), alloc),
                 alloc);
+            external.AddMember("allow-write",
+                               rapidjson::Value().SetBool(graph_external.allow_write), alloc);
+            external.AddMember("allow-exec", rapidjson::Value().SetBool(graph_external.allow_exec),
+                               alloc);
             externals.PushBack(external, alloc);
         }
         block.AddMember("externals", externals, alloc);
@@ -115,8 +125,8 @@ template <class Allocator>
 rapidjson::Value BuildMeta(const UserGraph::Meta &graph_meta, Allocator &alloc) {
     rapidjson::Value meta(rapidjson::kObjectType);
     meta.AddMember("name", rapidjson::Value().SetString(graph_meta.name.c_str(), alloc), alloc);
-    meta.AddMember("runner-group",
-                   rapidjson::Value().SetString(graph_meta.runner_group.c_str(), alloc), alloc);
+    meta.AddMember("partition", rapidjson::Value().SetString(graph_meta.partition.c_str(), alloc),
+                   alloc);
     meta.AddMember("max-runners", graph_meta.max_runners, alloc);
     return meta;
 }
@@ -127,8 +137,5 @@ std::string StringifyGraph(const UserGraph &graph) {
     body.AddMember("blocks", BuildBlocks(graph.blocks, alloc), alloc);
     body.AddMember("connections", BuildConnections(graph.connections, alloc), alloc);
     body.AddMember("meta", BuildMeta(graph.meta, alloc), alloc);
-    rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-    body.Accept(writer);
-    return buffer.GetString();
+    return StringifyJSON(body);
 }

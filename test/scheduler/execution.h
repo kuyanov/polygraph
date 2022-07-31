@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -10,10 +11,11 @@
 #include <thread>
 #include <vector>
 
-#include <gtest/gtest.h>
+#include "gtest/gtest.h"
 
 #include "config.h"
 #include "constants.h"
+#include "json_helpers.h"
 #include "networking.h"
 #include "user_graph.h"
 
@@ -42,7 +44,7 @@ size_t ParseBlockId(const std::string &container_name) {
 }
 
 void CheckGraphExecution(const UserGraph &graph, int cnt_users, int cnt_runners, int exp_runs,
-                         int runner_delay, int exp_delay) {
+                         int runner_delay, int exp_delay, std::vector<size_t> failed_blocks = {}) {
     std::string body = StringifyGraph(graph);
     auto uuid = HttpSession(kHost, kPort).Post("/submit", body);
     ASSERT_TRUE(IsUuid(uuid));
@@ -52,22 +54,37 @@ void CheckGraphExecution(const UserGraph &graph, int cnt_users, int cnt_runners,
     for (int runner_id = 0; runner_id < cnt_runners; ++runner_id) {
         auto &ioc = runner_contexts[runner_id];
         runner_threads[runner_id] = std::thread([&] {
-            WebsocketSession session(ioc, kHost, kPort, "/runner/" + graph.meta.runner_group);
+            WebsocketSession session(ioc, kHost, kPort, "/runner/" + graph.meta.partition);
             session.OnRead([&](const std::string &message) {
-                std::string container_name = message;
+                auto tasks_document = ParseJSON(message);
+                auto tasks_array = tasks_document.GetArray();
+                std::string container_name = tasks_array[0]["container"].GetString();
                 size_t block_id = ParseBlockId(container_name);
                 for (const auto &input : graph.blocks[block_id].inputs) {
                     ASSERT_TRUE(std::filesystem::exists(filesystem::kSandboxPath / container_name /
                                                         input.name));
                 }
+                for (const auto &external : graph.blocks[block_id].externals) {
+                    ASSERT_TRUE(std::filesystem::exists(filesystem::kUserPath / container_name /
+                                                        external.name));
+                }
                 std::this_thread::sleep_for(std::chrono::milliseconds(runner_delay));
                 for (const auto &output : graph.blocks[block_id].outputs) {
                     ASSERT_TRUE(!std::filesystem::exists(filesystem::kSandboxPath / container_name /
                                                          output.name));
-                    std::ofstream(filesystem::kSandboxPath / container_name / output.name)
-                        << "content";
+                    std::ofstream(filesystem::kSandboxPath / container_name / output.name);
                 }
-                session.Write("ok");
+                rapidjson::Document status_document(rapidjson::kArrayType);
+                auto &alloc = status_document.GetAllocator();
+                bool failed = std::find(failed_blocks.begin(), failed_blocks.end(), block_id) !=
+                              failed_blocks.end();
+                for (size_t task_id = 0; task_id < tasks_array.Size(); ++task_id) {
+                    rapidjson::Value task(rapidjson::kObjectType);
+                    task.AddMember("exited", rapidjson::Value().SetBool(true), alloc);
+                    task.AddMember("exit-code", rapidjson::Value().SetInt(failed), alloc);
+                    status_document.PushBack(task, alloc);
+                }
+                session.Write(StringifyJSON(status_document));
             });
             ioc.run();
         });

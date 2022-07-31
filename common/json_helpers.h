@@ -3,8 +3,12 @@
 #include <optional>
 #include <string>
 
-#include <rapidjson/document.h>
-#include <rapidjson/schema.h>
+#include "rapidjson/document.h"
+#include "rapidjson/schema.h"
+
+rapidjson::Document ParseJSON(const std::string &json);
+rapidjson::Document ReadJSON(const std::string &path);
+std::string StringifyJSON(const rapidjson::Value &value);
 
 class SchemaValidator {
 public:

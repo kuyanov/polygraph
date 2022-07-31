@@ -1,14 +1,15 @@
 #include <iostream>
+#include <string>
 
-#include <App.h>
+#include "App.h"
 
 #include "config.h"
 #include "constants.h"
 #include "error.h"
 #include "graph.h"
+#include "json_helpers.h"
 #include "run.h"
 #include "scheduler.h"
-#include "schema_validator.h"
 
 void Run() {
     static SchemaValidator graph_validator("graph.json");
@@ -43,11 +44,11 @@ void Run() {
                     errors::kSemanticErrorPrefix + error.message);
             }
         });
-    }).ws<RunnerPerSocketData>("/runner/:group", {
+    }).ws<RunnerPerSocketData>("/runner/:partition", {
         .maxPayloadLength = Config::Instance().max_payload_size,
         .upgrade = [&](auto *res, auto *req, auto *context) {
-            std::string runner_group(req->getParameter(0));
-            res->template upgrade<RunnerPerSocketData>({ .runner_group = runner_group },
+            std::string partition(req->getParameter(0));
+            res->template upgrade<RunnerPerSocketData>({ .partition = partition },
                 req->getHeader("sec-websocket-key"),
                 req->getHeader("sec-websocket-protocol"),
                 req->getHeader("sec-websocket-extensions"),
@@ -59,7 +60,7 @@ void Run() {
         },
         .message = [&](auto *ws, std::string_view message, uWS::OpCode op_code) {
             GraphState *graph_ptr = ws->getUserData()->graph_ptr;
-            graph_ptr->CompleteBlock(ws, message);
+            graph_ptr->OnComplete(ws, message);
         },
         .close = [&](auto *ws, int code, std::string_view message) {
             scheduler.LeaveRunner(ws);
@@ -85,14 +86,16 @@ void Run() {
         },
         .message = [&](auto *ws, std::string_view message, uWS::OpCode op_code) {
             GraphState *graph_ptr = ws->getUserData()->graph_ptr;
-            if (message == signals::kGraphRun) {
-                if (!graph_ptr->IsRunning()) {
+            try {
+                if (message == signals::kGraphRun) {
                     graph_ptr->Run();
-                }
-            } else if (message == signals::kGraphStop) {
-                if (graph_ptr->IsRunning()) {
+                } else if (message == signals::kGraphStop) {
                     graph_ptr->Stop();
+                } else {
+                    throw APIError(errors::kUndefinedCommand);
                 }
+            } catch (const APIError &error) {
+                ws->send(errors::kAPIErrorPrefix + error.message);
             }
         },
         .close = [&](auto *ws, int code, std::string_view message) {

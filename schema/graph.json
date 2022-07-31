@@ -27,11 +27,15 @@
             "items": {
               "type": "object",
               "required": [
-                "name"
+                "name",
+                "allow-exec"
               ],
               "properties": {
                 "name": {
                   "type": "string"
+                },
+                "allow-exec": {
+                  "type": "boolean"
                 }
               }
             }
@@ -56,7 +60,9 @@
               "type": "object",
               "required": [
                 "name",
-                "user-path"
+                "user-path",
+                "allow-write",
+                "allow-exec"
               ],
               "properties": {
                 "name": {
@@ -64,6 +70,12 @@
                 },
                 "user-path": {
                   "type": "string"
+                },
+                "allow-write": {
+                  "type": "boolean"
+                },
+                "allow-exec": {
+                  "type": "boolean"
                 }
               }
             }
@@ -86,6 +98,9 @@
                   "type": "string"
                 },
                 "stdout": {
+                  "type": "string"
+                },
+                "stderr": {
                   "type": "string"
                 },
                 "time-limit-ms": {
@@ -142,14 +157,14 @@
       "type": "object",
       "required": [
         "name",
-        "runner-group",
+        "partition",
         "max-runners"
       ],
       "properties": {
         "name": {
           "type": "string"
         },
-        "runner-group": {
+        "partition": {
           "type": "string"
         },
         "max-runners": {

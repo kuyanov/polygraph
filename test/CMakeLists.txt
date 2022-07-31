@@ -1,1 +1,1 @@
-add_subdirectory(masternode)
+add_subdirectory(scheduler)

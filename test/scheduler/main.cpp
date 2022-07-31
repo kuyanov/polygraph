@@ -1,11 +1,14 @@
+#include <chrono>
 #include <string>
+#include <thread>
 #include <unordered_set>
 
-#include <gtest/gtest.h>
+#include "gtest/gtest.h"
 
 #include "constants.h"
-#include "helper.h"
+#include "execution.h"
 #include "networking.h"
+#include "run.h"
 #include "user_graph.h"
 
 TEST(ParseError, Trivial) {
@@ -32,11 +35,11 @@ TEST(ValidationError, MetaMissing) {
 
 TEST(ValidationError, InvalidType) {
     CheckSubmitStartsWith(
-        "{\"blocks\":[],\"connections\":0,\"meta\":{\"name\":\"\",\"runner-group\":\"all\",\"max-"
+        "{\"blocks\":[],\"connections\":0,\"meta\":{\"name\":\"\",\"partition\":\"all\",\"max-"
         "runners\":1}}",
         errors::kValidationErrorPrefix);
     CheckSubmitStartsWith(
-        "{\"blocks\":[],\"connections\":{},\"meta\":{\"name\":\"\",\"runner-group\":\"all\",\"max-"
+        "{\"blocks\":[],\"connections\":{},\"meta\":{\"name\":\"\",\"partition\":\"all\",\"max-"
         "runners\":1}}",
         errors::kValidationErrorPrefix);
 }
@@ -54,13 +57,13 @@ TEST(SemanticError, DuplicatedFilename) {
                           errors::kSemanticErrorPrefix + errors::kDuplicatedFilename);
 }
 
-TEST(SemanticError, EmptyFilename) {
+TEST(SemanticError, InvalidFilename) {
     CheckSubmitStartsWith(StringifyGraph({{{"", {{}}, {}, {}}}}),
                           errors::kSemanticErrorPrefix + errors::kEmptyFilename);
-    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {{}}, {}}}}),
-                          errors::kSemanticErrorPrefix + errors::kEmptyFilename);
-    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {}, {{}}}}}),
-                          errors::kSemanticErrorPrefix + errors::kEmptyFilename);
+    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {{".."}}, {}}}}),
+                          errors::kSemanticErrorPrefix + errors::kInvalidFilename);
+    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {}, {{"a/b"}}}}}),
+                          errors::kSemanticErrorPrefix + errors::kInvalidFilename);
 }
 
 TEST(SemanticError, ConnectionStartBlock) {
@@ -144,7 +147,7 @@ TEST(Execution, MaxRunners) {
                         {"2", {{"i0"}}, {{"o5"}}},
                         {"3", {{"i0"}}, {{"o5"}}},
                         {"4", {{"i0"}}, {{"o5"}}},
-                        {"5", {{"i1"}, {"i2"}, {"i3"}, {"i4"}}}},
+                        {"5", {{"i1"}, {"i2"}, {"i3"}, {"i4"}}, {}}},
                        {{0, 0, 1, 0},
                         {0, 0, 2, 0},
                         {0, 0, 3, 0},
@@ -189,6 +192,16 @@ TEST(Execution, FiniteCycle) {
     CheckGraphExecution(graph, 3, 2, 11, 100, 700);
 }
 
+TEST(Execution, FailedBlocks) {
+    UserGraph graph = {{{"0", {}, {{"o1"}}},
+                        {"1", {{"i0"}}, {}},
+                        {"2", {}, {{"o3"}}},
+                        {"3", {{"i2"}}, {{"o4"}}},
+                        {"4", {{"i3"}}, {}}},
+                       {{0, 0, 1, 0}, {2, 0, 3, 0}, {3, 0, 4, 0}}};
+    CheckGraphExecution(graph, 3, 2, 3, 100, 200, {0, 3});
+}
+
 TEST(Execution, Stress) {
     std::vector<UserGraph::Block> blocks(100);
     UserGraph graph = {blocks, {}};
@@ -198,7 +211,8 @@ TEST(Execution, Stress) {
 }
 
 int main(int argc, char **argv) {
-    [[maybe_unused]] MasterNode server;
+    std::thread([] { Run(); }).detach();
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

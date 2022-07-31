@@ -6,16 +6,17 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
-#include <App.h>
+#include "App.h"
 
 #include "graph.h"
 
 class GraphState;
-class RunnerGroup;
+class Partition;
 
 struct RunnerPerSocketData {
-    std::string runner_group;
+    std::string partition;
     GraphState *graph_ptr;
     size_t block_id;
 };
@@ -30,7 +31,7 @@ using ClientWebSocket = uWS::WebSocket<false, true, ClientPerSocketData>;
 class GraphState : public Graph {
 public:
     std::string graph_id;
-    RunnerGroup *runner_group_ptr;
+    Partition *partition_ptr;
 
     GraphState() = default;
     GraphState(Graph &&graph);
@@ -40,14 +41,19 @@ public:
     bool IsRunning() const;
 
     void RunBlock(size_t block_id, RunnerWebSocket *ws);
-    void CompleteBlock(RunnerWebSocket *ws, std::string_view message);
+    void OnComplete(RunnerWebSocket *ws, std::string_view message);
 
     void EnqueueBlock(size_t block_id);
     void DequeueBlock();
 
     void PrepareBlockContainer(size_t block_id);
     bool TransferFile(const Connection &connection);
-    bool BlockReadyToRun(size_t block_id) const;
+
+    void SendTasks(size_t block_id, RunnerWebSocket *ws);
+    bool ProcessResults(size_t block_id, std::string_view message);
+
+    bool IsBlockReady(size_t block_id) const;
+    void ClearBlockState(size_t block_id);
 
     void AddClient(ClientWebSocket *ws);
     void RemoveClient(ClientWebSocket *ws);
@@ -67,7 +73,7 @@ private:
     std::string GetContainerName(size_t block_id) const;
 };
 
-class RunnerGroup {
+class Partition {
 public:
     void AddRunner(RunnerWebSocket *ws);
     void RemoveRunner(RunnerWebSocket *ws);
@@ -90,5 +96,5 @@ public:
 
 private:
     std::unordered_map<std::string, GraphState> graphs_;
-    std::unordered_map<std::string, RunnerGroup> groups_;
+    std::unordered_map<std::string, Partition> groups_;
 };

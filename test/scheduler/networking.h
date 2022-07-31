@@ -1,27 +1,14 @@
 #pragma once
 
-#include <chrono>
 #include <string>
-#include <thread>
-#include <utility>
 
 #include <boost/beast.hpp>
-
-#include "run.h"
 
 namespace asio = boost::asio;
 namespace ip = asio::ip;
 namespace beast = boost::beast;
 namespace http = beast::http;
 namespace websocket = beast::websocket;
-
-class MasterNode {
-public:
-    MasterNode() {
-        std::thread([] { Run(); }).detach();
-        std::this_thread::sleep_for(std::chrono::milliseconds(30));
-    }
-};
 
 class HttpSession {
 public:
