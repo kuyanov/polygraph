@@ -12,7 +12,6 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-
 #include "config.h"
 #include "constants.h"
 #include "json_helpers.h"

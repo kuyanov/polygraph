@@ -6,4 +6,3 @@ target_compile_definitions(Common PUBLIC
         SANDBOX_DIR="${CMAKE_SOURCE_DIR}/sandbox"
         USER_DIR="${CMAKE_SOURCE_DIR}/user")
 target_include_directories(Common PUBLIC .)
-target_link_libraries(Common PRIVATE RapidJSON)

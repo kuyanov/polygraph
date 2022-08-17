@@ -2,8 +2,7 @@
 
 #include <string>
 #include <vector>
-
-#include "rapidjson/document.h"
+#include <rapidjson/document.h>
 
 #include "json_helpers.h"
 

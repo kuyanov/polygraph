@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-
 #include <boost/beast.hpp>
 
 namespace asio = boost::asio;

@@ -1,9 +1,0 @@
-[submodule "contrib/uWebSockets"]
-	path = contrib/uWebSockets
-	url = https://github.com/uNetworking/uWebSockets.git
-[submodule "contrib/rapidjson"]
-	path = contrib/rapidjson
-	url = https://github.com/Tencent/rapidjson.git
-[submodule "contrib/googletest"]
-	path = contrib/googletest
-	url = https://github.com/google/googletest.git

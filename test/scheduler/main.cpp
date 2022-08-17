@@ -4,7 +4,6 @@
 #include <unordered_set>
 
 #include "gtest/gtest.h"
-
 #include "constants.h"
 #include "execution.h"
 #include "networking.h"
