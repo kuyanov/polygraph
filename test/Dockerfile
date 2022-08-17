@@ -9,11 +9,12 @@ RUN git clone https://github.com/Tencent/rapidjson.git && \
 RUN git clone https://github.com/uNetworking/uWebSockets.git && \
     cd uWebSockets && \
     git submodule init && \
-    git submodule update && \
-    make && \
+    git submodule update uSockets && \
     make install && \
-    cp uSockets/src/libusockets.h /usr/local/include/ && \
-    cp uSockets/uSockets.a /usr/local/lib
+    cd uSockets && \
+    make && \
+    cp src/libusockets.h /usr/local/include/ && \
+    cp uSockets.a /usr/local/lib
 
 COPY . /polygraph
 WORKDIR /polygraph
