@@ -10,6 +10,7 @@ RUN git clone https://github.com/uNetworking/uWebSockets.git && \
     cd uWebSockets && \
     git submodule init && \
     git submodule update uSockets && \
+    git checkout c2f29c86c718e364b5586d103ad592aa396d7604 && \
     make install && \
     cd uSockets && \
     make && \
