@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "minItems": 1,
+  "items": {
+    "type": "object",
+    "required": [
+      "argv",
+      "container"
+    ],
+    "properties": {
+      "argv": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "container": {
+        "type": "string"
+      },
+      "stdin": {
+        "type": "string"
+      },
+      "stdout": {
+        "type": "string"
+      },
+      "stderr": {
+        "type": "string"
+      },
+      "time-limit-ms": {
+        "type": "integer"
+      },
+      "wall-time-limit-ms": {
+        "type": "integer"
+      },
+      "memory-limit-kb": {
+        "type": "integer"
+      },
+      "fsize-limit-kb": {
+        "type": "integer"
+      },
+      "max-files": {
+        "type": "integer"
+      },
+      "max-threads": {
+        "type": "integer"
+      }
+    }
+  }
+}

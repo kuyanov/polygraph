@@ -55,7 +55,8 @@ void CheckGraphExecution(const UserGraph &graph, int cnt_users, int cnt_runners,
         runner_threads[runner_id] = std::thread([&] {
             WebsocketSession session(ioc, kHost, kPort, "/runner/" + graph.meta.partition);
             session.OnRead([&](const std::string &message) {
-                auto tasks_document = ParseJSON(message);
+                auto request_validator = SchemaValidator("request.json");
+                auto tasks_document = request_validator.ParseAndValidate(message);
                 auto tasks_array = tasks_document.GetArray();
                 std::string container_name = tasks_array[0]["container"].GetString();
                 size_t block_id = ParseBlockId(container_name);
