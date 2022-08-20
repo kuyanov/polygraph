@@ -4,9 +4,9 @@
 #include <vector>
 #include <rapidjson/document.h>
 
-#include "json_helpers.h"
+#include "json.h"
 
-struct UserGraph {
+struct Graph {
     struct BlockInput {
         std::string name;
         bool allow_exec = false;
@@ -52,7 +52,7 @@ struct UserGraph {
 };
 
 template <class Allocator>
-rapidjson::Value BuildBlocks(const std::vector<UserGraph::Block> &graph_blocks, Allocator &alloc) {
+rapidjson::Value BuildBlocks(const std::vector<Graph::Block> &graph_blocks, Allocator &alloc) {
     rapidjson::Value blocks(rapidjson::kArrayType);
     for (const auto &graph_block : graph_blocks) {
         rapidjson::Value block(rapidjson::kObjectType);
@@ -106,7 +106,7 @@ rapidjson::Value BuildBlocks(const std::vector<UserGraph::Block> &graph_blocks, 
 }
 
 template <class Allocator>
-rapidjson::Value BuildConnections(const std::vector<UserGraph::Connection> &graph_connections,
+rapidjson::Value BuildConnections(const std::vector<Graph::Connection> &graph_connections,
                                   Allocator &alloc) {
     rapidjson::Value connections(rapidjson::kArrayType);
     for (const auto &graph_connection : graph_connections) {
@@ -121,7 +121,7 @@ rapidjson::Value BuildConnections(const std::vector<UserGraph::Connection> &grap
 }
 
 template <class Allocator>
-rapidjson::Value BuildMeta(const UserGraph::Meta &graph_meta, Allocator &alloc) {
+rapidjson::Value BuildMeta(const Graph::Meta &graph_meta, Allocator &alloc) {
     rapidjson::Value meta(rapidjson::kObjectType);
     meta.AddMember("name", rapidjson::Value().SetString(graph_meta.name.c_str(), alloc), alloc);
     meta.AddMember("partition", rapidjson::Value().SetString(graph_meta.partition.c_str(), alloc),
@@ -130,7 +130,7 @@ rapidjson::Value BuildMeta(const UserGraph::Meta &graph_meta, Allocator &alloc) 
     return meta;
 }
 
-std::string StringifyGraph(const UserGraph &graph) {
+std::string StringifyGraph(const Graph &graph) {
     rapidjson::Document body(rapidjson::kObjectType);
     auto &alloc = body.GetAllocator();
     body.AddMember("blocks", BuildBlocks(graph.blocks, alloc), alloc);

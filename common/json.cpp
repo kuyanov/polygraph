@@ -7,7 +7,7 @@
 
 #include "constants.h"
 #include "error.h"
-#include "json_helpers.h"
+#include "json.h"
 
 rapidjson::Document ParseJSON(const std::string &json) {
     rapidjson::Document document;

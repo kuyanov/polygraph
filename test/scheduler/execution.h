@@ -14,9 +14,9 @@
 #include "gtest/gtest.h"
 #include "config.h"
 #include "constants.h"
-#include "json_helpers.h"
-#include "networking.h"
-#include "user_graph.h"
+#include "graph.h"
+#include "json.h"
+#include "net.h"
 
 const std::string kHost = Config::Instance().host;
 const int kPort = Config::Instance().port;
@@ -42,7 +42,7 @@ size_t ParseBlockId(const std::string &container_name) {
     return std::stoul(container_name.substr(l + 1, r - l - 1));
 }
 
-void CheckGraphExecution(const UserGraph &graph, int cnt_users, int cnt_runners, int exp_runs,
+void CheckGraphExecution(const Graph &graph, int cnt_users, int cnt_runners, int exp_runs,
                          int runner_delay, int exp_delay, std::vector<size_t> failed_blocks = {}) {
     std::string body = StringifyGraph(graph);
     auto uuid = HttpSession(kHost, kPort).Post("/submit", body);

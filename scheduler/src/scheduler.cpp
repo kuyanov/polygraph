@@ -3,7 +3,7 @@
 
 #include "constants.h"
 #include "error.h"
-#include "json_helpers.h"
+#include "json.h"
 #include "scheduler.h"
 #include "uuid.h"
 

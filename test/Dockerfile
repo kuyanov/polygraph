@@ -26,4 +26,6 @@ RUN rm -rf cmake-build-asan && \
     cmake .. -DCMAKE_BUILD_TYPE=ASan && \
     make
 
-ENTRYPOINT [ "./cmake-build-asan/test/scheduler/TestScheduler" ]
+ENTRYPOINT [ "bash", "-c", "./cmake-build-asan/scheduler/Scheduler & sleep 0.5 && \
+                            ./cmake-build-asan/test/scheduler/TestScheduler && \
+                            pkill Scheduler" ]
