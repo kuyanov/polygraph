@@ -39,18 +39,8 @@ bool GraphState::IsRunning() const {
 void GraphState::RunBlock(size_t block_id, RunnerWebSocket *ws) {
     ws->getUserData()->graph_ptr = this;
     ws->getUserData()->block_id = block_id;
-    try {
-        PrepareBlockContainer(block_id);
-        SendTasks(block_id, ws);
-    } catch (const fs::filesystem_error &error) {
-        partition_ptr->AddRunner(ws);
-        SendToAllClients(errors::kRuntimeErrorPrefix + error.what());
-        DequeueBlock();
-        ClearBlockState(block_id);
-        if (!IsRunning()) {
-            SendToAllClients(signals::kGraphComplete);
-        }
-    }
+    PrepareBlockContainer(block_id);
+    SendTasks(block_id, ws);
 }
 
 void GraphState::OnComplete(RunnerWebSocket *ws, std::string_view message) {
