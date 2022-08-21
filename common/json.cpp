@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -5,9 +6,10 @@
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/writer.h>
 
-#include "constants.h"
 #include "error.h"
 #include "json.h"
+
+namespace fs = std::filesystem;
 
 rapidjson::Document ParseJSON(const std::string &json) {
     rapidjson::Document document;
@@ -23,10 +25,10 @@ rapidjson::Document ReadJSON(const std::string &path) {
     return document;
 }
 
-std::string StringifyJSON(const rapidjson::Value &value) {
+std::string StringifyJSON(const rapidjson::Document &document) {
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-    value.Accept(writer);
+    document.Accept(writer);
     return buffer.GetString();
 }
 
@@ -36,7 +38,7 @@ std::string FormattedError(const rapidjson::Document &document) {
 }
 
 SchemaValidator::SchemaValidator(const std::string &filename) {
-    auto schema_document = ReadJSON((filesystem::kSchemaPath / filename).string());
+    auto schema_document = ReadJSON((fs::path(SCHEMA_DIR) / filename).string());
     if (schema_document.HasParseError()) {
         throw std::runtime_error("Could not parse json schema: " + FormattedError(schema_document));
     }
@@ -51,7 +53,8 @@ rapidjson::Document SchemaValidator::ParseAndValidate(const std::string &json) {
     }
     schema_validator_->Reset();
     if (!document.Accept(*schema_validator_)) {
-        rapidjson::Value error(schema_validator_->GetError(), document.GetAllocator());
+        rapidjson::Document error;
+        error.CopyFrom(schema_validator_->GetError(), error.GetAllocator());
         throw ValidationError(StringifyJSON(error));
     }
     return document;

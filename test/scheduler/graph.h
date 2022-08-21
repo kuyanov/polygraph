@@ -2,25 +2,16 @@
 
 #include <string>
 #include <vector>
-#include <rapidjson/document.h>
 
 #include "json.h"
 
 struct Graph {
     struct BlockInput {
         std::string name;
-        bool allow_exec = false;
     };
 
     struct BlockOutput {
         std::string name;
-    };
-
-    struct BlockExternal {
-        std::string name;
-        std::string user_path;
-        bool allow_write = false;
-        bool allow_exec = false;
     };
 
     struct Task {
@@ -31,7 +22,6 @@ struct Graph {
         std::string name;
         std::vector<BlockInput> inputs;
         std::vector<BlockOutput> outputs;
-        std::vector<BlockExternal> externals;
         std::vector<Task> tasks = {{"test"}};
     };
 
@@ -63,8 +53,6 @@ rapidjson::Value BuildBlocks(const std::vector<Graph::Block> &graph_blocks, Allo
             rapidjson::Value input(rapidjson::kObjectType);
             input.AddMember("name", rapidjson::Value().SetString(graph_input.name.c_str(), alloc),
                             alloc);
-            input.AddMember("allow-exec", rapidjson::Value().SetBool(graph_input.allow_exec),
-                            alloc);
             inputs.PushBack(input, alloc);
         }
         block.AddMember("inputs", inputs, alloc);
@@ -76,27 +64,14 @@ rapidjson::Value BuildBlocks(const std::vector<Graph::Block> &graph_blocks, Allo
             outputs.PushBack(output, alloc);
         }
         block.AddMember("outputs", outputs, alloc);
-        rapidjson::Value externals(rapidjson::kArrayType);
-        for (const auto &graph_external : graph_block.externals) {
-            rapidjson::Value external(rapidjson::kObjectType);
-            external.AddMember(
-                "name", rapidjson::Value().SetString(graph_external.name.c_str(), alloc), alloc);
-            external.AddMember(
-                "user-path", rapidjson::Value().SetString(graph_external.user_path.c_str(), alloc),
-                alloc);
-            external.AddMember("allow-write",
-                               rapidjson::Value().SetBool(graph_external.allow_write), alloc);
-            external.AddMember("allow-exec", rapidjson::Value().SetBool(graph_external.allow_exec),
-                               alloc);
-            externals.PushBack(external, alloc);
-        }
-        block.AddMember("externals", externals, alloc);
         rapidjson::Value tasks(rapidjson::kArrayType);
         for (const auto &graph_task : graph_block.tasks) {
             rapidjson::Value task(rapidjson::kObjectType);
             rapidjson::Value argv(rapidjson::kArrayType);
             argv.PushBack(rapidjson::Value().SetString(graph_task.command.c_str(), alloc), alloc);
             task.AddMember("argv", argv, alloc);
+            task.AddMember("binds", rapidjson::Value(rapidjson::kArrayType), alloc);
+            task.AddMember("env", rapidjson::Value(rapidjson::kArrayType), alloc);
             tasks.PushBack(task, alloc);
         }
         block.AddMember("tasks", tasks, alloc);

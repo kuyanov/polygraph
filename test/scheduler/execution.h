@@ -18,6 +18,8 @@
 #include "json.h"
 #include "net.h"
 
+namespace fs = std::filesystem;
+
 const std::string kHost = Config::Instance().host;
 const int kPort = Config::Instance().port;
 
@@ -57,22 +59,16 @@ void CheckGraphExecution(const Graph &graph, int cnt_users, int cnt_runners, int
             session.OnRead([&](const std::string &message) {
                 auto request_validator = SchemaValidator("request.json");
                 auto tasks_document = request_validator.ParseAndValidate(message);
-                auto tasks_array = tasks_document.GetArray();
-                std::string container_name = tasks_array[0]["container"].GetString();
+                auto tasks_array = tasks_document["tasks"].GetArray();
+                std::string container_name = tasks_document["container"].GetString();
                 size_t block_id = ParseBlockId(container_name);
                 for (const auto &input : graph.blocks[block_id].inputs) {
-                    ASSERT_TRUE(std::filesystem::exists(filesystem::kSandboxPath / container_name /
-                                                        input.name));
-                }
-                for (const auto &external : graph.blocks[block_id].externals) {
-                    ASSERT_TRUE(std::filesystem::exists(filesystem::kUserPath / container_name /
-                                                        external.name));
+                    ASSERT_TRUE(fs::exists(fs::path(SANDBOX_DIR) / container_name / input.name));
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(runner_delay));
                 for (const auto &output : graph.blocks[block_id].outputs) {
-                    ASSERT_TRUE(!std::filesystem::exists(filesystem::kSandboxPath / container_name /
-                                                         output.name));
-                    std::ofstream(filesystem::kSandboxPath / container_name / output.name);
+                    ASSERT_TRUE(!fs::exists(fs::path(SANDBOX_DIR) / container_name / output.name));
+                    std::ofstream(fs::path(SANDBOX_DIR) / container_name / output.name);
                 }
                 rapidjson::Document status_document(rapidjson::kArrayType);
                 auto &alloc = status_document.GetAllocator();

@@ -7,6 +7,8 @@
 #include "scheduler.h"
 #include "uuid.h"
 
+namespace fs = std::filesystem;
+
 GraphState::GraphState(Graph &&graph) : Graph(std::move(graph)) {
     blocks_state_.resize(blocks.size());
 }
@@ -40,7 +42,7 @@ void GraphState::RunBlock(size_t block_id, RunnerWebSocket *ws) {
     try {
         PrepareBlockContainer(block_id);
         SendTasks(block_id, ws);
-    } catch (const std::filesystem::filesystem_error &error) {
+    } catch (const fs::filesystem_error &error) {
         partition_ptr->AddRunner(ws);
         SendToAllClients(errors::kRuntimeErrorPrefix + error.what());
         DequeueBlock();
@@ -63,7 +65,7 @@ void GraphState::OnComplete(RunnerWebSocket *ws, std::string_view message) {
                     EnqueueBlock(connection.end_block_id);
                 }
             }
-        } catch (const std::filesystem::filesystem_error &error) {
+        } catch (const fs::filesystem_error &error) {
             SendToAllClients(errors::kRuntimeErrorPrefix + error.what());
         }
     }
@@ -94,27 +96,8 @@ void GraphState::DequeueBlock() {
 
 void GraphState::PrepareBlockContainer(size_t block_id) {
     std::string container_name = GetContainerName(block_id);
-    if (!std::filesystem::exists(filesystem::kSandboxPath / container_name)) {
-        std::filesystem::create_directories(filesystem::kSandboxPath / container_name);
-    }
-    for (const auto &external : blocks[block_id].externals) {
-        std::filesystem::path user_path = filesystem::kUserPath / external.user_path;
-        std::filesystem::path internal_path =
-            filesystem::kSandboxPath / container_name / external.name;
-        if (!std::filesystem::exists(user_path)) {
-            std::ofstream(user_path).close();
-        }
-        std::filesystem::copy(user_path, internal_path,
-                              std::filesystem::copy_options::create_hard_links |
-                                  std::filesystem::copy_options::recursive);
-        if (external.allow_write) {
-            std::filesystem::permissions(internal_path, filesystem::kWritePerms,
-                                         std::filesystem::perm_options::add);
-        }
-        if (external.allow_exec) {
-            std::filesystem::permissions(internal_path, filesystem::kExecPerms,
-                                         std::filesystem::perm_options::add);
-        }
+    if (!fs::exists(fs::path(SANDBOX_DIR) / container_name)) {
+        fs::create_directories(fs::path(SANDBOX_DIR) / container_name);
     }
 }
 
@@ -125,41 +108,34 @@ bool GraphState::TransferFile(const Connection &connection) {
     std::string end_container_name = GetContainerName(connection.end_block_id);
     std::string end_input_name =
         blocks[connection.end_block_id].inputs[connection.end_input_id].name;
-    if (!std::filesystem::exists(filesystem::kSandboxPath / end_container_name)) {
-        std::filesystem::create_directories(filesystem::kSandboxPath / end_container_name);
+    if (!fs::exists(fs::path(SANDBOX_DIR) / end_container_name)) {
+        fs::create_directories(fs::path(SANDBOX_DIR) / end_container_name);
     }
-    std::filesystem::path start_output_path =
-        filesystem::kSandboxPath / start_container_name / start_output_name;
-    std::filesystem::path end_input_path =
-        filesystem::kSandboxPath / end_container_name / end_input_name;
-    if (!std::filesystem::exists(start_output_path) || std::filesystem::exists(end_input_path)) {
+    fs::path start_output_path = fs::path(SANDBOX_DIR) / start_container_name / start_output_name;
+    fs::path end_input_path = fs::path(SANDBOX_DIR) / end_container_name / end_input_name;
+    if (!fs::exists(start_output_path) || fs::exists(end_input_path)) {
         return false;
     }
-    std::filesystem::copy(start_output_path, end_input_path,
-                          std::filesystem::copy_options::create_hard_links |
-                              std::filesystem::copy_options::recursive);
-    if (blocks[connection.end_block_id].inputs[connection.end_input_id].allow_exec) {
-        std::filesystem::permissions(end_input_path, filesystem::kExecPerms,
-                                     std::filesystem::perm_options::add);
-    }
+    fs::copy(start_output_path, end_input_path,
+             fs::copy_options::create_hard_links | fs::copy_options::recursive);
     ++blocks_state_[connection.end_block_id].cnt_inputs_ready;
     return true;
 }
 
 void GraphState::SendTasks(size_t block_id, RunnerWebSocket *ws) {
     std::string container_name = GetContainerName(block_id);
-    auto &alloc = blocks[block_id].tasks.GetAllocator();
-    auto tasks_array = blocks[block_id].tasks.GetArray();
-    for (size_t task_id = 0; task_id < tasks_array.Size(); ++task_id) {
-        tasks_array[task_id]["container"].SetString(container_name.c_str(), alloc);
-    }
-    ws->send(StringifyJSON(blocks[block_id].tasks));
+    rapidjson::Document send_document(rapidjson::kObjectType);
+    auto &alloc = send_document.GetAllocator();
+    send_document.AddMember("tasks", rapidjson::Value().CopyFrom(blocks[block_id].tasks, alloc),
+                            alloc);
+    send_document.AddMember("container",
+                            rapidjson::Value().SetString(container_name.c_str(), alloc), alloc);
+    ws->send(StringifyJSON(send_document));
 }
 
 bool GraphState::ProcessResults(size_t block_id, std::string_view message) {
     std::string status_json(message);
-    rapidjson::Document status_document;
-    status_document.Parse(status_json.c_str());
+    rapidjson::Document status_document = ParseJSON(status_json);
     auto &alloc = status_document.GetAllocator();
     auto tasks_array = status_document.GetArray();
     bool exited_normally = true;

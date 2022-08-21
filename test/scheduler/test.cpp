@@ -40,55 +40,51 @@ TEST(ValidationError, InvalidType) {
         errors::kValidationErrorPrefix);
 }
 
-TEST(SemanticError, DuplicatedFilename) {
-    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}, {"a.in"}}, {}, {}}}}),
-                          errors::kSemanticErrorPrefix + errors::kDuplicatedFilename);
-    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {{"a.out"}, {"a.out"}}, {}}}}),
-                          errors::kSemanticErrorPrefix + errors::kDuplicatedFilename);
-    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {}, {{"a.ext"}, {"a.ext"}}}}}),
-                          errors::kSemanticErrorPrefix + errors::kDuplicatedFilename);
-    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}, {"a"}}, {{"a.out"}, {"a"}}, {}}}}),
-                          errors::kSemanticErrorPrefix + errors::kDuplicatedFilename);
-    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}, {"a"}}, {}, {{"a.ext"}, {"a"}}}}}),
-                          errors::kSemanticErrorPrefix + errors::kDuplicatedFilename);
+TEST(ValidationError, DuplicatedFilename) {
+    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}, {"a.in"}}, {}}}}),
+                          errors::kValidationErrorPrefix + errors::kDuplicatedFilename);
+    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {{"a.out"}, {"a.out"}}}}}),
+                          errors::kValidationErrorPrefix + errors::kDuplicatedFilename);
+    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}, {"a"}}, {{"a.out"}, {"a"}}}}}),
+                          errors::kValidationErrorPrefix + errors::kDuplicatedFilename);
 }
 
-TEST(SemanticError, InvalidFilename) {
-    CheckSubmitStartsWith(StringifyGraph({{{"", {{}}, {}, {}}}}),
-                          errors::kSemanticErrorPrefix + errors::kEmptyFilename);
-    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {{".."}}, {}}}}),
-                          errors::kSemanticErrorPrefix + errors::kInvalidFilename);
-    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {}, {{"a/b"}}}}}),
-                          errors::kSemanticErrorPrefix + errors::kInvalidFilename);
+TEST(ValidationError, InvalidFilename) {
+    CheckSubmitStartsWith(StringifyGraph({{{"", {{}}, {}}}}),
+                          errors::kValidationErrorPrefix + errors::kInvalidFilename);
+    CheckSubmitStartsWith(StringifyGraph({{{"", {}, {{".."}}}}}),
+                          errors::kValidationErrorPrefix + errors::kInvalidFilename);
+    CheckSubmitStartsWith(StringifyGraph({{{"", {{"a/b"}}, {}}}}),
+                          errors::kValidationErrorPrefix + errors::kInvalidFilename);
 }
 
-TEST(SemanticError, ConnectionStartBlock) {
+TEST(ValidationError, ConnectionStartBlock) {
     CheckSubmitStartsWith(
         StringifyGraph({{{"", {{"a.in"}}, {}}, {"", {}, {{"a.out"}}}}, {{2, 0, 0, 0}}}),
-        errors::kSemanticErrorPrefix + errors::kInvalidStartBlock);
+        errors::kValidationErrorPrefix + errors::kInvalidStartBlock);
 }
 
-TEST(SemanticError, ConnectionStartOutput) {
+TEST(ValidationError, ConnectionStartOutput) {
     CheckSubmitStartsWith(
         StringifyGraph({{{"", {{"a.in"}}, {}}, {"", {}, {{"a.out"}}}}, {{1, 1, 0, 0}}}),
-        errors::kSemanticErrorPrefix + errors::kInvalidStartBlockOutput);
+        errors::kValidationErrorPrefix + errors::kInvalidStartBlockOutput);
 }
 
-TEST(SemanticError, ConnectionEndBlock) {
+TEST(ValidationError, ConnectionEndBlock) {
     CheckSubmitStartsWith(
         StringifyGraph({{{"", {{"a.in"}}, {}}, {"", {}, {{"a.out"}}}}, {{1, 0, -1, 0}}}),
-        errors::kSemanticErrorPrefix + errors::kInvalidEndBlock);
+        errors::kValidationErrorPrefix + errors::kInvalidEndBlock);
 }
 
-TEST(SemanticError, ConnectionEndInput) {
+TEST(ValidationError, ConnectionEndInput) {
     CheckSubmitStartsWith(
         StringifyGraph({{{"", {{"a.in"}}, {}}, {"", {}, {{"a.out"}}}}, {{1, 0, 0, -1}}}),
-        errors::kSemanticErrorPrefix + errors::kInvalidEndBlockInput);
+        errors::kValidationErrorPrefix + errors::kInvalidEndBlockInput);
 }
 
-TEST(SemanticError, Loop) {
+TEST(ValidationError, Loop) {
     CheckSubmitStartsWith(StringifyGraph({{{"", {{"a.in"}}, {{"a.out"}}}}, {{0, 0, 0, 0}}}),
-                          errors::kSemanticErrorPrefix + errors::kLoopsNotSupported);
+                          errors::kValidationErrorPrefix + errors::kLoopsNotSupported);
 }
 
 TEST(Submit, GraphIdUnique) {

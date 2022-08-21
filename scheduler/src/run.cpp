@@ -37,9 +37,6 @@ void Run() {
             } catch (const ValidationError &error) {
                 res->writeStatus(http_response::kBadRequest)->end(
                     errors::kValidationErrorPrefix + error.message);
-            } catch (const SemanticError &error) {
-                res->writeStatus(http_response::kBadRequest)->end(
-                    errors::kSemanticErrorPrefix + error.message);
             }
         });
     }).ws<RunnerPerSocketData>("/runner/:partition", {

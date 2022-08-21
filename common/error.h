@@ -17,13 +17,6 @@ struct ValidationError : public std::exception {
     }
 };
 
-struct SemanticError : public std::exception {
-    std::string message;
-
-    explicit SemanticError(std::string message = "") : message(std::move(message)) {
-    }
-};
-
 struct APIError : public std::exception {
     std::string message;
 

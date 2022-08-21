@@ -1,22 +1,6 @@
 #pragma once
 
-#include <filesystem>
 #include <string>
-
-namespace filesystem {
-
-const std::filesystem::path kSchemaPath = SCHEMA_DIR;
-const std::filesystem::path kSandboxPath = SANDBOX_DIR;
-const std::filesystem::path kUserPath = USER_DIR;
-
-const std::filesystem::perms kWritePerms = std::filesystem::perms::owner_write |
-                                           std::filesystem::perms::group_write |
-                                           std::filesystem::perms::others_write;
-const std::filesystem::perms kExecPerms = std::filesystem::perms::owner_exec |
-                                          std::filesystem::perms::group_exec |
-                                          std::filesystem::perms::others_exec;
-
-}  // namespace filesystem
 
 namespace http_response {
 
@@ -30,12 +14,10 @@ namespace errors {
 
 const std::string kParseErrorPrefix = "Could not parse json: ";
 const std::string kValidationErrorPrefix = "Invalid document: ";
-const std::string kSemanticErrorPrefix = "Semantic error: ";
 const std::string kAPIErrorPrefix = "API error: ";
 const std::string kRuntimeErrorPrefix = "Runtime error: ";
 
 const std::string kDuplicatedFilename = "duplicated filename";
-const std::string kEmptyFilename = "empty filename";
 const std::string kInvalidFilename = "invalid filename";
 const std::string kInvalidStartBlock = "invalid connection start block";
 const std::string kInvalidStartBlockOutput = "invalid connection start block output";

@@ -7,25 +7,16 @@
 struct Graph {
     struct BlockInput {
         std::string name;
-        bool allow_exec;
     };
 
     struct BlockOutput {
         std::string name;
     };
 
-    struct BlockExternal {
-        std::string name;
-        std::string user_path;
-        bool allow_write;
-        bool allow_exec;
-    };
-
     struct Block {
         std::string name;
         std::vector<BlockInput> inputs;
         std::vector<BlockOutput> outputs;
-        std::vector<BlockExternal> externals;
         rapidjson::Document tasks{rapidjson::kArrayType};
     };
 

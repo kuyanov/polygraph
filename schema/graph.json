@@ -15,7 +15,6 @@
           "name",
           "inputs",
           "outputs",
-          "externals",
           "tasks"
         ],
         "properties": {
@@ -27,15 +26,11 @@
             "items": {
               "type": "object",
               "required": [
-                "name",
-                "allow-exec"
+                "name"
               ],
               "properties": {
                 "name": {
                   "type": "string"
-                },
-                "allow-exec": {
-                  "type": "boolean"
                 }
               }
             }
@@ -54,42 +49,49 @@
               }
             }
           },
-          "externals": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": [
-                "name",
-                "user-path",
-                "allow-write",
-                "allow-exec"
-              ],
-              "properties": {
-                "name": {
-                  "type": "string"
-                },
-                "user-path": {
-                  "type": "string"
-                },
-                "allow-write": {
-                  "type": "boolean"
-                },
-                "allow-exec": {
-                  "type": "boolean"
-                }
-              }
-            }
-          },
           "tasks": {
             "type": "array",
-            "minItems": 1,
             "items": {
               "type": "object",
               "required": [
-                "argv"
+                "argv",
+                "binds",
+                "env"
               ],
               "properties": {
                 "argv": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "binds": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "inside",
+                      "outside",
+                      "allow-write",
+                      "allow-exec"
+                    ],
+                    "properties": {
+                      "inside": {
+                        "type": "string"
+                      },
+                      "outside": {
+                        "type": "string"
+                      },
+                      "allow-write": {
+                        "type": "boolean"
+                      },
+                      "allow-exec": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                },
+                "env": {
                   "type": "array",
                   "items": {
                     "type": "string"
