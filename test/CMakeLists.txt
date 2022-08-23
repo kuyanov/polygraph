@@ -7,4 +7,6 @@ FetchContent_Declare(
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-add_subdirectory(scheduler)
+if (ENABLE_SCHEDULER)
+    add_subdirectory(scheduler)
+endif ()

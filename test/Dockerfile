@@ -29,13 +29,16 @@ WORKDIR /polygraph
 RUN rm -rf cmake-build-asan && \
     mkdir cmake-build-asan && \
     cd cmake-build-asan && \
-    cmake .. -DCMAKE_BUILD_TYPE=ASan && \
+    cmake .. \
+    -D CMAKE_BUILD_TYPE=ASan \
+    -D ENABLE_RUNNER=1 \
+    -D ENABLE_SCHEDULER=1 \
+    -D ENABLE_TESTING=1 && \
     make
 
 ENTRYPOINT [ "bash", "-c", "libsboxd start & \
-                            sleep 0.5 && \
                             ./cmake-build-asan/scheduler/Scheduler & \
-                            sleep 0.5 && \
+                            sleep 1 && \
                             ./cmake-build-asan/test/scheduler/TestScheduler && \
                             pkill Scheduler && \
                             libsboxd stop" ]

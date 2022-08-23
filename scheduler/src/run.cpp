@@ -98,10 +98,10 @@ void Run() {
         }
     }).listen(Config::Instance().host, Config::Instance().port, [&](auto *listen_socket) {
         if (listen_socket) {
-            std::cout << "Listening on " << Config::Instance().host << ":"
+            std::cout << "[scheduler] Listening on " << Config::Instance().host << ":"
                       << Config::Instance().port << std::endl;
         } else {
-            std::cerr << "Failed to listen on " << Config::Instance().host << ":"
+            std::cerr << "[scheduler] Failed to listen on " << Config::Instance().host << ":"
                       << Config::Instance().port << std::endl;
         }
     }).run();
