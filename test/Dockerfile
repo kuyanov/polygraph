@@ -3,7 +3,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y git build-essential cmake libboost-system-dev
+    apt-get install -y git build-essential bsdmainutils cmake libboost-system-dev
 RUN git clone https://github.com/Tencent/rapidjson.git && \
     cp -r rapidjson/include/rapidjson /usr/local/include/
 RUN git clone https://github.com/uNetworking/uWebSockets.git && \
@@ -32,8 +32,10 @@ RUN rm -rf cmake-build-asan && \
     cmake .. -DCMAKE_BUILD_TYPE=ASan && \
     make
 
-ENTRYPOINT [ "bash", "-c", "libsboxd start & sleep 0.5 && \
-                            ./cmake-build-asan/scheduler/Scheduler & sleep 0.5 && \
+ENTRYPOINT [ "bash", "-c", "libsboxd start & \
+                            sleep 0.5 && \
+                            ./cmake-build-asan/scheduler/Scheduler & \
+                            sleep 0.5 && \
                             ./cmake-build-asan/test/scheduler/TestScheduler && \
                             pkill Scheduler && \
                             libsboxd stop" ]
