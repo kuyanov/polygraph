@@ -12,7 +12,8 @@
         "type": "object",
         "required": [
           "argv",
-          "binds"
+          "binds",
+          "env"
         ],
         "properties": {
           "argv": {

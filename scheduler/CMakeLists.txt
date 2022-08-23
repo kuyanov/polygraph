@@ -1,3 +1,9 @@
+find_library(USOCKETS_LIBRARY uSockets.a REQUIRED)
+
+add_library(uWebSockets INTERFACE)
+target_compile_definitions(uWebSockets INTERFACE UWS_NO_ZLIB)
+target_link_libraries(uWebSockets INTERFACE ${USOCKETS_LIBRARY})
+
 add_executable(Scheduler main.cpp)
 file(GLOB SCHEDULER_SOURCES src/*.cpp)
 target_sources(Scheduler PRIVATE ${SCHEDULER_SOURCES})

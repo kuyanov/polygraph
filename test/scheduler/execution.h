@@ -57,7 +57,7 @@ void CheckGraphExecution(const Graph &graph, int cnt_users, int cnt_runners, int
         runner_threads[runner_id] = std::thread([&] {
             WebsocketSession session(ioc, kHost, kPort, "/runner/" + graph.meta.partition);
             session.OnRead([&](const std::string &message) {
-                auto request_validator = SchemaValidator("request.json");
+                auto request_validator = SchemaValidator("runner_request.json");
                 auto tasks_document = request_validator.ParseAndValidate(message);
                 auto tasks_array = tasks_document["tasks"].GetArray();
                 std::string container_name = tasks_document["container"].GetString();
@@ -70,16 +70,18 @@ void CheckGraphExecution(const Graph &graph, int cnt_users, int cnt_runners, int
                     ASSERT_TRUE(!fs::exists(fs::path(SANDBOX_DIR) / container_name / output.name));
                     std::ofstream(fs::path(SANDBOX_DIR) / container_name / output.name);
                 }
-                rapidjson::Document status_document(rapidjson::kArrayType);
-                auto &alloc = status_document.GetAllocator();
                 bool failed = std::find(failed_blocks.begin(), failed_blocks.end(), block_id) !=
                               failed_blocks.end();
+                rapidjson::Document status_document(rapidjson::kObjectType);
+                auto &alloc = status_document.GetAllocator();
+                rapidjson::Value status_array(rapidjson::kArrayType);
                 for (size_t task_id = 0; task_id < tasks_array.Size(); ++task_id) {
-                    rapidjson::Value task(rapidjson::kObjectType);
-                    task.AddMember("exited", rapidjson::Value().SetBool(true), alloc);
-                    task.AddMember("exit-code", rapidjson::Value().SetInt(failed), alloc);
-                    status_document.PushBack(task, alloc);
+                    rapidjson::Value status_value(rapidjson::kObjectType);
+                    status_value.AddMember("exited", rapidjson::Value().SetBool(true), alloc);
+                    status_value.AddMember("exit-code", rapidjson::Value().SetInt(failed), alloc);
+                    status_array.PushBack(status_value, alloc);
                 }
+                status_document.AddMember("tasks", status_array, alloc);
                 session.Write(StringifyJSON(status_document));
             });
             ioc.run();

@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "error"
+      ],
+      "properties": {
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "tasks"
+      ],
+      "properties": {
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "time-usage-ms",
+              "time-usage-sys-ms",
+              "time-usage-user-ms",
+              "wall-time-usage-ms",
+              "memory-usage-kb",
+              "time-limit-exceeded",
+              "wall-time-limit-exceeded",
+              "memory-limit-exceeded",
+              "exited",
+              "exit-code",
+              "signaled",
+              "term-signal",
+              "oom-killed"
+            ],
+            "properties": {
+              "time-usage-ms": {
+                "type": "integer"
+              },
+              "time-usage-sys-ms": {
+                "type": "integer"
+              },
+              "time-usage-user-ms": {
+                "type": "integer"
+              },
+              "wall-time-usage-ms": {
+                "type": "integer"
+              },
+              "memory-usage-kb": {
+                "type": "integer"
+              },
+              "time-limit-exceeded": {
+                "type": "boolean"
+              },
+              "wall-time-limit-exceeded": {
+                "type": "boolean"
+              },
+              "memory-limit-exceeded": {
+                "type": "boolean"
+              },
+              "exited": {
+                "type": "boolean"
+              },
+              "exit-code": {
+                "type": "integer"
+              },
+              "signaled": {
+                "type": "boolean"
+              },
+              "term-signal": {
+                "type": "integer"
+              },
+              "oom-killed": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

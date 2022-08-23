@@ -43,10 +43,10 @@ void GraphState::RunBlock(size_t block_id, RunnerWebSocket *ws) {
     SendTasks(block_id, ws);
 }
 
-void GraphState::OnComplete(RunnerWebSocket *ws, std::string_view message) {
+void GraphState::OnStatus(RunnerWebSocket *ws, std::string_view message) {
     size_t block_id = ws->getUserData()->block_id;
     partition_ptr->AddRunner(ws);
-    bool success = ProcessResults(block_id, message);
+    bool success = ProcessStatus(block_id, message);
     DequeueBlock();
     if (success) {
         try {
@@ -114,26 +114,31 @@ bool GraphState::TransferFile(const Connection &connection) {
 
 void GraphState::SendTasks(size_t block_id, RunnerWebSocket *ws) {
     std::string container_name = GetContainerName(block_id);
-    rapidjson::Document send_document(rapidjson::kObjectType);
-    auto &alloc = send_document.GetAllocator();
-    send_document.AddMember("tasks", rapidjson::Value().CopyFrom(blocks[block_id].tasks, alloc),
-                            alloc);
-    send_document.AddMember("container",
-                            rapidjson::Value().SetString(container_name.c_str(), alloc), alloc);
-    ws->send(StringifyJSON(send_document));
+    rapidjson::Document tasks_document(rapidjson::kObjectType);
+    auto &alloc = tasks_document.GetAllocator();
+    tasks_document.AddMember("tasks", rapidjson::Value().CopyFrom(blocks[block_id].tasks, alloc),
+                             alloc);
+    tasks_document.AddMember("container",
+                             rapidjson::Value().SetString(container_name.c_str(), alloc), alloc);
+    ws->send(StringifyJSON(tasks_document));
 }
 
-bool GraphState::ProcessResults(size_t block_id, std::string_view message) {
+bool GraphState::ProcessStatus(size_t block_id, std::string_view message) {
     std::string status_json(message);
     rapidjson::Document status_document = ParseJSON(status_json);
     auto &alloc = status_document.GetAllocator();
-    auto tasks_array = status_document.GetArray();
+    status_document.AddMember("block-id", rapidjson::Value().SetInt(block_id), alloc);
+    if (!status_document.HasMember("tasks")) {
+        SendToAllClients(StringifyJSON(status_document));
+        return false;
+    }
+    auto tasks_array = status_document["tasks"].GetArray();
     bool exited_normally = true;
     for (size_t task_id = 0; task_id < tasks_array.Size(); ++task_id) {
-        tasks_array[task_id].AddMember("block-id", rapidjson::Value().SetInt(block_id), alloc);
         if (!tasks_array[task_id]["exited"].GetBool() ||
             tasks_array[task_id]["exit-code"].GetInt() != 0) {
             exited_normally = false;
+            break;
         }
     }
     SendToAllClients(StringifyJSON(status_document));

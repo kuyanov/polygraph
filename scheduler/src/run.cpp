@@ -55,7 +55,7 @@ void Run() {
         },
         .message = [&](auto *ws, std::string_view message, uWS::OpCode op_code) {
             GraphState *graph_ptr = ws->getUserData()->graph_ptr;
-            graph_ptr->OnComplete(ws, message);
+            graph_ptr->OnStatus(ws, message);
         },
         .close = [&](auto *ws, int code, std::string_view message) {
             scheduler.LeaveRunner(ws);

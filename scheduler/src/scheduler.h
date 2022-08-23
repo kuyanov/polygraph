@@ -40,7 +40,7 @@ public:
     bool IsRunning() const;
 
     void RunBlock(size_t block_id, RunnerWebSocket *ws);
-    void OnComplete(RunnerWebSocket *ws, std::string_view message);
+    void OnStatus(RunnerWebSocket *ws, std::string_view message);
 
     void EnqueueBlock(size_t block_id);
     void DequeueBlock();
@@ -49,7 +49,7 @@ public:
     bool TransferFile(const Connection &connection);
 
     void SendTasks(size_t block_id, RunnerWebSocket *ws);
-    bool ProcessResults(size_t block_id, std::string_view message);
+    bool ProcessStatus(size_t block_id, std::string_view message);
 
     bool IsBlockReady(size_t block_id) const;
     void ClearBlockState(size_t block_id);
