@@ -16,6 +16,12 @@ RUN git clone https://github.com/uNetworking/uWebSockets.git && \
     make && \
     cp src/libusockets.h /usr/local/include/ && \
     cp uSockets.a /usr/local/lib
+RUN git clone https://github.com/Forestryks/libsbox.git && \
+    mkdir libsbox/build && \
+    cd libsbox/build && \
+    cmake .. && \
+    make && \
+    yes | make install
 
 COPY . /polygraph
 WORKDIR /polygraph
@@ -26,6 +32,8 @@ RUN rm -rf cmake-build-asan && \
     cmake .. -DCMAKE_BUILD_TYPE=ASan && \
     make
 
-ENTRYPOINT [ "bash", "-c", "./cmake-build-asan/scheduler/Scheduler & sleep 0.5 && \
+ENTRYPOINT [ "bash", "-c", "libsboxd start & sleep 0.5 && \
+                            ./cmake-build-asan/scheduler/Scheduler & sleep 0.5 && \
                             ./cmake-build-asan/test/scheduler/TestScheduler && \
-                            pkill Scheduler" ]
+                            pkill Scheduler && \
+                            libsboxd stop" ]
