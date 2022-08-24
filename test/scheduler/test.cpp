@@ -7,6 +7,8 @@
 #include "execution.h"
 #include "graph.h"
 
+const int kRunnerDelay = 500;
+
 TEST(ParseError, Trivial) {
     CheckSubmitStartsWith("", errors::kParseErrorPrefix);
     CheckSubmitStartsWith("{", errors::kParseErrorPrefix);
@@ -110,26 +112,26 @@ TEST(Submit, MaxPayloadSize) {
 
 TEST(Execution, Empty) {
     Graph graph = {};
-    CheckGraphExecution(graph, 1, 1, 0, 100, 0);
+    CheckGraphExecution(graph, 1, 1, 0, kRunnerDelay, 0);
 }
 
 TEST(Execution, SingleBlock) {
     Graph graph = {{{}}};
-    CheckGraphExecution(graph, 5, 1, 1, 100, 100);
-    CheckGraphExecution(graph, 5, 10, 1, 100, 100);
+    CheckGraphExecution(graph, 5, 1, 1, kRunnerDelay, kRunnerDelay);
+    CheckGraphExecution(graph, 5, 10, 1, kRunnerDelay, kRunnerDelay);
 }
 
 TEST(Execution, Bamboo) {
     Graph graph = {{{"0", {}, {{"a.out"}}}, {"1", {{"a.in"}}, {{"a.out"}}}, {"2", {{"a.in"}}, {}}},
                    {{0, 0, 1, 0}, {1, 0, 2, 0}}};
-    CheckGraphExecution(graph, 5, 1, 3, 100, 300);
-    CheckGraphExecution(graph, 5, 10, 3, 100, 300);
+    CheckGraphExecution(graph, 5, 1, 3, kRunnerDelay, 3 * kRunnerDelay);
+    CheckGraphExecution(graph, 5, 10, 3, kRunnerDelay, 3 * kRunnerDelay);
 }
 
 TEST(Execution, Parallel) {
     Graph graph = {{{"0"}, {"1"}, {"2"}}};
-    CheckGraphExecution(graph, 5, 1, 3, 100, 300);
-    CheckGraphExecution(graph, 5, 3, 3, 100, 100);
+    CheckGraphExecution(graph, 5, 1, 3, kRunnerDelay, 3 * kRunnerDelay);
+    CheckGraphExecution(graph, 5, 3, 3, kRunnerDelay, kRunnerDelay);
 }
 
 TEST(Execution, MaxRunners) {
@@ -147,19 +149,19 @@ TEST(Execution, MaxRunners) {
                     {2, 0, 5, 1},
                     {3, 0, 5, 2},
                     {4, 0, 5, 3}}};
-    CheckGraphExecution(graph, 3, 1, 6, 100, 600);
-    CheckGraphExecution(graph, 3, 2, 6, 100, 400);
-    CheckGraphExecution(graph, 3, 3, 6, 100, 400);
-    CheckGraphExecution(graph, 3, 4, 6, 100, 300);
-    CheckGraphExecution(graph, 3, 6, 6, 100, 300);
+    CheckGraphExecution(graph, 3, 1, 6, kRunnerDelay, 6 * kRunnerDelay);
+    CheckGraphExecution(graph, 3, 2, 6, kRunnerDelay, 4 * kRunnerDelay);
+    CheckGraphExecution(graph, 3, 3, 6, kRunnerDelay, 4 * kRunnerDelay);
+    CheckGraphExecution(graph, 3, 4, 6, kRunnerDelay, 3 * kRunnerDelay);
+    CheckGraphExecution(graph, 3, 6, 6, kRunnerDelay, 3 * kRunnerDelay);
     graph.meta.max_runners = 4;
-    CheckGraphExecution(graph, 3, 4, 6, 100, 300);
+    CheckGraphExecution(graph, 3, 4, 6, kRunnerDelay, 3 * kRunnerDelay);
     graph.meta.max_runners = 3;
-    CheckGraphExecution(graph, 3, 4, 6, 100, 400);
+    CheckGraphExecution(graph, 3, 4, 6, kRunnerDelay, 4 * kRunnerDelay);
     graph.meta.max_runners = 2;
-    CheckGraphExecution(graph, 3, 4, 6, 100, 400);
+    CheckGraphExecution(graph, 3, 4, 6, kRunnerDelay, 4 * kRunnerDelay);
     graph.meta.max_runners = 1;
-    CheckGraphExecution(graph, 3, 4, 6, 100, 600);
+    CheckGraphExecution(graph, 3, 4, 6, kRunnerDelay, 6 * kRunnerDelay);
 }
 
 TEST(Execution, FiniteCycle) {
@@ -180,7 +182,7 @@ TEST(Execution, FiniteCycle) {
                     {4, 0, 5, 0},
                     {5, 0, 6, 0},
                     {6, 0, 5, 1}}};
-    CheckGraphExecution(graph, 3, 2, 11, 100, 700);
+    CheckGraphExecution(graph, 3, 2, 11, kRunnerDelay, 7 * kRunnerDelay);
 }
 
 TEST(Execution, FailedBlocks) {
@@ -190,7 +192,7 @@ TEST(Execution, FailedBlocks) {
                     {"3", {{"i2"}}, {{"o4"}}},
                     {"4", {{"i3"}}, {}}},
                    {{0, 0, 1, 0}, {2, 0, 3, 0}, {3, 0, 4, 0}}};
-    CheckGraphExecution(graph, 3, 2, 3, 100, 200, {0, 3});
+    CheckGraphExecution(graph, 3, 2, 3, kRunnerDelay, 2 * kRunnerDelay, {0, 3});
 }
 
 TEST(Execution, Stress) {

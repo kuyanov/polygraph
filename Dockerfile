@@ -1,9 +1,10 @@
 FROM ubuntu:latest
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y git build-essential bsdmainutils cmake libboost-system-dev
+    apt-get install -y build-essential git gdb cmake bsdmainutils libboost-system-dev
 RUN git clone https://github.com/Tencent/rapidjson.git && \
     cp -r rapidjson/include/rapidjson /usr/local/include/
 RUN git clone https://github.com/uNetworking/uWebSockets.git && \
