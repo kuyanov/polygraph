@@ -29,10 +29,5 @@ private:
 
 template <class... Args>
 void Log(Args... args) {
-    Logger::Get().template Print(std::cout, std::forward<Args>(args)...);
-}
-
-template <class... Args>
-void Err(Args... args) {
     Logger::Get().template Print(std::cerr, std::forward<Args>(args)...);
 }

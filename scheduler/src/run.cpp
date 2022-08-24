@@ -101,7 +101,7 @@ void Run() {
         if (listen_socket) {
             Log("Listening on ", Config::Get().host, ":", Config::Get().port);
         } else {
-            Err("Failed to listen on ", Config::Get().host, ":", Config::Get().port);
+            Log("Failed to listen on ", Config::Get().host, ":", Config::Get().port);
         }
     }).run();
 }
