@@ -9,7 +9,7 @@ public:
     std::string scheduler_host, partition;
     int scheduler_port;
 
-    static Config &Instance() {
+    static Config &Get() {
         static Config config(CONFIG_FILE);
         return config;
     }

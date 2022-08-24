@@ -4,6 +4,7 @@
 #include <libsbox.h>
 
 #include "config.h"
+#include "logger.h"
 #include "net.h"
 #include "run.h"
 
@@ -99,10 +100,12 @@ rapidjson::Value BuildStatus(const libsbox::Task *task, Allocator &alloc) {
 }
 
 void Run() {
+    Logger::Get().SetName("runner");
     asio::io_context ioc;
-    WebsocketSession session(ioc, Config::Instance().scheduler_host,
-                             Config::Instance().scheduler_port,
-                             "/runner/" + Config::Instance().partition);
+    WebsocketSession session(ioc, Config::Get().scheduler_host, Config::Get().scheduler_port,
+                             "/runner/" + Config::Get().partition);
+    Log("Connected to ", Config::Get().scheduler_host, ":", Config::Get().scheduler_port);
+
     session.OnRead([&](const std::string &message) {
         auto tasks_document = ParseJSON(message);
         auto tasks_array = tasks_document["tasks"].GetArray();
@@ -132,5 +135,6 @@ void Run() {
         }
         session.Write(StringifyJSON(status_document));
     });
+
     ioc.run();
 }

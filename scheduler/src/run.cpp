@@ -1,4 +1,3 @@
-#include <iostream>
 #include <string>
 #include <uWebSockets/App.h>
 
@@ -6,10 +5,12 @@
 #include "constants.h"
 #include "error.h"
 #include "graph.h"
+#include "logger.h"
 #include "run.h"
 #include "scheduler.h"
 
 void Run() {
+    Logger::Get().SetName("scheduler");
     static SchemaValidator graph_validator("graph.json");
     static Scheduler scheduler;
 
@@ -18,7 +19,7 @@ void Run() {
         res->onAborted([] {});
         res->onData([&, res, graph_json = std::move(graph_json)]
                     (std::string_view chunk, bool is_last) mutable {
-            if (graph_json.size() + chunk.size() > Config::Instance().max_payload_size) {
+            if (graph_json.size() + chunk.size() > Config::Get().max_payload_size) {
                 res->writeStatus(http_response::kRequestEntityTooLarge)->end("", true);
                 return;
             }
@@ -40,7 +41,7 @@ void Run() {
             }
         });
     }).ws<RunnerPerSocketData>("/runner/:partition", {
-        .maxPayloadLength = Config::Instance().max_payload_size,
+        .maxPayloadLength = Config::Get().max_payload_size,
         .upgrade = [&](auto *res, auto *req, auto *context) {
             std::string partition(req->getParameter(0));
             res->template upgrade<RunnerPerSocketData>({ .partition = partition },
@@ -61,7 +62,7 @@ void Run() {
             scheduler.LeaveRunner(ws);
         }
     }).ws<ClientPerSocketData>("/graph/:id", {
-        .maxPayloadLength = Config::Instance().max_payload_size,
+        .maxPayloadLength = Config::Get().max_payload_size,
         .upgrade = [&](auto *res, auto *req, auto *context) {
             std::string graph_id(req->getParameter(0));
             GraphState *graph_ptr = scheduler.FindGraph(graph_id);
@@ -96,13 +97,11 @@ void Run() {
         .close = [&](auto *ws, int code, std::string_view message) {
             scheduler.LeaveClient(ws);
         }
-    }).listen(Config::Instance().host, Config::Instance().port, [&](auto *listen_socket) {
+    }).listen(Config::Get().host, Config::Get().port, [&](auto *listen_socket) {
         if (listen_socket) {
-            std::cout << "[scheduler] Listening on " << Config::Instance().host << ":"
-                      << Config::Instance().port << std::endl;
+            Log("Listening on ", Config::Get().host, ":", Config::Get().port);
         } else {
-            std::cerr << "[scheduler] Failed to listen on " << Config::Instance().host << ":"
-                      << Config::Instance().port << std::endl;
+            Err("Failed to listen on ", Config::Get().host, ":", Config::Get().port);
         }
     }).run();
 }
