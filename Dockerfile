@@ -37,10 +37,4 @@ RUN rm -rf cmake-build-asan && \
     -D ENABLE_TESTING=1 && \
     make
 
-ENTRYPOINT [ "bash", "-c", "./cmake-build-asan/scheduler/Scheduler & \
-                            sleep 1 && \
-                            ./cmake-build-asan/test/scheduler/TestScheduler && \
-                            ./cmake-build-asan/runner/Runner & \
-                            sleep 1 && \
-                            pkill Runner && \
-                            pkill Scheduler" ]
+ENTRYPOINT [ "./entrypoint.sh" ]

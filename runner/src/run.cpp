@@ -1,5 +1,7 @@
+#include <chrono>
 #include <filesystem>
 #include <string>
+#include <thread>
 #include <vector>
 #include <libsbox.h>
 
@@ -99,42 +101,51 @@ rapidjson::Value BuildStatus(const libsbox::Task *task, Allocator &alloc) {
     return status_value;
 }
 
+void HandleMessage(const std::string &message, WebsocketSession &session) {
+    auto tasks_document = ParseJSON(message);
+    auto tasks_array = tasks_document["tasks"].GetArray();
+    auto container_name = tasks_document["container"].GetString();
+    auto container_path = fs::path(SANDBOX_DIR) / container_name;
+    std::vector<libsbox::Task *> tasks(tasks_array.Size());
+    for (size_t task_id = 0; task_id < tasks.size(); ++task_id) {
+        tasks[task_id] = new libsbox::Task;
+        tasks[task_id]->get_binds().push_back(libsbox::BindRule(".", container_path.string()));
+        FillTask(tasks_array[task_id], tasks[task_id]);
+    }
+    auto error = libsbox::run_together(tasks);
+    rapidjson::Document status_document;
+    auto &alloc = status_document.GetAllocator();
+    if (error) {
+        status_document.AddMember("error", rapidjson::Value().SetString(error.get().c_str(), alloc),
+                                  alloc);
+    } else {
+        rapidjson::Value status_array(rapidjson::kArrayType);
+        for (const auto *task : tasks) {
+            status_array.PushBack(BuildStatus(task, alloc), alloc);
+        }
+        status_document.AddMember("tasks", status_array, alloc);
+    }
+    for (const auto *task : tasks) {
+        delete task;
+    }
+    session.Write(StringifyJSON(status_document));
+}
+
 void Run() {
     Logger::Get().SetName("runner");
-    asio::io_context ioc;
-    WebsocketSession session(ioc, Config::Get().scheduler_host, Config::Get().scheduler_port,
-                             "/runner/" + Config::Get().partition);
-    Log("Connected to ", Config::Get().scheduler_host, ":", Config::Get().scheduler_port);
-
-    session.OnRead([&](const std::string &message) {
-        auto tasks_document = ParseJSON(message);
-        auto tasks_array = tasks_document["tasks"].GetArray();
-        auto container_name = tasks_document["container"].GetString();
-        auto container_path = fs::path(SANDBOX_DIR) / container_name;
-        std::vector<libsbox::Task *> tasks(tasks_array.Size());
-        for (size_t task_id = 0; task_id < tasks.size(); ++task_id) {
-            tasks[task_id] = new libsbox::Task;
-            tasks[task_id]->get_binds().push_back(libsbox::BindRule(".", container_path.string()));
-            FillTask(tasks_array[task_id], tasks[task_id]);
+    while (true) {
+        try {
+            asio::io_context ioc;
+            WebsocketSession session(ioc, Config::Get().scheduler_host,
+                                     Config::Get().scheduler_port,
+                                     "/runner/" + Config::Get().partition);
+            Log("Connected to ", Config::Get().scheduler_host, ":", Config::Get().scheduler_port);
+            session.OnRead([&](const std::string &message) { HandleMessage(message, session); });
+            ioc.run();
+        } catch (const beast::system_error &error) {
+            Log(error.what());
+            std::this_thread::sleep_for(
+                std::chrono::milliseconds(Config::Get().reconnect_interval_ms));
         }
-        auto error = libsbox::run_together(tasks);
-        rapidjson::Document status_document;
-        auto &alloc = status_document.GetAllocator();
-        if (error) {
-            status_document.AddMember(
-                "error", rapidjson::Value().SetString(error.get().c_str(), alloc), alloc);
-        } else {
-            rapidjson::Value status_array(rapidjson::kArrayType);
-            for (const auto *task : tasks) {
-                status_array.PushBack(BuildStatus(task, alloc), alloc);
-            }
-            status_document.AddMember("tasks", status_array, alloc);
-        }
-        for (const auto *task : tasks) {
-            delete task;
-        }
-        session.Write(StringifyJSON(status_document));
-    });
-
-    ioc.run();
+    }
 }
