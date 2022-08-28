@@ -10,7 +10,7 @@ public:
     int port;
     unsigned int max_payload_size;
 
-    static Config &Instance() {
+    static Config &Get() {
         static Config config(CONFIG_FILE);
         return config;
     }

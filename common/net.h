@@ -23,18 +23,46 @@ private:
     beast::tcp_stream stream_;
 };
 
-class WebsocketSession {
+class WebsocketClientSession {
 public:
-    WebsocketSession(asio::io_context &ioc, const std::string &host, int port,
-                     const std::string &target);
+    WebsocketClientSession();
+
+    void Connect(const std::string &host, int port, const std::string &target);
 
     void Write(const std::string &message);
-
     void OnRead(std::function<void(std::string)> handler);
 
-    ~WebsocketSession();
+    void Run();
+    void Stop();
+
+    ~WebsocketClientSession();
 
 private:
+    asio::io_context ioc_;
     websocket::stream<ip::tcp::socket> ws_;
     beast::flat_buffer buffer_;
+};
+
+class WebsocketServerSession {
+public:
+    WebsocketServerSession(websocket::stream<beast::tcp_stream> ws);
+
+    std::string Read();
+    void Write(const std::string &message);
+
+    ~WebsocketServerSession();
+
+private:
+    websocket::stream<beast::tcp_stream> ws_;
+};
+
+class WebsocketServer {
+public:
+    WebsocketServer(const std::string &host, int port);
+
+    WebsocketServerSession Accept();
+
+private:
+    asio::io_context ioc_;
+    ip::tcp::endpoint endpoint_;
 };

@@ -101,7 +101,7 @@ rapidjson::Value BuildStatus(const libsbox::Task *task, Allocator &alloc) {
     return status_value;
 }
 
-void HandleMessage(const std::string &message, WebsocketSession &session) {
+void HandleMessage(const std::string &message, WebsocketClientSession &session) {
     auto tasks_document = ParseJSON(message);
     auto tasks_array = tasks_document["tasks"].GetArray();
     auto container_name = tasks_document["container"].GetString();
@@ -113,7 +113,7 @@ void HandleMessage(const std::string &message, WebsocketSession &session) {
         FillTask(tasks_array[task_id], tasks[task_id]);
     }
     auto error = libsbox::run_together(tasks);
-    rapidjson::Document status_document;
+    rapidjson::Document status_document(rapidjson::kObjectType);
     auto &alloc = status_document.GetAllocator();
     if (error) {
         status_document.AddMember("error", rapidjson::Value().SetString(error.get().c_str(), alloc),
@@ -135,13 +135,12 @@ void Run() {
     Logger::Get().SetName("runner");
     while (true) {
         try {
-            asio::io_context ioc;
-            WebsocketSession session(ioc, Config::Get().scheduler_host,
-                                     Config::Get().scheduler_port,
-                                     "/runner/" + Config::Get().partition);
+            WebsocketClientSession session;
+            session.Connect(Config::Get().scheduler_host, Config::Get().scheduler_port,
+                            "/runner/" + Config::Get().partition);
             Log("Connected to ", Config::Get().scheduler_host, ":", Config::Get().scheduler_port);
             session.OnRead([&](const std::string &message) { HandleMessage(message, session); });
-            ioc.run();
+            session.Run();
         } catch (const beast::system_error &error) {
             Log(error.what());
             std::this_thread::sleep_for(

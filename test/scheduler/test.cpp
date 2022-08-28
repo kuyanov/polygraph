@@ -102,7 +102,7 @@ TEST(Submit, GraphIdUnique) {
 
 TEST(Submit, MaxPayloadSize) {
     std::string body;
-    body.resize(Config::Instance().max_payload_size, '.');
+    body.resize(Config::Get().max_payload_size, '.');
     auto result = HttpSession(kHost, kPort).Post("/submit", body);
     ASSERT_TRUE(result.starts_with(errors::kParseErrorPrefix));
     body.push_back('.');
