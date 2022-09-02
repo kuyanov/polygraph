@@ -19,12 +19,10 @@ const std::string kRuntimeErrorPrefix = "Runtime error: ";
 
 const std::string kDuplicatedFilename = "duplicated filename";
 const std::string kInvalidFilename = "invalid filename";
-const std::string kInvalidStartBlock = "invalid connection start block";
-const std::string kInvalidStartBlockOutput = "invalid connection start block output";
-const std::string kInvalidEndBlock = "invalid connection end block";
-const std::string kInvalidEndBlockInput = "invalid connection end block input";
+const std::string kInvalidConnection = "invalid connection";
 const std::string kLoopsNotSupported = "loops are not supported";
 const std::string kInvalidMaxRunners = "'max-runners' is invalid";
+const std::string kInvalidPartition = "invalid partition";
 const std::string kUndefinedCommand = "undefined command";
 const std::string kNotImplemented = "not implemented";
 const std::string kAlreadyRunning = "graph is already running";

@@ -17,6 +17,8 @@
 #include "graph.h"
 #include "json.h"
 #include "net.h"
+#include "run_request.h"
+#include "run_response.h"
 
 namespace fs = std::filesystem;
 
@@ -44,9 +46,38 @@ size_t ParseBlockId(const std::string &container_name) {
     return std::stoul(container_name.substr(l + 1, r - l - 1));
 }
 
+void ImitateRun(const std::string &message, const Graph &graph, int runner_delay,
+                const std::vector<size_t> &failed_blocks, std::string &result) {
+    auto request_validator = SchemaValidator("run_request.json");
+    RunRequest run_request;
+    run_request.Load(request_validator.ParseAndValidate(message));
+    std::string container_name = run_request.container;
+    size_t block_id = ParseBlockId(container_name);
+    for (const auto &input : graph.blocks[block_id].inputs) {
+        ASSERT_TRUE(fs::exists(fs::path(SANDBOX_DIR) / container_name / input.name));
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(runner_delay));
+    for (const auto &output : graph.blocks[block_id].outputs) {
+        ASSERT_TRUE(!fs::exists(fs::path(SANDBOX_DIR) / container_name / output.name));
+        std::ofstream(fs::path(SANDBOX_DIR) / container_name / output.name);
+    }
+    bool failed =
+        std::find(failed_blocks.begin(), failed_blocks.end(), block_id) != failed_blocks.end();
+    RunResponse run_response;
+    run_response.has_error = false;
+    for (const auto &task : run_request.tasks) {
+        Status status;
+        status.exited = true;
+        status.exit_code = failed;
+        run_response.statuses.push_back(status);
+    }
+    result = StringifyJSON(run_response.Dump());
+}
+
 void CheckGraphExecution(const Graph &graph, int cnt_clients, int cnt_runners, int exp_runs,
-                         int runner_delay, int exp_delay, std::vector<size_t> failed_blocks = {}) {
-    std::string body = StringifyGraph(graph);
+                         int runner_delay, int exp_delay,
+                         const std::vector<size_t> &failed_blocks = {}) {
+    std::string body = StringifyJSON(graph.Dump());
     auto uuid = HttpSession(kHost, kPort).Post("/submit", body);
     ASSERT_TRUE(IsUuid(uuid));
 
@@ -57,32 +88,9 @@ void CheckGraphExecution(const Graph &graph, int cnt_clients, int cnt_runners, i
         runner_threads[runner_id] = std::thread([&] {
             session.Connect(kHost, kPort, "/runner/" + graph.meta.partition);
             session.OnRead([&](const std::string &message) {
-                auto request_validator = SchemaValidator("runner_request.json");
-                auto tasks_document = request_validator.ParseAndValidate(message);
-                auto tasks_array = tasks_document["tasks"].GetArray();
-                std::string container_name = tasks_document["container"].GetString();
-                size_t block_id = ParseBlockId(container_name);
-                for (const auto &input : graph.blocks[block_id].inputs) {
-                    ASSERT_TRUE(fs::exists(fs::path(SANDBOX_DIR) / container_name / input.name));
-                }
-                std::this_thread::sleep_for(std::chrono::milliseconds(runner_delay));
-                for (const auto &output : graph.blocks[block_id].outputs) {
-                    ASSERT_TRUE(!fs::exists(fs::path(SANDBOX_DIR) / container_name / output.name));
-                    std::ofstream(fs::path(SANDBOX_DIR) / container_name / output.name);
-                }
-                bool failed = std::find(failed_blocks.begin(), failed_blocks.end(), block_id) !=
-                              failed_blocks.end();
-                rapidjson::Document status_document(rapidjson::kObjectType);
-                auto &alloc = status_document.GetAllocator();
-                rapidjson::Value status_array(rapidjson::kArrayType);
-                for (size_t task_id = 0; task_id < tasks_array.Size(); ++task_id) {
-                    rapidjson::Value status_value(rapidjson::kObjectType);
-                    status_value.AddMember("exited", rapidjson::Value().SetBool(true), alloc);
-                    status_value.AddMember("exit-code", rapidjson::Value().SetInt(failed), alloc);
-                    status_array.PushBack(status_value, alloc);
-                }
-                status_document.AddMember("tasks", status_array, alloc);
-                session.Write(StringifyJSON(status_document));
+                std::string result;
+                ImitateRun(message, graph, runner_delay, failed_blocks, result);
+                session.Write(result);
             });
             session.Run();
         });

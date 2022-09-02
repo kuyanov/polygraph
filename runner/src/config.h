@@ -16,10 +16,10 @@ public:
 
 private:
     Config(const std::string &config_path) {
-        auto config_document = ReadJSON(config_path);
-        scheduler_host = config_document["scheduler-host"].GetString();
-        scheduler_port = config_document["scheduler-port"].GetInt();
-        partition = config_document["partition"].GetString();
-        reconnect_interval_ms = config_document["reconnect-interval-ms"].GetInt();
+        auto document = ReadJSON(config_path);
+        scheduler_host = document["scheduler-host"].GetString();
+        scheduler_port = document["scheduler-port"].GetInt();
+        partition = document["partition"].GetString();
+        reconnect_interval_ms = document["reconnect-interval-ms"].GetInt();
     }
 };

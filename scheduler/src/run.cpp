@@ -1,10 +1,10 @@
 #include <string>
+#include <string_view>
 #include <uWebSockets/App.h>
 
 #include "config.h"
 #include "constants.h"
 #include "error.h"
-#include "graph.h"
 #include "logger.h"
 #include "run.h"
 #include "scheduler.h"
@@ -15,22 +15,21 @@ void Run() {
     static Scheduler scheduler;
 
     uWS::App().post("/submit", [&](auto *res, auto *req) {
-        std::string graph_json;
+        std::string graph_text;
         res->onAborted([] {});
-        res->onData([&, res, graph_json = std::move(graph_json)]
+        res->onData([&, res, graph_text = std::move(graph_text)]
                     (std::string_view chunk, bool is_last) mutable {
-            if (graph_json.size() + chunk.size() > Config::Get().max_payload_size) {
+            if (graph_text.size() + chunk.size() > Config::Get().max_payload_size) {
                 res->writeStatus(http_response::kRequestEntityTooLarge)->end("", true);
                 return;
             }
-            graph_json.append(chunk);
+            graph_text.append(chunk);
             if (!is_last) {
                 return;
             }
             try {
-                auto graph_document = graph_validator.ParseAndValidate(graph_json);
-                auto graph = Graph(graph_document);
-                std::string graph_id = scheduler.AddGraph(std::move(graph));
+                auto document = graph_validator.ParseAndValidate(graph_text);
+                std::string graph_id = scheduler.AddGraph(document);
                 res->end(graph_id);
             } catch (const ParseError &error) {
                 res->writeStatus(http_response::kBadRequest)->end(

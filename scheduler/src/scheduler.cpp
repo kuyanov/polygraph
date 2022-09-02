@@ -1,16 +1,65 @@
 #include <filesystem>
-#include <fstream>
+#include <string>
+#include <unordered_set>
 
 #include "constants.h"
 #include "error.h"
 #include "json.h"
+#include "run_request.h"
+#include "run_response.h"
 #include "scheduler.h"
 #include "uuid.h"
 
 namespace fs = std::filesystem;
 
-GraphState::GraphState(Graph &&graph) : Graph(std::move(graph)) {
+bool IsFilenameValid(const std::string &filename) {
+    return !filename.empty() && filename.find('/') == std::string::npos && filename[0] != '.';
+}
+
+void GraphState::Validate() const {
+    for (const auto &block : blocks) {
+        std::unordered_set<std::string> filenames;
+        for (const auto &input : block.inputs) {
+            filenames.insert(input.name);
+        }
+        for (const auto &output : block.outputs) {
+            filenames.insert(output.name);
+        }
+        for (const auto &filename : filenames) {
+            if (!IsFilenameValid(filename)) {
+                throw ValidationError(errors::kInvalidFilename);
+            }
+        }
+        if (filenames.size() != block.inputs.size() + block.outputs.size()) {
+            throw ValidationError(errors::kDuplicatedFilename);
+        }
+    }
+    for (const auto &[start_block_id, start_output_id, end_block_id, end_input_id] : connections) {
+        if (start_block_id >= blocks.size() ||
+            start_output_id >= blocks[start_block_id].outputs.size() ||
+            end_block_id >= blocks.size() || end_input_id >= blocks[end_block_id].inputs.size()) {
+            throw ValidationError(errors::kInvalidConnection);
+        }
+        if (start_block_id == end_block_id) {
+            throw ValidationError(errors::kLoopsNotSupported);
+        }
+    }
+    if (meta.partition.empty()) {
+        throw ValidationError(errors::kInvalidPartition);
+    }
+    if (meta.max_runners < 1) {
+        throw ValidationError(errors::kInvalidMaxRunners);
+    }
+}
+
+void GraphState::Init(const rapidjson::Document &document) {
+    Load(document);
+    Validate();
     blocks_state_.resize(blocks.size());
+    go_.resize(blocks.size());
+    for (const auto &connection : connections) {
+        go_[connection.start_block_id].push_back(connection);
+    }
 }
 
 void GraphState::Run() {
@@ -50,7 +99,7 @@ void GraphState::OnStatus(RunnerWebSocket *ws, std::string_view message) {
     DequeueBlock();
     if (success) {
         try {
-            for (const auto &connection : connections[block_id]) {
+            for (const auto &connection : go_[block_id]) {
                 if (TransferFile(connection) && IsBlockReady(connection.end_block_id)) {
                     EnqueueBlock(connection.end_block_id);
                 }
@@ -92,12 +141,11 @@ void GraphState::PrepareBlockContainer(size_t block_id) {
 }
 
 bool GraphState::TransferFile(const Connection &connection) {
-    std::string start_container_name = GetContainerName(connection.start_block_id);
-    std::string start_output_name =
-        blocks[connection.start_block_id].outputs[connection.start_output_id].name;
-    std::string end_container_name = GetContainerName(connection.end_block_id);
-    std::string end_input_name =
-        blocks[connection.end_block_id].inputs[connection.end_input_id].name;
+    const auto &[start_block_id, start_output_id, end_block_id, end_input_id] = connection;
+    std::string start_container_name = GetContainerName(start_block_id);
+    std::string start_output_name = blocks[start_block_id].outputs[start_output_id].name;
+    std::string end_container_name = GetContainerName(end_block_id);
+    std::string end_input_name = blocks[end_block_id].inputs[end_input_id].name;
     if (!fs::exists(fs::path(SANDBOX_DIR) / end_container_name)) {
         fs::create_directories(fs::path(SANDBOX_DIR) / end_container_name);
     }
@@ -108,40 +156,34 @@ bool GraphState::TransferFile(const Connection &connection) {
     }
     fs::copy(start_output_path, end_input_path,
              fs::copy_options::create_hard_links | fs::copy_options::recursive);
-    ++blocks_state_[connection.end_block_id].cnt_inputs_ready;
+    ++blocks_state_[end_block_id].cnt_inputs_ready;
     return true;
 }
 
 void GraphState::SendTasks(size_t block_id, RunnerWebSocket *ws) {
-    std::string container_name = GetContainerName(block_id);
-    rapidjson::Document tasks_document(rapidjson::kObjectType);
-    auto &alloc = tasks_document.GetAllocator();
-    tasks_document.AddMember("tasks", rapidjson::Value().CopyFrom(blocks[block_id].tasks, alloc),
-                             alloc);
-    tasks_document.AddMember("container",
-                             rapidjson::Value().SetString(container_name.c_str(), alloc), alloc);
-    ws->send(StringifyJSON(tasks_document));
+    RunRequest run_request;
+    run_request.container = GetContainerName(block_id);
+    run_request.tasks = blocks[block_id].tasks;
+    ws->send(StringifyJSON(run_request.Dump()));
 }
 
 bool GraphState::ProcessStatus(size_t block_id, std::string_view message) {
-    std::string status_json(message);
-    rapidjson::Document status_document = ParseJSON(status_json);
-    auto &alloc = status_document.GetAllocator();
-    status_document.AddMember("block-id", rapidjson::Value().SetInt(block_id), alloc);
-    if (!status_document.HasMember("tasks")) {
-        SendToAllClients(StringifyJSON(status_document));
+    RunResponse run_response;
+    run_response.Load(ParseJSON(std::string(message)));
+    BlockRunResponse block_run_response = run_response;
+    block_run_response.block_id = block_id;
+    if (run_response.has_error) {
+        SendToAllClients(StringifyJSON(block_run_response.Dump()));
         return false;
     }
-    auto tasks_array = status_document["tasks"].GetArray();
     bool exited_normally = true;
-    for (size_t task_id = 0; task_id < tasks_array.Size(); ++task_id) {
-        if (!tasks_array[task_id]["exited"].GetBool() ||
-            tasks_array[task_id]["exit-code"].GetInt() != 0) {
+    for (const auto &status : run_response.statuses) {
+        if (!status.exited || status.exit_code != 0) {
             exited_normally = false;
             break;
         }
     }
-    SendToAllClients(StringifyJSON(status_document));
+    SendToAllClients(StringifyJSON(block_run_response.Dump()));
     return exited_normally;
 }
 
@@ -214,9 +256,10 @@ void Scheduler::LeaveClient(ClientWebSocket *ws) {
     ws->getUserData()->graph_ptr->RemoveClient(ws);
 }
 
-std::string Scheduler::AddGraph(Graph &&graph) {
+std::string Scheduler::AddGraph(const rapidjson::Document &document) {
     std::string graph_id = GenerateUuid();
-    GraphState graph_state = std::move(graph);
+    GraphState graph_state;
+    graph_state.Init(document);
     graph_state.graph_id = graph_id;
     graph_state.partition_ptr = &groups_[graph_state.meta.partition];
     graphs_[graph_id] = std::move(graph_state);

@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <rapidjson/document.h>
 #include <uWebSockets/App.h>
 
 #include "graph.h"
@@ -33,7 +34,9 @@ public:
     Partition *partition_ptr;
 
     GraphState() = default;
-    GraphState(Graph &&graph);
+
+    void Validate() const;
+    void Init(const rapidjson::Document &document);
 
     void Run();
     void Stop();
@@ -67,6 +70,7 @@ private:
     int cnt_blocks_processing_ = 0;
     std::queue<size_t> blocks_ready_;
     std::vector<BlockState> blocks_state_;
+    std::vector<std::vector<Connection>> go_;
     std::unordered_set<ClientWebSocket *> clients_;
 
     std::string GetContainerName(size_t block_id) const;
@@ -90,7 +94,7 @@ public:
     void JoinClient(ClientWebSocket *ws);
     void LeaveClient(ClientWebSocket *ws);
 
-    std::string AddGraph(Graph &&graph);
+    std::string AddGraph(const rapidjson::Document &document);
     GraphState *FindGraph(const std::string &graph_id);
 
 private:

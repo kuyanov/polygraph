@@ -11,9 +11,9 @@
 
 namespace fs = std::filesystem;
 
-rapidjson::Document ParseJSON(const std::string &json) {
+rapidjson::Document ParseJSON(const std::string &s) {
     rapidjson::Document document;
-    document.Parse(json.c_str());
+    document.Parse(s.c_str());
     return document;
 }
 
@@ -38,16 +38,16 @@ std::string FormattedError(const rapidjson::Document &document) {
 }
 
 SchemaValidator::SchemaValidator(const std::string &filename) {
-    auto schema_document = ReadJSON((fs::path(SCHEMA_DIR) / filename).string());
-    if (schema_document.HasParseError()) {
-        throw std::runtime_error("Could not parse json schema: " + FormattedError(schema_document));
+    auto document = ReadJSON((fs::path(SCHEMA_DIR) / filename).string());
+    if (document.HasParseError()) {
+        throw std::runtime_error("Could not parse json schema: " + FormattedError(document));
     }
-    schema_document_.emplace(schema_document);
+    schema_document_.emplace(document);
     schema_validator_.emplace(*schema_document_);
 }
 
-rapidjson::Document SchemaValidator::ParseAndValidate(const std::string &json) {
-    auto document = ParseJSON(json);
+rapidjson::Document SchemaValidator::ParseAndValidate(const std::string &s) {
+    auto document = ParseJSON(s);
     if (document.HasParseError()) {
         throw ParseError(FormattedError(document));
     }
