@@ -24,6 +24,6 @@ TEST(Execution, Sleep) {
     auto start_time = Timestamp();
     auto response = SendTasks({{{"sleep", "1"}}});
     auto end_time = Timestamp();
-    CheckAllExitedNormally(response, 1);
+    CheckAllExitedNormally(response);
     CheckTimeDelta(start_time, end_time, 1000);
 }

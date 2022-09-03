@@ -128,7 +128,8 @@ void CheckGraphExecution(const Graph &graph, int cnt_clients, int cnt_runners, i
     auto end_time = Timestamp();
     if (exp_delay != -1) {
         auto error = end_time - start_time - exp_delay;
-        ASSERT_TRUE(error >= 0 && error < runner_delay);
+        ASSERT_GE(error, 0);
+        ASSERT_LT(error, runner_delay);
     }
 
     for (int client_id = 0; client_id < cnt_clients; ++client_id) {

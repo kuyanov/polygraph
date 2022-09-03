@@ -43,12 +43,12 @@ RunResponse SendTasks(const std::vector<Task> &tasks) {
 
 void CheckTimeDelta(long long start_time, long long end_time, long long expected_delta) {
     long long error = end_time - start_time - expected_delta;
-    ASSERT_TRUE(error >= 0 && error < 100);
+    ASSERT_GE(error, 0);
+    ASSERT_LT(error, 100);
 }
 
-void CheckAllExitedNormally(const RunResponse &run_response, size_t num_tasks) {
+void CheckAllExitedNormally(const RunResponse &run_response) {
     ASSERT_TRUE(!run_response.has_error);
-    ASSERT_EQ(run_response.results.size(), num_tasks);
     for (const auto &result : run_response.results) {
         ASSERT_TRUE(result.exited);
         ASSERT_EQ(result.exit_code, 0);
