@@ -12,18 +12,17 @@ TEST(Network, Reconnect) {
         auto session = server.Accept();
         end_time = Timestamp();
     }
-    CheckTimeDelta(start_time, end_time, Config::Get().reconnect_interval_ms);
+    CheckDuration(end_time - start_time, Config::Get().reconnect_interval_ms);
 }
 
 TEST(Execution, Empty) {
-    auto response = SendTasks({});
+    auto [response, duration] = SendTasks({});
     ASSERT_TRUE(!response.has_error && response.results.empty());
+    CheckDuration(duration, 0);
 }
 
 TEST(Execution, Sleep) {
-    auto start_time = Timestamp();
-    auto response = SendTasks({{{"sleep", "1"}}});
-    auto end_time = Timestamp();
+    auto [response, duration] = SendTasks({{{"sleep", "1"}}});
     CheckAllExitedNormally(response);
-    CheckTimeDelta(start_time, end_time, 1000);
+    CheckDuration(duration, 1000);
 }

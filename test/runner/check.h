@@ -3,6 +3,7 @@
 #include <chrono>
 #include <filesystem>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -32,19 +33,20 @@ std::string PrepareContainer() {
     return container_name;
 }
 
-RunResponse SendTasks(const std::vector<Task> &tasks) {
+std::pair<RunResponse, long long> SendTasks(const std::vector<Task> &tasks) {
     RunRequest run_request = {.container = PrepareContainer(), .tasks = tasks};
     auto session = server.Accept();
+    auto start_time = Timestamp();
     session.Write(StringifyJSON(Dump(run_request)));
     RunResponse run_response;
     Load(run_response, response_validator.ParseAndValidate(session.Read()));
-    return run_response;
+    auto end_time = Timestamp();
+    return {run_response, end_time - start_time};
 }
 
-void CheckTimeDelta(long long start_time, long long end_time, long long expected_delta) {
-    long long error = end_time - start_time - expected_delta;
-    ASSERT_GE(error, 0);
-    ASSERT_LT(error, 100);
+void CheckDuration(long long duration, long long expected) {
+    ASSERT_GE(duration, expected);
+    ASSERT_LT(duration, expected + 100);
 }
 
 void CheckAllExitedNormally(const RunResponse &run_response) {
