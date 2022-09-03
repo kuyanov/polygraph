@@ -3,23 +3,15 @@
 #include <string>
 #include <vector>
 
-#include "serializable.h"
-#include "status.h"
+#include "result.h"
 
-struct RunResponse : public Serializable {
+struct RunResponse {
     bool has_error;
     std::string error;
-    std::vector<Status> statuses;
-
-    void LoadFromValue(const rapidjson::Value &json) override;
-    rapidjson::Value DumpToValue(rapidjson::Document::AllocatorType &alloc) const override;
+    std::vector<Result> results;
 };
 
-struct BlockRunResponse : public RunResponse {
+struct BlockRunResponse {
+    RunResponse run_response;
     size_t block_id;
-
-    BlockRunResponse(const RunResponse &other);
-
-    void LoadFromValue(const rapidjson::Value &json) override;
-    rapidjson::Value DumpToValue(rapidjson::Document::AllocatorType &alloc) const override;
 };

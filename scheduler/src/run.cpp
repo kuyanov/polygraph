@@ -9,11 +9,11 @@
 #include "run.h"
 #include "scheduler.h"
 
+static SchemaValidator graph_validator("graph.json");
+static Scheduler scheduler;
+
 void Run() {
     Logger::Get().SetName("scheduler");
-    static SchemaValidator graph_validator("graph.json");
-    static Scheduler scheduler;
-
     uWS::App().post("/submit", [&](auto *res, auto *req) {
         std::string graph_text;
         res->onAborted([] {});
@@ -55,7 +55,7 @@ void Run() {
         },
         .message = [&](auto *ws, std::string_view message, uWS::OpCode op_code) {
             GraphState *graph_ptr = ws->getUserData()->graph_ptr;
-            graph_ptr->OnStatus(ws, message);
+            graph_ptr->OnResults(ws, message);
         },
         .close = [&](auto *ws, int code, std::string_view message) {
             scheduler.LeaveRunner(ws);

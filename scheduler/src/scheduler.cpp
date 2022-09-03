@@ -5,6 +5,7 @@
 #include "constants.h"
 #include "error.h"
 #include "json.h"
+#include "operations.h"
 #include "run_request.h"
 #include "run_response.h"
 #include "scheduler.h"
@@ -53,7 +54,7 @@ void GraphState::Validate() const {
 }
 
 void GraphState::Init(const rapidjson::Document &document) {
-    Load(document);
+    Load(*static_cast<Graph *>(this), document);
     Validate();
     blocks_state_.resize(blocks.size());
     go_.resize(blocks.size());
@@ -92,10 +93,10 @@ void GraphState::RunBlock(size_t block_id, RunnerWebSocket *ws) {
     SendTasks(block_id, ws);
 }
 
-void GraphState::OnStatus(RunnerWebSocket *ws, std::string_view message) {
+void GraphState::OnResults(RunnerWebSocket *ws, std::string_view message) {
     size_t block_id = ws->getUserData()->block_id;
     partition_ptr->AddRunner(ws);
-    bool success = ProcessStatus(block_id, message);
+    bool success = ProcessResults(block_id, message);
     DequeueBlock();
     if (success) {
         try {
@@ -161,29 +162,27 @@ bool GraphState::TransferFile(const Connection &connection) {
 }
 
 void GraphState::SendTasks(size_t block_id, RunnerWebSocket *ws) {
-    RunRequest run_request;
-    run_request.container = GetContainerName(block_id);
-    run_request.tasks = blocks[block_id].tasks;
-    ws->send(StringifyJSON(run_request.Dump()));
+    RunRequest run_request = {.container = GetContainerName(block_id),
+                              .tasks = blocks[block_id].tasks};
+    ws->send(StringifyJSON(Dump(run_request)));
 }
 
-bool GraphState::ProcessStatus(size_t block_id, std::string_view message) {
+bool GraphState::ProcessResults(size_t block_id, std::string_view message) {
     RunResponse run_response;
-    run_response.Load(ParseJSON(std::string(message)));
-    BlockRunResponse block_run_response = run_response;
-    block_run_response.block_id = block_id;
+    Load(run_response, ParseJSON(std::string(message)));
+    BlockRunResponse block_run_response = {.run_response = run_response, .block_id = block_id};
     if (run_response.has_error) {
-        SendToAllClients(StringifyJSON(block_run_response.Dump()));
+        SendToAllClients(StringifyJSON(Dump(block_run_response)));
         return false;
     }
     bool exited_normally = true;
-    for (const auto &status : run_response.statuses) {
-        if (!status.exited || status.exit_code != 0) {
+    for (const auto &result : run_response.results) {
+        if (!result.exited || result.exit_code != 0) {
             exited_normally = false;
             break;
         }
     }
-    SendToAllClients(StringifyJSON(block_run_response.Dump()));
+    SendToAllClients(StringifyJSON(Dump(block_run_response)));
     return exited_normally;
 }
 

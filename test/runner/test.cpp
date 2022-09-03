@@ -1,17 +1,6 @@
-#include <chrono>
-#include <string>
-
 #include "gtest/gtest.h"
+#include "check.h"
 #include "config.h"
-#include "net.h"
-
-static WebsocketServer server(Config::Get().scheduler_host, Config::Get().scheduler_port);
-
-long long Timestamp() {
-    return std::chrono::duration_cast<std::chrono::milliseconds>(
-               std::chrono::system_clock::now().time_since_epoch())
-        .count();
-}
 
 TEST(Network, Reconnect) {
     long long start_time, end_time;
@@ -23,12 +12,18 @@ TEST(Network, Reconnect) {
         auto session = server.Accept();
         end_time = Timestamp();
     }
-    auto error = end_time - start_time - Config::Get().reconnect_interval_ms;
-    ASSERT_TRUE(error >= 0 && error < 100);
+    CheckTimeDelta(start_time, end_time, Config::Get().reconnect_interval_ms);
 }
 
 TEST(Execution, Empty) {
-    auto session = server.Accept();
-    session.Write("{\"tasks\":[],\"container\":\"test\"}");
-    auto message = session.Read();
+    auto response = SendTasks({});
+    ASSERT_TRUE(!response.has_error && response.results.empty());
+}
+
+TEST(Execution, Sleep) {
+    auto start_time = Timestamp();
+    auto response = SendTasks({{{"sleep", "1"}}});
+    auto end_time = Timestamp();
+    CheckAllExitedNormally(response, 1);
+    CheckTimeDelta(start_time, end_time, 1000);
 }

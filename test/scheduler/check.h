@@ -17,6 +17,7 @@
 #include "graph.h"
 #include "json.h"
 #include "net.h"
+#include "operations.h"
 #include "run_request.h"
 #include "run_response.h"
 
@@ -24,6 +25,8 @@ namespace fs = std::filesystem;
 
 const std::string kHost = Config::Get().host;
 const int kPort = Config::Get().port;
+
+static thread_local SchemaValidator request_validator("run_request.json");
 
 void CheckSubmitStartsWith(const std::string &body, const std::string &prefix) {
     auto result = HttpSession(kHost, kPort).Post("/submit", body);
@@ -47,10 +50,9 @@ size_t ParseBlockId(const std::string &container_name) {
 }
 
 void ImitateRun(const std::string &message, const Graph &graph, int runner_delay,
-                const std::vector<size_t> &failed_blocks, std::string &result) {
-    auto request_validator = SchemaValidator("run_request.json");
+                const std::vector<size_t> &failed_blocks, std::string &response) {
     RunRequest run_request;
-    run_request.Load(request_validator.ParseAndValidate(message));
+    Load(run_request, request_validator.ParseAndValidate(message));
     std::string container_name = run_request.container;
     size_t block_id = ParseBlockId(container_name);
     for (const auto &input : graph.blocks[block_id].inputs) {
@@ -64,20 +66,17 @@ void ImitateRun(const std::string &message, const Graph &graph, int runner_delay
     bool failed =
         std::find(failed_blocks.begin(), failed_blocks.end(), block_id) != failed_blocks.end();
     RunResponse run_response;
-    run_response.has_error = false;
+    run_response.has_error = failed && run_request.tasks.empty();
     for (const auto &task : run_request.tasks) {
-        Status status;
-        status.exited = true;
-        status.exit_code = failed;
-        run_response.statuses.push_back(status);
+        run_response.results.push_back({.exited = true, .exit_code = failed});
     }
-    result = StringifyJSON(run_response.Dump());
+    response = StringifyJSON(Dump(run_response));
 }
 
 void CheckGraphExecution(const Graph &graph, int cnt_clients, int cnt_runners, int exp_runs,
                          int runner_delay, int exp_delay,
                          const std::vector<size_t> &failed_blocks = {}) {
-    std::string body = StringifyJSON(graph.Dump());
+    std::string body = StringifyJSON(Dump(graph));
     auto uuid = HttpSession(kHost, kPort).Post("/submit", body);
     ASSERT_TRUE(IsUuid(uuid));
 
@@ -88,9 +87,9 @@ void CheckGraphExecution(const Graph &graph, int cnt_clients, int cnt_runners, i
         runner_threads[runner_id] = std::thread([&] {
             session.Connect(kHost, kPort, "/runner/" + graph.meta.partition);
             session.OnRead([&](const std::string &message) {
-                std::string result;
-                ImitateRun(message, graph, runner_delay, failed_blocks, result);
-                session.Write(result);
+                std::string response;
+                ImitateRun(message, graph, runner_delay, failed_blocks, response);
+                session.Write(response);
             });
             session.Run();
         });

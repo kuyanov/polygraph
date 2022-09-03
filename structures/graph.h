@@ -3,53 +3,34 @@
 #include <string>
 #include <vector>
 
-#include "serializable.h"
 #include "task.h"
 
-struct BlockInput : public Serializable {
+struct BlockInput {
     std::string name;
-
-    void LoadFromValue(const rapidjson::Value &json) override;
-    rapidjson::Value DumpToValue(rapidjson::Document::AllocatorType &alloc) const override;
 };
 
-struct BlockOutput : public Serializable {
+struct BlockOutput {
     std::string name;
-
-    void LoadFromValue(const rapidjson::Value &json) override;
-    rapidjson::Value DumpToValue(rapidjson::Document::AllocatorType &alloc) const override;
 };
 
-struct Block : public Serializable {
+struct Block {
     std::string name;
     std::vector<BlockInput> inputs;
     std::vector<BlockOutput> outputs;
     std::vector<Task> tasks;
-
-    void LoadFromValue(const rapidjson::Value &json) override;
-    rapidjson::Value DumpToValue(rapidjson::Document::AllocatorType &alloc) const override;
 };
 
-struct Connection : public Serializable {
+struct Connection {
     size_t start_block_id, start_output_id, end_block_id, end_input_id;
-
-    void LoadFromValue(const rapidjson::Value &json) override;
-    rapidjson::Value DumpToValue(rapidjson::Document::AllocatorType &alloc) const override;
 };
 
-struct Meta : public Serializable {
+struct Meta {
     std::string name, partition;
     int max_runners;
-
-    void LoadFromValue(const rapidjson::Value &json) override;
-    rapidjson::Value DumpToValue(rapidjson::Document::AllocatorType &alloc) const override;
 };
 
-struct Graph : public Serializable {
+struct Graph {
     std::vector<Block> blocks;
     std::vector<Connection> connections;
     Meta meta;
-
-    void LoadFromValue(const rapidjson::Value &json) override;
-    rapidjson::Value DumpToValue(rapidjson::Document::AllocatorType &alloc) const override;
 };

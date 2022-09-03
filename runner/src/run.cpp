@@ -8,6 +8,7 @@
 #include "config.h"
 #include "logger.h"
 #include "net.h"
+#include "operations.h"
 #include "run.h"
 #include "run_request.h"
 #include "run_response.h"
@@ -28,18 +29,18 @@ void FillTask(const Task &task, libsbox::Task *libsbox_task) {
     }
     libsbox_task->get_env() = task.env;
     // TODO: pipes
-    if (task._stdin.has_value()) {
-        libsbox_task->get_stdin().use_file(task._stdin.value());
+    if (task.stdin_.has_value()) {
+        libsbox_task->get_stdin().use_file(task.stdin_.value());
     } else {
         libsbox_task->get_stdin().disable();
     }
-    if (task._stdout.has_value()) {
-        libsbox_task->get_stdout().use_file(task._stdout.value());
+    if (task.stdout_.has_value()) {
+        libsbox_task->get_stdout().use_file(task.stdout_.value());
     } else {
         libsbox_task->get_stdout().disable();
     }
-    if (task._stderr.has_value()) {
-        libsbox_task->get_stderr().use_file(task._stderr.value());
+    if (task.stderr_.has_value()) {
+        libsbox_task->get_stderr().use_file(task.stderr_.value());
     } else {
         libsbox_task->get_stderr().use_stdout();
     }
@@ -63,25 +64,25 @@ void FillTask(const Task &task, libsbox::Task *libsbox_task) {
     }
 }
 
-void FillStatus(const libsbox::Task *libsbox_task, Status &status) {
-    status.time_usage_ms = libsbox_task->get_time_usage_ms();
-    status.time_usage_sys_ms = libsbox_task->get_time_usage_sys_ms();
-    status.time_usage_user_ms = libsbox_task->get_time_usage_user_ms();
-    status.wall_time_usage_ms = libsbox_task->get_wall_time_usage_ms();
-    status.memory_usage_kb = libsbox_task->get_memory_usage_kb();
-    status.time_limit_exceeded = libsbox_task->is_time_limit_exceeded();
-    status.wall_time_limit_exceeded = libsbox_task->is_wall_time_limit_exceeded();
-    status.memory_limit_exceeded = libsbox_task->is_memory_limit_hit();
-    status.exited = libsbox_task->exited();
-    status.exit_code = libsbox_task->get_exit_code();
-    status.signaled = libsbox_task->signaled();
-    status.term_signal = libsbox_task->get_term_signal();
-    status.oom_killed = libsbox_task->is_oom_killed();
+void FillResult(const libsbox::Task *libsbox_task, Result &result) {
+    result.time_usage_ms = libsbox_task->get_time_usage_ms();
+    result.time_usage_sys_ms = libsbox_task->get_time_usage_sys_ms();
+    result.time_usage_user_ms = libsbox_task->get_time_usage_user_ms();
+    result.wall_time_usage_ms = libsbox_task->get_wall_time_usage_ms();
+    result.memory_usage_kb = libsbox_task->get_memory_usage_kb();
+    result.time_limit_exceeded = libsbox_task->is_time_limit_exceeded();
+    result.wall_time_limit_exceeded = libsbox_task->is_wall_time_limit_exceeded();
+    result.memory_limit_exceeded = libsbox_task->is_memory_limit_hit();
+    result.exited = libsbox_task->exited();
+    result.exit_code = libsbox_task->get_exit_code();
+    result.signaled = libsbox_task->signaled();
+    result.term_signal = libsbox_task->get_term_signal();
+    result.oom_killed = libsbox_task->is_oom_killed();
 }
 
 void HandleMessage(const std::string &message, WebsocketClientSession &session) {
     RunRequest run_request;
-    run_request.Load(ParseJSON(message));
+    Load(run_request, ParseJSON(message));
     auto container_path = fs::path(SANDBOX_DIR) / run_request.container;
     std::vector<libsbox::Task *> libsbox_tasks(run_request.tasks.size());
     for (size_t task_id = 0; task_id < libsbox_tasks.size(); ++task_id) {
@@ -97,15 +98,15 @@ void HandleMessage(const std::string &message, WebsocketClientSession &session) 
     } else {
         run_response.has_error = false;
         for (const auto *libsbox_task : libsbox_tasks) {
-            Status status;
-            FillStatus(libsbox_task, status);
-            run_response.statuses.push_back(status);
+            Result result;
+            FillResult(libsbox_task, result);
+            run_response.results.push_back(result);
         }
     }
     for (const auto *libsbox_task : libsbox_tasks) {
         delete libsbox_task;
     }
-    session.Write(StringifyJSON(run_response.Dump()));
+    session.Write(StringifyJSON(Dump(run_response)));
 }
 
 void Run() {

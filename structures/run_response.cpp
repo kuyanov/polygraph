@@ -1,42 +1,46 @@
+#include "operations.h"
 #include "run_response.h"
 
-void RunResponse::LoadFromValue(const rapidjson::Value &json) {
-    has_error = json.HasMember("error");
-    if (has_error) {
-        error = json["error"].GetString();
+template <>
+void Load<RunResponse>(RunResponse &object, const rapidjson::Value &json) {
+    object.has_error = json.HasMember("error");
+    if (object.has_error) {
+        object.error = json["error"].GetString();
         return;
     }
-    auto statuses_array = json["statuses"].GetArray();
-    statuses.resize(statuses_array.Size());
-    for (size_t i = 0; i < statuses.size(); ++i) {
-        statuses[i].LoadFromValue(statuses_array[i]);
+    auto results_array = json["results"].GetArray();
+    object.results.resize(results_array.Size());
+    for (size_t i = 0; i < object.results.size(); ++i) {
+        Load(object.results[i], results_array[i]);
     }
 }
 
-rapidjson::Value RunResponse::DumpToValue(rapidjson::Document::AllocatorType &alloc) const {
+template <>
+rapidjson::Value Dump<RunResponse>(const RunResponse &object,
+                                   rapidjson::Document::AllocatorType &alloc) {
     rapidjson::Value json(rapidjson::kObjectType);
-    if (has_error) {
-        json.AddMember("error", rapidjson::Value().SetString(error.c_str(), alloc), alloc);
+    if (object.has_error) {
+        json.AddMember("error", rapidjson::Value().SetString(object.error.c_str(), alloc), alloc);
         return json;
     }
-    rapidjson::Value statuses_array(rapidjson::kArrayType);
-    for (const auto &status : statuses) {
-        statuses_array.PushBack(status.DumpToValue(alloc), alloc);
+    rapidjson::Value results_array(rapidjson::kArrayType);
+    for (const auto &result : object.results) {
+        results_array.PushBack(Dump(result, alloc), alloc);
     }
-    json.AddMember("statuses", statuses_array, alloc);
+    json.AddMember("results", results_array, alloc);
     return json;
 }
 
-BlockRunResponse::BlockRunResponse(const RunResponse &other) : RunResponse(other) {
+template <>
+void Load<BlockRunResponse>(BlockRunResponse &object, const rapidjson::Value &json) {
+    Load(object.run_response, json);
+    object.block_id = json["block-id"].GetInt();
 }
 
-void BlockRunResponse::LoadFromValue(const rapidjson::Value &json) {
-    RunResponse::LoadFromValue(json);
-    block_id = json["block-id"].GetInt();
-}
-
-rapidjson::Value BlockRunResponse::DumpToValue(rapidjson::Document::AllocatorType &alloc) const {
-    auto json = RunResponse::DumpToValue(alloc);
-    json.AddMember("block-id", rapidjson::Value().SetInt(block_id), alloc);
+template <>
+rapidjson::Value Dump<BlockRunResponse>(const BlockRunResponse &object,
+                                        rapidjson::Document::AllocatorType &alloc) {
+    auto json = Dump(object.run_response, alloc);
+    json.AddMember("block-id", rapidjson::Value().SetInt(object.block_id), alloc);
     return json;
 }

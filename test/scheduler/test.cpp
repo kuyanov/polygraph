@@ -1,13 +1,13 @@
+#include <limits.h>
 #include <string>
 #include <unordered_set>
 
 #include "gtest/gtest.h"
+#include "check.h"
 #include "config.h"
-#include "constants.h"
-#include "execution.h"
-#include "test_graph.h"
 
 const int kRunnerDelay = 500;
+const Meta kGraphMeta = {"sample graph", "all", INT_MAX};
 
 TEST(ParseError, Trivial) {
     CheckSubmitStartsWith("", errors::kParseErrorPrefix);
@@ -43,46 +43,53 @@ TEST(ValidationError, InvalidType) {
 }
 
 TEST(ValidationError, DuplicatedFilename) {
-    CheckSubmitStartsWith(StringifyJSON(BuildGraph({{{{"a.in", "a.in"}, {}}}}).Dump()),
-                          errors::kValidationErrorPrefix + errors::kDuplicatedFilename);
-    CheckSubmitStartsWith(StringifyJSON(BuildGraph({{{{}, {"a.out", "a.out"}}}}).Dump()),
-                          errors::kValidationErrorPrefix + errors::kDuplicatedFilename);
-    CheckSubmitStartsWith(StringifyJSON(BuildGraph({{{{"a.in", "a"}, {"a.out", "a"}}}}).Dump()),
-                          errors::kValidationErrorPrefix + errors::kDuplicatedFilename);
+    CheckSubmitStartsWith(
+        StringifyJSON(Dump(Graph{{{"", {{"a.in"}, {"a.in"}}, {}}}, {}, kGraphMeta})),
+        errors::kValidationErrorPrefix + errors::kDuplicatedFilename);
+    CheckSubmitStartsWith(
+        StringifyJSON(Dump(Graph{{{"", {}, {{"a.out"}, {"a.out"}}}}, {}, kGraphMeta})),
+        errors::kValidationErrorPrefix + errors::kDuplicatedFilename);
+    CheckSubmitStartsWith(
+        StringifyJSON(Dump(Graph{{{"", {{"a.in"}, {"a"}}, {{"a.out"}, {"a"}}}}, {}, kGraphMeta})),
+        errors::kValidationErrorPrefix + errors::kDuplicatedFilename);
 }
 
 TEST(ValidationError, InvalidFilename) {
-    CheckSubmitStartsWith(StringifyJSON(BuildGraph({{{{""}, {}}}}).Dump()),
+    CheckSubmitStartsWith(StringifyJSON(Dump(Graph{{{"", {{""}}, {}}}, {}, kGraphMeta})),
                           errors::kValidationErrorPrefix + errors::kInvalidFilename);
-    CheckSubmitStartsWith(StringifyJSON(BuildGraph({{{{}, {".."}}}}).Dump()),
+    CheckSubmitStartsWith(StringifyJSON(Dump(Graph{{{"", {}, {{".."}}}}, {}, kGraphMeta})),
                           errors::kValidationErrorPrefix + errors::kInvalidFilename);
-    CheckSubmitStartsWith(StringifyJSON(BuildGraph({{{{"a/b"}, {}}}}).Dump()),
+    CheckSubmitStartsWith(StringifyJSON(Dump(Graph{{{"", {{"a/b"}}, {}}}, {}, kGraphMeta})),
                           errors::kValidationErrorPrefix + errors::kInvalidFilename);
 }
 
 TEST(ValidationError, InvalidConnection) {
     CheckSubmitStartsWith(
-        StringifyJSON(BuildGraph({{{{"a.in"}, {}}, {{}, {"a.out"}}}, {{2, 0, 0, 0}}}).Dump()),
+        StringifyJSON(
+            Dump(Graph{{{"", {{"a.in"}}, {}}, {"", {}, {{"a.out"}}}}, {{2, 0, 0, 0}}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kInvalidConnection);
     CheckSubmitStartsWith(
-        StringifyJSON(BuildGraph({{{{"a.in"}, {}}, {{}, {"a.out"}}}, {{1, 1, 0, 0}}}).Dump()),
+        StringifyJSON(
+            Dump(Graph{{{"", {{"a.in"}}, {}}, {"", {}, {{"a.out"}}}}, {{1, 1, 0, 0}}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kInvalidConnection);
     CheckSubmitStartsWith(
-        StringifyJSON(BuildGraph({{{{"a.in"}, {}}, {{}, {"a.out"}}}, {{1, 0, -1, 0}}}).Dump()),
+        StringifyJSON(Dump(
+            Graph{{{"", {{"a.in"}}, {}}, {"", {}, {{"a.out"}}}}, {{1, 0, -1ul, 0}}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kInvalidConnection);
     CheckSubmitStartsWith(
-        StringifyJSON(BuildGraph({{{{"a.in"}, {}}, {{}, {"a.out"}}}, {{1, 0, 0, -1}}}).Dump()),
+        StringifyJSON(Dump(
+            Graph{{{"", {{"a.in"}}, {}}, {"", {}, {{"a.out"}}}}, {{1, 0, 0, -1ul}}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kInvalidConnection);
 }
 
 TEST(ValidationError, Loop) {
     CheckSubmitStartsWith(
-        StringifyJSON(BuildGraph({{{{"a.in"}, {"a.out"}}}, {{0, 0, 0, 0}}}).Dump()),
+        StringifyJSON(Dump(Graph{{{"", {{"a.in"}}, {{"a.out"}}}}, {{0, 0, 0, 0}}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kLoopsNotSupported);
 }
 
 TEST(Submit, GraphIdUnique) {
-    std::string body = StringifyJSON(BuildGraph({}).Dump());
+    std::string body = StringifyJSON(Dump(Graph{{}, {}, kGraphMeta}));
     std::unordered_set<std::string> uuids;
     for (int i = 0; i < 1000; i++) {
         auto uuid = HttpSession(kHost, kPort).Post("/submit", body);
@@ -103,44 +110,46 @@ TEST(Submit, MaxPayloadSize) {
 }
 
 TEST(Execution, Empty) {
-    Graph graph = BuildGraph({});
+    Graph graph = {{}, {}, kGraphMeta};
     CheckGraphExecution(graph, 1, 1, 0, kRunnerDelay, 0);
 }
 
 TEST(Execution, SingleBlock) {
-    Graph graph = BuildGraph({{{}}});
+    Graph graph = {{{}}, {}, kGraphMeta};
     CheckGraphExecution(graph, 5, 1, 1, kRunnerDelay, kRunnerDelay);
     CheckGraphExecution(graph, 5, 10, 1, kRunnerDelay, kRunnerDelay);
 }
 
 TEST(Execution, Bamboo) {
-    Graph graph = BuildGraph(
-        {{{{}, {"a.out"}}, {{"a.in"}, {"a.out"}}, {{"a.in"}, {}}}, {{0, 0, 1, 0}, {1, 0, 2, 0}}});
+    Graph graph = {{{"", {}, {{"a.out"}}}, {"", {{"a.in"}}, {{"a.out"}}}, {"", {{"a.in"}}, {}}},
+                   {{0, 0, 1, 0}, {1, 0, 2, 0}},
+                   kGraphMeta};
     CheckGraphExecution(graph, 5, 1, 3, kRunnerDelay, 3 * kRunnerDelay);
     CheckGraphExecution(graph, 5, 10, 3, kRunnerDelay, 3 * kRunnerDelay);
 }
 
 TEST(Execution, Parallel) {
-    Graph graph = BuildGraph({{{}, {}, {}}});
+    Graph graph = {{{}, {}, {}}, {}, kGraphMeta};
     CheckGraphExecution(graph, 5, 1, 3, kRunnerDelay, 3 * kRunnerDelay);
     CheckGraphExecution(graph, 5, 3, 3, kRunnerDelay, kRunnerDelay);
 }
 
 TEST(Execution, MaxRunners) {
-    Graph graph = BuildGraph({{{{}, {"o1234"}},
-                               {{"i0"}, {"o5"}},
-                               {{"i0"}, {"o5"}},
-                               {{"i0"}, {"o5"}},
-                               {{"i0"}, {"o5"}},
-                               {{"i1", "i2", "i3", "i4"}, {}}},
-                              {{0, 0, 1, 0},
-                               {0, 0, 2, 0},
-                               {0, 0, 3, 0},
-                               {0, 0, 4, 0},
-                               {1, 0, 5, 0},
-                               {2, 0, 5, 1},
-                               {3, 0, 5, 2},
-                               {4, 0, 5, 3}}});
+    Graph graph = {{{"0", {}, {{"o1234"}}},
+                    {"1", {{"i0"}}, {{"o5"}}},
+                    {"2", {{"i0"}}, {{"o5"}}},
+                    {"3", {{"i0"}}, {{"o5"}}},
+                    {"4", {{"i0"}}, {{"o5"}}},
+                    {"5", {{"i1"}, {"i2"}, {"i3"}, {"i4"}}, {}}},
+                   {{0, 0, 1, 0},
+                    {0, 0, 2, 0},
+                    {0, 0, 3, 0},
+                    {0, 0, 4, 0},
+                    {1, 0, 5, 0},
+                    {2, 0, 5, 1},
+                    {3, 0, 5, 2},
+                    {4, 0, 5, 3}},
+                   kGraphMeta};
     CheckGraphExecution(graph, 3, 1, 6, kRunnerDelay, 6 * kRunnerDelay);
     CheckGraphExecution(graph, 3, 2, 6, kRunnerDelay, 4 * kRunnerDelay);
     CheckGraphExecution(graph, 3, 3, 6, kRunnerDelay, 4 * kRunnerDelay);
@@ -157,36 +166,41 @@ TEST(Execution, MaxRunners) {
 }
 
 TEST(Execution, FiniteCycle) {
-    Graph graph = BuildGraph({{{{}, {"o155"}},
-                               {{"i0"}, {"o2"}},
-                               {{"i1"}, {"o3", "o5"}},
-                               {{"i2"}, {"o4"}},
-                               {{"i3"}, {"o5"}},
-                               {{"i024", "i06"}, {"o6"}},
-                               {{"i5"}, {"o5"}}},
-                              {{0, 0, 1, 0},
-                               {1, 0, 2, 0},
-                               {2, 0, 3, 0},
-                               {3, 0, 4, 0},
-                               {0, 0, 5, 0},
-                               {0, 0, 5, 1},
-                               {2, 1, 5, 0},
-                               {4, 0, 5, 0},
-                               {5, 0, 6, 0},
-                               {6, 0, 5, 1}}});
+    Graph graph = {{{"0", {}, {{"o155"}}},
+                    {"1", {{"i0"}}, {{"o2"}}},
+                    {"2", {{"i1"}}, {{"o3"}, {"o5"}}},
+                    {"3", {{"i2"}}, {{"o4"}}},
+                    {"4", {{"i3"}}, {{"o5"}}},
+                    {"5", {{"i024"}, {"i06"}}, {{"o6"}}},
+                    {"6", {{"i5"}}, {{"o5"}}}},
+                   {{0, 0, 1, 0},
+                    {1, 0, 2, 0},
+                    {2, 0, 3, 0},
+                    {3, 0, 4, 0},
+                    {0, 0, 5, 0},
+                    {0, 0, 5, 1},
+                    {2, 1, 5, 0},
+                    {4, 0, 5, 0},
+                    {5, 0, 6, 0},
+                    {6, 0, 5, 1}},
+                   kGraphMeta};
     CheckGraphExecution(graph, 3, 2, 11, kRunnerDelay, 7 * kRunnerDelay);
 }
 
 TEST(Execution, FailedBlocks) {
-    Graph graph =
-        BuildGraph({{{{}, {"o1"}}, {{"i0"}, {}}, {{}, {"o3"}}, {{"i2"}, {"o4"}}, {{"i3"}, {}}},
-                    {{0, 0, 1, 0}, {2, 0, 3, 0}, {3, 0, 4, 0}}});
+    Graph graph = {{{"0", {}, {{"o1"}}, {{}}},
+                    {"1", {{"i0"}}, {}},
+                    {"2", {}, {{"o3"}}},
+                    {"3", {{"i2"}}, {{"o4"}}},
+                    {"4", {{"i3"}}, {}}},
+                   {{0, 0, 1, 0}, {2, 0, 3, 0}, {3, 0, 4, 0}},
+                   kGraphMeta};
     CheckGraphExecution(graph, 3, 2, 3, kRunnerDelay, 2 * kRunnerDelay, {0, 3});
 }
 
 TEST(Execution, Stress) {
-    std::vector<TestBlock> blocks(100);
-    Graph graph = BuildGraph({blocks});
+    std::vector<Block> blocks(100);
+    Graph graph = {{blocks}, {}, kGraphMeta};
     for (int i = 0; i < 100; i++) {
         CheckGraphExecution(graph, 4, 4, 100, 0, -1);
     }
