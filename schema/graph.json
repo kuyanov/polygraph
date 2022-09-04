@@ -72,8 +72,7 @@
                     "required": [
                       "inside",
                       "outside",
-                      "allow-write",
-                      "allow-exec"
+                      "writable"
                     ],
                     "properties": {
                       "inside": {
@@ -82,10 +81,7 @@
                       "outside": {
                         "type": "string"
                       },
-                      "allow-write": {
-                        "type": "boolean"
-                      },
-                      "allow-exec": {
+                      "writable": {
                         "type": "boolean"
                       }
                     }

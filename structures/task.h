@@ -7,7 +7,7 @@
 
 struct Bind {
     std::string inside, outside;
-    bool allow_write, allow_exec;
+    bool writable;
 };
 
 struct Task {

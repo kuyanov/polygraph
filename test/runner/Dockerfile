@@ -7,7 +7,7 @@ RUN apt-get update && \
     apt-get install -y build-essential git cmake bsdmainutils libboost-system-dev
 RUN git clone https://github.com/Tencent/rapidjson.git && \
     cp -r rapidjson/include/rapidjson /usr/local/include/
-RUN git clone https://github.com/Forestryks/libsbox.git && \
+RUN git clone https://github.com/kuyanov/libsbox.git && \
     mkdir libsbox/build && \
     cd libsbox/build && \
     cmake .. && \

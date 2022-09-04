@@ -2,6 +2,8 @@
 
 #include <chrono>
 #include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -15,6 +17,8 @@
 
 namespace fs = std::filesystem;
 
+const std::string kContainerName = "test";
+
 static WebsocketServer server(Config::Get().scheduler_host, Config::Get().scheduler_port);
 static SchemaValidator response_validator("run_response.json");
 
@@ -24,18 +28,50 @@ long long Timestamp() {
         .count();
 }
 
-std::string PrepareContainer() {
-    std::string container_name = "test";
-    fs::path container_path = fs::path(SANDBOX_DIR) / container_name;
+void InitContainer() {
+    fs::path container_path = fs::path(SANDBOX_DIR) / kContainerName;
     if (fs::exists(container_path)) {
         fs::remove_all(container_path);
     }
     fs::create_directories(container_path);
-    return container_name;
+}
+
+void AddFile(const std::string &filename, const std::string &content) {
+    fs::path filepath = fs::path(SANDBOX_DIR) / kContainerName / filename;
+    std::ofstream(filepath) << content;
+}
+
+std::string ReadFile(const std::string &filename) {
+    fs::path filepath = fs::path(SANDBOX_DIR) / kContainerName / filename;
+    std::stringstream ss;
+    ss << std::ifstream(filepath).rdbuf();
+    return ss.str();
+}
+
+void InitUserDir() {
+    if (fs::exists(USER_DIR)) {
+        fs::remove_all(USER_DIR);
+    }
+    fs::create_directories(USER_DIR);
+}
+
+void AddUserFile(const std::string &filename, const std::string &content, bool executable = false) {
+    fs::path filepath = fs::path(USER_DIR) / filename;
+    std::ofstream(filepath) << content;
+    if (executable) {
+        fs::permissions(filepath, fs::perms::others_exec, fs::perm_options::add);
+    }
+}
+
+std::string ReadUserFile(const std::string &filename) {
+    fs::path filepath = fs::path(USER_DIR) / filename;
+    std::stringstream ss;
+    ss << std::ifstream(filepath).rdbuf();
+    return ss.str();
 }
 
 RunResponse SendTasks(const std::vector<Task> &tasks) {
-    RunRequest run_request = {.container = PrepareContainer(), .tasks = tasks};
+    RunRequest run_request = {.container = kContainerName, .tasks = tasks};
     auto session = server.Accept();
     session.Write(StringifyJSON(Dump(run_request)));
     RunResponse run_response;

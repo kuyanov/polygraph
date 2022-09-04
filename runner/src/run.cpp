@@ -19,11 +19,8 @@ void FillTask(const Task &task, libsbox::Task *libsbox_task) {
     libsbox_task->set_argv(task.argv);
     for (const auto &bind : task.binds) {
         libsbox::BindRule bind_rule(bind.inside, (fs::path(USER_DIR) / bind.outside).string());
-        if (bind.allow_write) {
+        if (bind.writable) {
             bind_rule.allow_write();
-        }
-        if (!bind.allow_exec) {
-            bind_rule.forbid_exec();
         }
         libsbox_task->get_binds().push_back(bind_rule);
     }
@@ -87,7 +84,8 @@ void HandleMessage(const std::string &message, WebsocketClientSession &session) 
     std::vector<libsbox::Task *> libsbox_tasks(run_request.tasks.size());
     for (size_t task_id = 0; task_id < libsbox_tasks.size(); ++task_id) {
         libsbox::Task *libsbox_task = libsbox_tasks[task_id] = new libsbox::Task;
-        libsbox_task->get_binds().push_back(libsbox::BindRule(".", container_path.string()));
+        libsbox_task->get_binds().push_back(
+            libsbox::BindRule(".", container_path.string(), libsbox::BindRule::WRITABLE));
         FillTask(run_request.tasks[task_id], libsbox_task);
     }
     auto error = libsbox::run_together(libsbox_tasks);

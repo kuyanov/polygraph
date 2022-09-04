@@ -5,8 +5,7 @@ template <>
 void Load<Bind>(Bind &object, const rapidjson::Value &json) {
     object.inside = json["inside"].GetString();
     object.outside = json["outside"].GetString();
-    object.allow_write = json["allow-write"].GetBool();
-    object.allow_exec = json["allow-exec"].GetBool();
+    object.writable = json["writable"].GetBool();
 }
 
 template <>
@@ -14,8 +13,7 @@ rapidjson::Value Dump<Bind>(const Bind &object, rapidjson::Document::AllocatorTy
     rapidjson::Value json(rapidjson::kObjectType);
     json.AddMember("inside", rapidjson::Value().SetString(object.inside.c_str(), alloc), alloc);
     json.AddMember("outside", rapidjson::Value().SetString(object.outside.c_str(), alloc), alloc);
-    json.AddMember("allow-write", rapidjson::Value().SetBool(object.allow_write), alloc);
-    json.AddMember("allow-exec", rapidjson::Value().SetBool(object.allow_exec), alloc);
+    json.AddMember("writable", rapidjson::Value().SetBool(object.writable), alloc);
     return json;
 }
 
