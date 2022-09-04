@@ -3,7 +3,6 @@
 #include <chrono>
 #include <filesystem>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -27,21 +26,21 @@ long long Timestamp() {
 
 std::string PrepareContainer() {
     std::string container_name = "test";
-    if (!fs::exists(fs::path(SANDBOX_DIR) / container_name)) {
-        fs::create_directories(fs::path(SANDBOX_DIR) / container_name);
+    fs::path container_path = fs::path(SANDBOX_DIR) / container_name;
+    if (fs::exists(container_path)) {
+        fs::remove_all(container_path);
     }
+    fs::create_directories(container_path);
     return container_name;
 }
 
-std::pair<RunResponse, long long> SendTasks(const std::vector<Task> &tasks) {
+RunResponse SendTasks(const std::vector<Task> &tasks) {
     RunRequest run_request = {.container = PrepareContainer(), .tasks = tasks};
     auto session = server.Accept();
-    auto start_time = Timestamp();
     session.Write(StringifyJSON(Dump(run_request)));
     RunResponse run_response;
     Load(run_response, response_validator.ParseAndValidate(session.Read()));
-    auto end_time = Timestamp();
-    return {run_response, end_time - start_time};
+    return run_response;
 }
 
 void CheckDuration(long long duration, long long expected) {
