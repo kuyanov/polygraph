@@ -1,13 +1,23 @@
 name: Test
 on: [ push ]
 jobs:
-  test:
+  test-runner:
     runs-on: ubuntu-latest
-    name: Run all tests in docker
+    name: Test runner in docker
     steps:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Build
-        run: docker build -t polygraph_test .
+        run: docker build -f test/runner/Dockerfile -t polygraph_test_runner .
       - name: Run
-        run: docker run --privileged -t polygraph_test
+        run: docker run --privileged -t polygraph_test_runner
+  test-scheduler:
+    runs-on: ubuntu-latest
+    name: Test scheduler in docker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build
+        run: docker build -f test/scheduler/Dockerfile -t polygraph_test_scheduler .
+      - name: Run
+        run: docker run -t polygraph_test_scheduler
