@@ -44,47 +44,57 @@ TEST(ValidationError, InvalidType) {
 
 TEST(ValidationError, DuplicatedFilename) {
     CheckSubmitStartsWith(
-        StringifyJSON(Dump(Graph{{{"", {{"a.in"}, {"a.in"}}, {}}}, {}, kGraphMeta})),
+        StringifyJSON(Dump(Graph{{{"", {}, {{"a.in"}, {"a.in"}}, {}}}, {}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kDuplicatedFilename);
     CheckSubmitStartsWith(
-        StringifyJSON(Dump(Graph{{{"", {}, {{"a.out"}, {"a.out"}}}}, {}, kGraphMeta})),
+        StringifyJSON(Dump(Graph{{{"", {}, {}, {{"a.out"}, {"a.out"}}}}, {}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kDuplicatedFilename);
     CheckSubmitStartsWith(
-        StringifyJSON(Dump(Graph{{{"", {{"a.in"}, {"a"}}, {{"a.out"}, {"a"}}}}, {}, kGraphMeta})),
+        StringifyJSON(
+            Dump(Graph{{{"", {{"a"}, {"a.out"}}, {{"a.in"}}, {{"a.out"}}}}, {}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kDuplicatedFilename);
 }
 
 TEST(ValidationError, InvalidFilename) {
-    CheckSubmitStartsWith(StringifyJSON(Dump(Graph{{{"", {{""}}, {}}}, {}, kGraphMeta})),
+    CheckSubmitStartsWith(StringifyJSON(Dump(Graph{{{"", {{}}, {}, {}}}, {}, kGraphMeta})),
                           errors::kValidationErrorPrefix + errors::kInvalidFilename);
-    CheckSubmitStartsWith(StringifyJSON(Dump(Graph{{{"", {}, {{".."}}}}, {}, kGraphMeta})),
+    CheckSubmitStartsWith(StringifyJSON(Dump(Graph{{{"", {}, {{".."}}, {}}}, {}, kGraphMeta})),
                           errors::kValidationErrorPrefix + errors::kInvalidFilename);
-    CheckSubmitStartsWith(StringifyJSON(Dump(Graph{{{"", {{"a/b"}}, {}}}, {}, kGraphMeta})),
+    CheckSubmitStartsWith(StringifyJSON(Dump(Graph{{{"", {}, {}, {{"a/b"}}}}, {}, kGraphMeta})),
                           errors::kValidationErrorPrefix + errors::kInvalidFilename);
+}
+
+TEST(ValidationError, InvalidPermissions) {
+    CheckSubmitStartsWith(
+        StringifyJSON(Dump(Graph{{{"", {{"a", "a", -1}}, {}, {}}}, {}, kGraphMeta})),
+        errors::kValidationErrorPrefix + errors::kInvalidPermissions);
+    CheckSubmitStartsWith(
+        StringifyJSON(Dump(Graph{{{"", {{"a", "a", 8}}, {}, {}}}, {}, kGraphMeta})),
+        errors::kValidationErrorPrefix + errors::kInvalidPermissions);
 }
 
 TEST(ValidationError, InvalidConnection) {
     CheckSubmitStartsWith(
-        StringifyJSON(
-            Dump(Graph{{{"", {{"a.in"}}, {}}, {"", {}, {{"a.out"}}}}, {{2, 0, 0, 0}}, kGraphMeta})),
+        StringifyJSON(Dump(Graph{
+            {{"", {}, {{"a.in"}}, {}}, {"", {}, {}, {{"a.out"}}}}, {{2, 0, 0, 0}}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kInvalidConnection);
     CheckSubmitStartsWith(
-        StringifyJSON(
-            Dump(Graph{{{"", {{"a.in"}}, {}}, {"", {}, {{"a.out"}}}}, {{1, 1, 0, 0}}, kGraphMeta})),
+        StringifyJSON(Dump(Graph{
+            {{"", {}, {{"a.in"}}, {}}, {"", {}, {}, {{"a.out"}}}}, {{1, 1, 0, 0}}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kInvalidConnection);
     CheckSubmitStartsWith(
-        StringifyJSON(Dump(
-            Graph{{{"", {{"a.in"}}, {}}, {"", {}, {{"a.out"}}}}, {{1, 0, -1ul, 0}}, kGraphMeta})),
+        StringifyJSON(Dump(Graph{
+            {{"", {}, {{"a.in"}}, {}}, {"", {}, {}, {{"a.out"}}}}, {{1, 0, -1, 0}}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kInvalidConnection);
     CheckSubmitStartsWith(
-        StringifyJSON(Dump(
-            Graph{{{"", {{"a.in"}}, {}}, {"", {}, {{"a.out"}}}}, {{1, 0, 0, -1ul}}, kGraphMeta})),
+        StringifyJSON(Dump(Graph{
+            {{"", {}, {{"a.in"}}, {}}, {"", {}, {}, {{"a.out"}}}}, {{1, 0, 0, -1}}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kInvalidConnection);
 }
 
 TEST(ValidationError, Loop) {
     CheckSubmitStartsWith(
-        StringifyJSON(Dump(Graph{{{"", {{"a.in"}}, {{"a.out"}}}}, {{0, 0, 0, 0}}, kGraphMeta})),
+        StringifyJSON(Dump(Graph{{{"", {}, {{"a.in"}}, {{"a.out"}}}}, {{0, 0, 0, 0}}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kLoopsNotSupported);
 }
 
@@ -121,9 +131,10 @@ TEST(Execution, SingleBlock) {
 }
 
 TEST(Execution, Bamboo) {
-    Graph graph = {{{"", {}, {{"a.out"}}}, {"", {{"a.in"}}, {{"a.out"}}}, {"", {{"a.in"}}, {}}},
-                   {{0, 0, 1, 0}, {1, 0, 2, 0}},
-                   kGraphMeta};
+    Graph graph = {
+        {{"", {}, {}, {{"a.out"}}}, {"", {}, {{"a.in"}}, {{"a.out"}}}, {"", {}, {{"a.in"}}, {}}},
+        {{0, 0, 1, 0}, {1, 0, 2, 0}},
+        kGraphMeta};
     CheckGraphExecution(graph, 5, 1, 3, kRunnerDelay, 3 * kRunnerDelay);
     CheckGraphExecution(graph, 5, 10, 3, kRunnerDelay, 3 * kRunnerDelay);
 }
@@ -135,12 +146,12 @@ TEST(Execution, Parallel) {
 }
 
 TEST(Execution, MaxRunners) {
-    Graph graph = {{{"0", {}, {{"o1234"}}},
-                    {"1", {{"i0"}}, {{"o5"}}},
-                    {"2", {{"i0"}}, {{"o5"}}},
-                    {"3", {{"i0"}}, {{"o5"}}},
-                    {"4", {{"i0"}}, {{"o5"}}},
-                    {"5", {{"i1"}, {"i2"}, {"i3"}, {"i4"}}, {}}},
+    Graph graph = {{{"0", {}, {}, {{"o1234"}}},
+                    {"1", {}, {{"i0"}}, {{"o5"}}},
+                    {"2", {}, {{"i0"}}, {{"o5"}}},
+                    {"3", {}, {{"i0"}}, {{"o5"}}},
+                    {"4", {}, {{"i0"}}, {{"o5"}}},
+                    {"5", {}, {{"i1"}, {"i2"}, {"i3"}, {"i4"}}, {}}},
                    {{0, 0, 1, 0},
                     {0, 0, 2, 0},
                     {0, 0, 3, 0},
@@ -166,13 +177,13 @@ TEST(Execution, MaxRunners) {
 }
 
 TEST(Execution, FiniteCycle) {
-    Graph graph = {{{"0", {}, {{"o155"}}},
-                    {"1", {{"i0"}}, {{"o2"}}},
-                    {"2", {{"i1"}}, {{"o3"}, {"o5"}}},
-                    {"3", {{"i2"}}, {{"o4"}}},
-                    {"4", {{"i3"}}, {{"o5"}}},
-                    {"5", {{"i024"}, {"i06"}}, {{"o6"}}},
-                    {"6", {{"i5"}}, {{"o5"}}}},
+    Graph graph = {{{"0", {}, {}, {{"o155"}}},
+                    {"1", {}, {{"i0"}}, {{"o2"}}},
+                    {"2", {}, {{"i1"}}, {{"o3"}, {"o5"}}},
+                    {"3", {}, {{"i2"}}, {{"o4"}}},
+                    {"4", {}, {{"i3"}}, {{"o5"}}},
+                    {"5", {}, {{"i024"}, {"i06"}}, {{"o6"}}},
+                    {"6", {}, {{"i5"}}, {{"o5"}}}},
                    {{0, 0, 1, 0},
                     {1, 0, 2, 0},
                     {2, 0, 3, 0},
@@ -188,14 +199,24 @@ TEST(Execution, FiniteCycle) {
 }
 
 TEST(Execution, FailedBlocks) {
-    Graph graph = {{{"0", {}, {{"o1"}}, {{}}},
-                    {"1", {{"i0"}}, {}},
-                    {"2", {}, {{"o3"}}},
-                    {"3", {{"i2"}}, {{"o4"}}},
-                    {"4", {{"i3"}}, {}}},
+    Graph graph = {{{"0", {}, {}, {{"o1"}}, {{}}},
+                    {"1", {}, {{"i0"}}, {}},
+                    {"2", {}, {}, {{"o3"}}},
+                    {"3", {}, {{"i2"}}, {{"o4"}}},
+                    {"4", {}, {{"i3"}}, {}}},
                    {{0, 0, 1, 0}, {2, 0, 3, 0}, {3, 0, 4, 0}},
                    kGraphMeta};
     CheckGraphExecution(graph, 3, 2, 3, kRunnerDelay, 2 * kRunnerDelay, {0, 3});
+}
+
+TEST(Execution, FilesystemError) {
+    Graph graph = {{{"0", {{"a", "a", 7}}, {}, {}},
+                    {"1", {}, {}, {{"o2"}}},
+                    {"2", {{"a", "a", 7}}, {{"i1"}}, {}}},
+                   {{1, 0, 2, 0}},
+                   kGraphMeta};
+    CheckGraphExecution(graph, 3, 1, 3, kRunnerDelay, kRunnerDelay);
+    CheckGraphExecution(graph, 3, 2, 3, kRunnerDelay, kRunnerDelay);
 }
 
 TEST(Execution, Stress) {

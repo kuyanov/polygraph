@@ -1,0 +1,4 @@
+{
+  "scheduler-host": "127.0.0.1",
+  "scheduler-port": 3000
+}

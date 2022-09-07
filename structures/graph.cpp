@@ -2,137 +2,112 @@
 #include "operations.h"
 
 template <>
-void Load<BlockInput>(BlockInput &object, const rapidjson::Value &json) {
-    object.name = json["name"].GetString();
+void Load<Bind>(Bind &data, const rapidjson::Value &value) {
+    Load(data.inside, value["inside"]);
+    Load(data.outside, value["outside"]);
+    Load(data.permissions, value["permissions"]);
 }
 
 template <>
-rapidjson::Value Dump<BlockInput>(const BlockInput &object,
+rapidjson::Value Dump<Bind>(const Bind &data, rapidjson::Document::AllocatorType &alloc) {
+    rapidjson::Value value(rapidjson::kObjectType);
+    value.AddMember("inside", Dump(data.inside, alloc), alloc);
+    value.AddMember("outside", Dump(data.outside, alloc), alloc);
+    value.AddMember("permissions", Dump(data.permissions, alloc), alloc);
+    return value;
+}
+
+template <>
+void Load<Input>(Input &data, const rapidjson::Value &value) {
+    Load(data.name, value["name"]);
+}
+
+template <>
+rapidjson::Value Dump<Input>(const Input &data, rapidjson::Document::AllocatorType &alloc) {
+    rapidjson::Value value(rapidjson::kObjectType);
+    value.AddMember("name", Dump(data.name, alloc), alloc);
+    return value;
+}
+
+template <>
+void Load<Output>(Output &data, const rapidjson::Value &value) {
+    Load(data.name, value["name"]);
+}
+
+template <>
+rapidjson::Value Dump<Output>(const Output &data, rapidjson::Document::AllocatorType &alloc) {
+    rapidjson::Value value(rapidjson::kObjectType);
+    value.AddMember("name", Dump(data.name, alloc), alloc);
+    return value;
+}
+
+template <>
+void Load<Block>(Block &data, const rapidjson::Value &value) {
+    Load(data.name, value["name"]);
+    Load(data.binds, value["binds"]);
+    Load(data.inputs, value["inputs"]);
+    Load(data.outputs, value["outputs"]);
+    Load(data.task, value["task"]);
+}
+
+template <>
+rapidjson::Value Dump<Block>(const Block &data, rapidjson::Document::AllocatorType &alloc) {
+    rapidjson::Value value(rapidjson::kObjectType);
+    value.AddMember("name", Dump(data.name, alloc), alloc);
+    value.AddMember("binds", Dump(data.binds, alloc), alloc);
+    value.AddMember("inputs", Dump(data.inputs, alloc), alloc);
+    value.AddMember("outputs", Dump(data.outputs, alloc), alloc);
+    value.AddMember("task", Dump(data.task, alloc), alloc);
+    return value;
+}
+
+template <>
+void Load<Connection>(Connection &data, const rapidjson::Value &value) {
+    Load(data.start_block_id, value["start-block-id"]);
+    Load(data.start_output_id, value["start-output-id"]);
+    Load(data.end_block_id, value["end-block-id"]);
+    Load(data.end_input_id, value["end-input-id"]);
+}
+
+template <>
+rapidjson::Value Dump<Connection>(const Connection &data,
                                   rapidjson::Document::AllocatorType &alloc) {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("name", rapidjson::Value().SetString(object.name.c_str(), alloc), alloc);
-    return json;
+    rapidjson::Value value(rapidjson::kObjectType);
+    value.AddMember("start-block-id", Dump(data.start_block_id, alloc), alloc);
+    value.AddMember("start-output-id", Dump(data.start_output_id, alloc), alloc);
+    value.AddMember("end-block-id", Dump(data.end_block_id, alloc), alloc);
+    value.AddMember("end-input-id", Dump(data.end_input_id, alloc), alloc);
+    return value;
 }
 
 template <>
-void Load<BlockOutput>(BlockOutput &object, const rapidjson::Value &json) {
-    object.name = json["name"].GetString();
+void Load<Meta>(Meta &data, const rapidjson::Value &value) {
+    Load(data.name, value["name"]);
+    Load(data.partition, value["partition"]);
+    Load(data.max_runners, value["max-runners"]);
 }
 
 template <>
-rapidjson::Value Dump<BlockOutput>(const BlockOutput &object,
-                                   rapidjson::Document::AllocatorType &alloc) {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("name", rapidjson::Value().SetString(object.name.c_str(), alloc), alloc);
-    return json;
+rapidjson::Value Dump<Meta>(const Meta &data, rapidjson::Document::AllocatorType &alloc) {
+    rapidjson::Value value(rapidjson::kObjectType);
+    value.AddMember("name", Dump(data.name, alloc), alloc);
+    value.AddMember("partition", Dump(data.partition, alloc), alloc);
+    value.AddMember("max-runners", Dump(data.max_runners, alloc), alloc);
+    return value;
 }
 
 template <>
-void Load<Block>(Block &object, const rapidjson::Value &json) {
-    object.name = json["name"].GetString();
-    auto inputs_array = json["inputs"].GetArray();
-    object.inputs.resize(inputs_array.Size());
-    for (size_t i = 0; i < object.inputs.size(); ++i) {
-        Load(object.inputs[i], inputs_array[i]);
-    }
-    auto outputs_array = json["outputs"].GetArray();
-    object.outputs.resize(outputs_array.Size());
-    for (size_t i = 0; i < object.outputs.size(); ++i) {
-        Load(object.outputs[i], outputs_array[i]);
-    }
-    auto tasks_array = json["tasks"].GetArray();
-    object.tasks.resize(tasks_array.Size());
-    for (size_t i = 0; i < object.tasks.size(); ++i) {
-        Load(object.tasks[i], tasks_array[i]);
-    }
+void Load<Graph>(Graph &data, const rapidjson::Value &value) {
+    Load(data.blocks, value["blocks"]);
+    Load(data.connections, value["connections"]);
+    Load(data.meta, value["meta"]);
 }
 
 template <>
-rapidjson::Value Dump<Block>(const Block &object, rapidjson::Document::AllocatorType &alloc) {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("name", rapidjson::Value().SetString(object.name.c_str(), alloc), alloc);
-    rapidjson::Value inputs_array(rapidjson::kArrayType);
-    for (const auto &input : object.inputs) {
-        inputs_array.PushBack(Dump(input, alloc), alloc);
-    }
-    json.AddMember("inputs", inputs_array, alloc);
-    rapidjson::Value outputs_array(rapidjson::kArrayType);
-    for (const auto &output : object.outputs) {
-        outputs_array.PushBack(Dump(output, alloc), alloc);
-    }
-    json.AddMember("outputs", outputs_array, alloc);
-    rapidjson::Value tasks_array(rapidjson::kArrayType);
-    for (const auto &task : object.tasks) {
-        tasks_array.PushBack(Dump(task, alloc), alloc);
-    }
-    json.AddMember("tasks", tasks_array, alloc);
-    return json;
-}
-
-template <>
-void Load<Connection>(Connection &object, const rapidjson::Value &json) {
-    object.start_block_id = json["start-block-id"].GetInt();
-    object.start_output_id = json["start-output-id"].GetInt();
-    object.end_block_id = json["end-block-id"].GetInt();
-    object.end_input_id = json["end-input-id"].GetInt();
-}
-
-template <>
-rapidjson::Value Dump<Connection>(const Connection &object,
-                                  rapidjson::Document::AllocatorType &alloc) {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("start-block-id", rapidjson::Value().SetInt(object.start_block_id), alloc);
-    json.AddMember("start-output-id", rapidjson::Value().SetInt(object.start_output_id), alloc);
-    json.AddMember("end-block-id", rapidjson::Value().SetInt(object.end_block_id), alloc);
-    json.AddMember("end-input-id", rapidjson::Value().SetInt(object.end_input_id), alloc);
-    return json;
-}
-
-template <>
-void Load<Meta>(Meta &object, const rapidjson::Value &json) {
-    object.name = json["name"].GetString();
-    object.partition = json["partition"].GetString();
-    object.max_runners = json["max-runners"].GetInt();
-}
-
-template <>
-rapidjson::Value Dump<Meta>(const Meta &object, rapidjson::Document::AllocatorType &alloc) {
-    rapidjson::Value json(rapidjson::kObjectType);
-    json.AddMember("name", rapidjson::Value().SetString(object.name.c_str(), alloc), alloc);
-    json.AddMember("partition", rapidjson::Value().SetString(object.partition.c_str(), alloc),
-                   alloc);
-    json.AddMember("max-runners", rapidjson::Value().SetInt(object.max_runners), alloc);
-    return json;
-}
-
-template <>
-void Load<Graph>(Graph &object, const rapidjson::Value &json) {
-    auto blocks_array = json["blocks"].GetArray();
-    object.blocks.resize(blocks_array.Size());
-    for (size_t i = 0; i < object.blocks.size(); ++i) {
-        Load(object.blocks[i], blocks_array[i]);
-    }
-    auto connections_array = json["connections"].GetArray();
-    object.connections.resize(connections_array.Size());
-    for (size_t i = 0; i < object.connections.size(); ++i) {
-        Load(object.connections[i], connections_array[i]);
-    }
-    Load(object.meta, json["meta"]);
-}
-
-template <>
-rapidjson::Value Dump<Graph>(const Graph &object, rapidjson::Document::AllocatorType &alloc) {
-    rapidjson::Value json(rapidjson::kObjectType);
-    rapidjson::Value blocks_array(rapidjson::kArrayType);
-    for (const auto &block : object.blocks) {
-        blocks_array.PushBack(Dump(block, alloc), alloc);
-    }
-    json.AddMember("blocks", blocks_array, alloc);
-    rapidjson::Value connections_array(rapidjson::kArrayType);
-    for (const auto &connection : object.connections) {
-        connections_array.PushBack(Dump(connection, alloc), alloc);
-    }
-    json.AddMember("connections", connections_array, alloc);
-    json.AddMember("meta", Dump(object.meta, alloc), alloc);
-    return json;
+rapidjson::Value Dump<Graph>(const Graph &data, rapidjson::Document::AllocatorType &alloc) {
+    rapidjson::Value value(rapidjson::kObjectType);
+    value.AddMember("blocks", Dump(data.blocks, alloc), alloc);
+    value.AddMember("connections", Dump(data.connections, alloc), alloc);
+    value.AddMember("meta", Dump(data.meta, alloc), alloc);
+    return value;
 }

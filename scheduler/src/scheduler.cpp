@@ -6,8 +6,7 @@
 #include "error.h"
 #include "json.h"
 #include "operations.h"
-#include "run_request.h"
-#include "run_response.h"
+#include "result.h"
 #include "scheduler.h"
 #include "uuid.h"
 
@@ -20,6 +19,12 @@ bool IsFilenameValid(const std::string &filename) {
 void GraphState::Validate() const {
     for (const auto &block : blocks) {
         std::unordered_set<std::string> filenames;
+        for (const auto &bind : block.binds) {
+            if (bind.permissions < 0 || bind.permissions > 7) {
+                throw ValidationError(errors::kInvalidPermissions);
+            }
+            filenames.insert(bind.inside);
+        }
         for (const auto &input : block.inputs) {
             filenames.insert(input.name);
         }
@@ -31,13 +36,13 @@ void GraphState::Validate() const {
                 throw ValidationError(errors::kInvalidFilename);
             }
         }
-        if (filenames.size() != block.inputs.size() + block.outputs.size()) {
+        if (filenames.size() != block.binds.size() + block.inputs.size() + block.outputs.size()) {
             throw ValidationError(errors::kDuplicatedFilename);
         }
     }
     for (const auto &[start_block_id, start_output_id, end_block_id, end_input_id] : connections) {
-        if (start_block_id >= blocks.size() ||
-            start_output_id >= blocks[start_block_id].outputs.size() ||
+        if (start_block_id < 0 || start_block_id >= blocks.size() ||
+            start_output_id >= blocks[start_block_id].outputs.size() || end_block_id < 0 ||
             end_block_id >= blocks.size() || end_input_id >= blocks[end_block_id].inputs.size()) {
             throw ValidationError(errors::kInvalidConnection);
         }
@@ -64,17 +69,16 @@ void GraphState::Init(const rapidjson::Document &document) {
 }
 
 void GraphState::Run() {
-    if (IsRunning()) {
+    if (is_running_) {
         throw APIError(errors::kAlreadyRunning);
     }
+    is_running_ = true;
     for (size_t block_id = 0; block_id < blocks.size(); ++block_id) {
         if (IsBlockReady(block_id)) {
             EnqueueBlock(block_id);
         }
     }
-    if (!IsRunning()) {
-        SendToAllClients(signals::kGraphComplete);
-    }
+    UpdateBlocksProcessing();
 }
 
 void GraphState::Stop() {
@@ -82,23 +86,36 @@ void GraphState::Stop() {
     throw APIError(errors::kNotImplemented);
 }
 
-bool GraphState::IsRunning() const {
-    return cnt_blocks_processing_ > 0;
-}
-
 void GraphState::RunBlock(size_t block_id, RunnerWebSocket *ws) {
     ws->getUserData()->graph_ptr = this;
     ws->getUserData()->block_id = block_id;
-    PrepareBlockContainer(block_id);
-    SendTasks(block_id, ws);
+    BlockResponse block_response = {.block_id = static_cast<int>(block_id),
+                                    .state = states::kRunning};
+    try {
+        PrepareContainer(block_id);
+        SendTask(block_id, ws);
+        SendToAllClients(StringifyJSON(Dump(block_response)));
+    } catch (const fs::filesystem_error &error) {
+        block_response.state = states::kComplete;
+        block_response.error = errors::kRuntimeErrorPrefix + error.what();
+        SendToAllClients(StringifyJSON(Dump(block_response)));
+        ClearBlockState(block_id);
+        partition_ptr->AddRunner(ws);
+        DequeueBlock();
+        UpdateBlocksProcessing();
+    }
 }
 
-void GraphState::OnResults(RunnerWebSocket *ws, std::string_view message) {
+void GraphState::OnResult(RunnerWebSocket *ws, std::string_view message) {
     size_t block_id = ws->getUserData()->block_id;
-    partition_ptr->AddRunner(ws);
-    bool success = ProcessResults(block_id, message);
-    DequeueBlock();
-    if (success) {
+    RunResponse run_response;
+    Load(run_response, ParseJSON(std::string(message)));
+    BlockResponse block_response = {.block_id = static_cast<int>(block_id),
+                                    .state = states::kComplete,
+                                    .error = run_response.error,
+                                    .result = run_response.result};
+    if (run_response.result.has_value() && run_response.result->exited &&
+        run_response.result->exit_code == 0) {
         try {
             for (const auto &connection : go_[block_id]) {
                 if (TransferFile(connection) && IsBlockReady(connection.end_block_id)) {
@@ -106,52 +123,67 @@ void GraphState::OnResults(RunnerWebSocket *ws, std::string_view message) {
                 }
             }
         } catch (const fs::filesystem_error &error) {
-            SendToAllClients(errors::kRuntimeErrorPrefix + error.what());
+            block_response.error = errors::kRuntimeErrorPrefix + error.what();
         }
     }
+    SendToAllClients(StringifyJSON(Dump(block_response)));
     ClearBlockState(block_id);
-    if (!IsRunning()) {
-        SendToAllClients(signals::kGraphComplete);
-    }
+    partition_ptr->AddRunner(ws);
+    DequeueBlock();
+    UpdateBlocksProcessing();
 }
 
 void GraphState::EnqueueBlock(size_t block_id) {
-    if (cnt_blocks_processing_ < meta.max_runners) {
-        partition_ptr->EnqueueBlock(this, block_id);
-        ++cnt_blocks_processing_;
-    } else {
-        blocks_ready_.push(block_id);
-    }
+    blocks_ready_.push(block_id);
 }
 
 void GraphState::DequeueBlock() {
-    if (!blocks_ready_.empty()) {
+    --cnt_blocks_processing_;
+}
+
+void GraphState::UpdateBlocksProcessing() {
+    while (!blocks_ready_.empty() && cnt_blocks_processing_ < meta.max_runners) {
         size_t block_id = blocks_ready_.front();
         blocks_ready_.pop();
+        ++cnt_blocks_processing_;
         partition_ptr->EnqueueBlock(this, block_id);
-    } else {
-        --cnt_blocks_processing_;
+    }
+    if (is_running_ && cnt_blocks_processing_ == 0 && blocks_ready_.empty()) {
+        is_running_ = false;
+        SendToAllClients(states::kComplete);
     }
 }
 
-void GraphState::PrepareBlockContainer(size_t block_id) {
-    std::string container_name = GetContainerName(block_id);
-    if (!fs::exists(fs::path(SANDBOX_DIR) / container_name)) {
-        fs::create_directories(fs::path(SANDBOX_DIR) / container_name);
+void GraphState::PrepareContainer(size_t block_id) {
+    std::string container = GetContainer(block_id);
+    fs::path container_path = fs::path(SANDBOX_DIR) / container;
+    if (!fs::exists(container_path)) {
+        fs::create_directories(container_path);
+        fs::permissions(container_path, fs::perms::others_all, fs::perm_options::add);
+    }
+    for (const auto &bind : blocks[block_id].binds) {
+        fs::copy(fs::path(USER_DIR) / bind.outside, container_path / bind.inside,
+                 fs::copy_options::create_hard_links | fs::copy_options::recursive);
+        fs::permissions(container_path / bind.inside, fs::perms::others_all,
+                        fs::perm_options::remove);
+        fs::permissions(container_path / bind.inside, static_cast<fs::perms>(bind.permissions),
+                        fs::perm_options::add);
     }
 }
 
 bool GraphState::TransferFile(const Connection &connection) {
     const auto &[start_block_id, start_output_id, end_block_id, end_input_id] = connection;
-    std::string start_container_name = GetContainerName(start_block_id);
+    std::string start_container = GetContainer(start_block_id);
     std::string start_output_name = blocks[start_block_id].outputs[start_output_id].name;
-    std::string end_container_name = GetContainerName(end_block_id);
+    std::string end_container = GetContainer(end_block_id);
     std::string end_input_name = blocks[end_block_id].inputs[end_input_id].name;
-    if (!fs::exists(fs::path(SANDBOX_DIR) / end_container_name)) {
-        fs::create_directories(fs::path(SANDBOX_DIR) / end_container_name);
+    fs::path end_container_path = fs::path(SANDBOX_DIR) / end_container;
+    if (!fs::exists(end_container_path)) {
+        fs::create_directories(end_container_path);
+        fs::permissions(end_container_path, fs::perms::others_all, fs::perm_options::add);
     }
-    fs::path start_output_path = fs::path(SANDBOX_DIR) / start_container_name / start_output_name;
-    fs::path end_input_path = fs::path(SANDBOX_DIR) / end_container_name / end_input_name;
+    fs::path start_output_path = fs::path(SANDBOX_DIR) / start_container / start_output_name;
+    fs::path end_input_path = fs::path(SANDBOX_DIR) / end_container / end_input_name;
     if (!fs::exists(start_output_path) || fs::exists(end_input_path)) {
         return false;
     }
@@ -161,29 +193,9 @@ bool GraphState::TransferFile(const Connection &connection) {
     return true;
 }
 
-void GraphState::SendTasks(size_t block_id, RunnerWebSocket *ws) {
-    RunRequest run_request = {.container = GetContainerName(block_id),
-                              .tasks = blocks[block_id].tasks};
+void GraphState::SendTask(size_t block_id, RunnerWebSocket *ws) {
+    RunRequest run_request = {.container = GetContainer(block_id), .task = blocks[block_id].task};
     ws->send(StringifyJSON(Dump(run_request)));
-}
-
-bool GraphState::ProcessResults(size_t block_id, std::string_view message) {
-    RunResponse run_response;
-    Load(run_response, ParseJSON(std::string(message)));
-    BlockRunResponse block_run_response = {.run_response = run_response, .block_id = block_id};
-    if (run_response.has_error) {
-        SendToAllClients(StringifyJSON(Dump(block_run_response)));
-        return false;
-    }
-    bool exited_normally = true;
-    for (const auto &result : run_response.results) {
-        if (!result.exited || result.exit_code != 0) {
-            exited_normally = false;
-            break;
-        }
-    }
-    SendToAllClients(StringifyJSON(Dump(block_run_response)));
-    return exited_normally;
 }
 
 bool GraphState::IsBlockReady(size_t block_id) const {
@@ -209,7 +221,7 @@ void GraphState::SendToAllClients(std::string_view message) {
     }
 }
 
-std::string GraphState::GetContainerName(size_t block_id) const {
+std::string GraphState::GetContainer(size_t block_id) const {
     return graph_id + "_" + std::to_string(block_id) + "_" +
            std::to_string(blocks_state_[block_id].cnt_runs);
 }

@@ -1,0 +1,135 @@
+{
+  "blocks": [
+    {
+      "name": "Compile main.cpp",
+      "binds": [
+        {
+          "inside": "main.cpp",
+          "outside": "pipeline/main.cpp",
+          "permissions": 4
+        },
+        {
+          "inside": "error",
+          "outside": "error.txt",
+          "permissions": 2
+        }
+      ],
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "main"
+        }
+      ],
+      "task": {
+        "argv": [
+          "g++",
+          "main.cpp",
+          "-o",
+          "main"
+        ],
+        "env": [],
+        "stdin": null,
+        "stdout": null,
+        "stderr": "error",
+        "limits": {
+          "max-threads": 128
+        }
+      }
+    },
+    {
+      "name": "Run main (1)",
+      "binds": [
+        {
+          "inside": "output",
+          "outside": "pipeline/output.txt",
+          "permissions": 2
+        },
+        {
+          "inside": "error",
+          "outside": "error.txt",
+          "permissions": 2
+        }
+      ],
+      "inputs": [
+        {
+          "name": "main"
+        }
+      ],
+      "outputs": [],
+      "task": {
+        "argv": [
+          "bash",
+          "-c",
+          "./main 1 >>output"
+        ],
+        "env": [],
+        "stdin": null,
+        "stdout": null,
+        "stderr": "error",
+        "limits": {
+          "time-limit-ms": 1000,
+          "wall-time-limit-ms": 1000,
+          "memory-limit-kb": 1024,
+          "max-threads": 16
+        }
+      }
+    },
+    {
+      "name": "Run main (2)",
+      "binds": [
+        {
+          "inside": "output",
+          "outside": "pipeline/output.txt",
+          "permissions": 2
+        },
+        {
+          "inside": "error",
+          "outside": "error.txt",
+          "permissions": 2
+        }
+      ],
+      "inputs": [
+        {
+          "name": "main"
+        }
+      ],
+      "outputs": [],
+      "task": {
+        "argv": [
+          "bash",
+          "-c",
+          "./main 2 >>output"
+        ],
+        "env": [],
+        "stdin": null,
+        "stdout": null,
+        "stderr": "error",
+        "limits": {
+          "time-limit-ms": 1000,
+          "wall-time-limit-ms": 1000,
+          "memory-limit-kb": 1024,
+          "max-threads": 16
+        }
+      }
+    }
+  ],
+  "connections": [
+    {
+      "start-block-id": 0,
+      "start-output-id": 0,
+      "end-block-id": 1,
+      "end-input-id": 0
+    },
+    {
+      "start-block-id": 0,
+      "start-output-id": 0,
+      "end-block-id": 2,
+      "end-input-id": 0
+    }
+  ],
+  "meta": {
+    "name": "Pipeline",
+    "partition": "all",
+    "max-runners": 1
+  }
+}

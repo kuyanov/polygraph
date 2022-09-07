@@ -18,8 +18,9 @@
 #include "json.h"
 #include "net.h"
 #include "operations.h"
-#include "run_request.h"
-#include "run_response.h"
+#include "result.h"
+#include "task.h"
+#include "uuid.h"
 
 namespace fs = std::filesystem;
 
@@ -31,10 +32,6 @@ static thread_local SchemaValidator request_validator("run_request.json");
 void CheckSubmitStartsWith(const std::string &body, const std::string &prefix) {
     auto result = HttpSession(kHost, kPort).Post("/submit", body);
     ASSERT_TRUE(result.starts_with(prefix));
-}
-
-bool IsUuid(const std::string &s) {
-    return s.size() == 36 && s[8] == '-' && s[13] == '-' && s[18] == '-' && s[23] == '-';
 }
 
 long long Timestamp() {
@@ -53,22 +50,26 @@ void ImitateRun(const std::string &message, const Graph &graph, int runner_delay
                 const std::vector<size_t> &failed_blocks, std::string &response) {
     RunRequest run_request;
     Load(run_request, request_validator.ParseAndValidate(message));
-    std::string container_name = run_request.container;
-    size_t block_id = ParseBlockId(container_name);
+    std::string container = run_request.container;
+    size_t block_id = ParseBlockId(container);
+    for (const auto &bind : graph.blocks[block_id].binds) {
+        ASSERT_TRUE(fs::exists(fs::path(SANDBOX_DIR) / container / bind.inside));
+    }
     for (const auto &input : graph.blocks[block_id].inputs) {
-        ASSERT_TRUE(fs::exists(fs::path(SANDBOX_DIR) / container_name / input.name));
+        ASSERT_TRUE(fs::exists(fs::path(SANDBOX_DIR) / container / input.name));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(runner_delay));
     for (const auto &output : graph.blocks[block_id].outputs) {
-        ASSERT_TRUE(!fs::exists(fs::path(SANDBOX_DIR) / container_name / output.name));
-        std::ofstream(fs::path(SANDBOX_DIR) / container_name / output.name);
+        ASSERT_TRUE(!fs::exists(fs::path(SANDBOX_DIR) / container / output.name));
+        std::ofstream(fs::path(SANDBOX_DIR) / container / output.name);
     }
     bool failed =
         std::find(failed_blocks.begin(), failed_blocks.end(), block_id) != failed_blocks.end();
     RunResponse run_response;
-    run_response.has_error = failed && run_request.tasks.empty();
-    for (const auto &task : run_request.tasks) {
-        run_response.results.push_back({.exited = true, .exit_code = failed});
+    if (failed) {
+        run_response.error = "Some error";
+    } else {
+        run_response.result = {.exited = true, .exit_code = 0};
     }
     response = StringifyJSON(Dump(run_response));
 }
@@ -105,17 +106,21 @@ void CheckGraphExecution(const Graph &graph, int cnt_clients, int cnt_runners, i
             session.Connect(kHost, kPort, "/graph/" + uuid);
             int cnt_blocks_completed = 0;
             session.OnRead([&](const std::string &message) {
-                if (message == signals::kGraphComplete) {
+                if (message == states::kComplete) {
                     if (++cnt_clients_completed == cnt_clients) {
                         completed.notify_one();
                     }
                     ASSERT_EQ(cnt_blocks_completed, exp_runs);
                 } else {
-                    ++cnt_blocks_completed;
+                    BlockResponse block_response;
+                    Load(block_response, ParseJSON(message));
+                    if (block_response.state == states::kComplete) {
+                        ++cnt_blocks_completed;
+                    }
                 }
             });
             if (++cnt_clients_connected == cnt_clients) {
-                session.Write(signals::kGraphRun);
+                session.Write(signals::kRun);
             }
             session.Run();
         });

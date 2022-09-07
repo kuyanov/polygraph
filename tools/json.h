@@ -5,7 +5,7 @@
 #include <rapidjson/document.h>
 #include <rapidjson/schema.h>
 
-rapidjson::Document ParseJSON(const std::string &s);
+rapidjson::Document ParseJSON(const std::string &text);
 rapidjson::Document ReadJSON(const std::string &path);
 std::string StringifyJSON(const rapidjson::Document &document);
 
@@ -13,7 +13,7 @@ class SchemaValidator {
 public:
     explicit SchemaValidator(const std::string &filename);
 
-    rapidjson::Document ParseAndValidate(const std::string &s);
+    rapidjson::Document ParseAndValidate(const std::string &text);
 
 private:
     std::optional<rapidjson::SchemaDocument> schema_document_;

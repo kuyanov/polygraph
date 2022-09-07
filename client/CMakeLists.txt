@@ -1,0 +1,6 @@
+add_executable(Client main.cpp)
+file(GLOB CLIENT_SOURCES src/*.cpp)
+target_sources(Client PRIVATE ${CLIENT_SOURCES})
+target_compile_definitions(Client PUBLIC CONFIG_FILE="${CMAKE_SOURCE_DIR}/client/config.json")
+target_include_directories(Client PUBLIC src)
+target_link_libraries(Client PRIVATE Structures Tools)

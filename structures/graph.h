@@ -5,23 +5,29 @@
 
 #include "task.h"
 
-struct BlockInput {
+struct Bind {
+    std::string inside, outside;
+    int permissions;
+};
+
+struct Input {
     std::string name;
 };
 
-struct BlockOutput {
+struct Output {
     std::string name;
 };
 
 struct Block {
     std::string name;
-    std::vector<BlockInput> inputs;
-    std::vector<BlockOutput> outputs;
-    std::vector<Task> tasks;
+    std::vector<Bind> binds;
+    std::vector<Input> inputs;
+    std::vector<Output> outputs;
+    Task task;
 };
 
 struct Connection {
-    size_t start_block_id, start_output_id, end_block_id, end_input_id;
+    int start_block_id, start_output_id, end_block_id, end_input_id;
 };
 
 struct Meta {

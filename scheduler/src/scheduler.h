@@ -40,19 +40,18 @@ public:
 
     void Run();
     void Stop();
-    bool IsRunning() const;
 
     void RunBlock(size_t block_id, RunnerWebSocket *ws);
-    void OnResults(RunnerWebSocket *ws, std::string_view message);
+    void OnResult(RunnerWebSocket *ws, std::string_view message);
 
     void EnqueueBlock(size_t block_id);
     void DequeueBlock();
+    void UpdateBlocksProcessing();
 
-    void PrepareBlockContainer(size_t block_id);
+    void PrepareContainer(size_t block_id);
     bool TransferFile(const Connection &connection);
 
-    void SendTasks(size_t block_id, RunnerWebSocket *ws);
-    bool ProcessResults(size_t block_id, std::string_view message);
+    void SendTask(size_t block_id, RunnerWebSocket *ws);
 
     bool IsBlockReady(size_t block_id) const;
     void ClearBlockState(size_t block_id);
@@ -67,13 +66,14 @@ private:
         size_t cnt_runs = 0;
     };
 
+    bool is_running_ = false;
     int cnt_blocks_processing_ = 0;
     std::queue<size_t> blocks_ready_;
     std::vector<BlockState> blocks_state_;
     std::vector<std::vector<Connection>> go_;
     std::unordered_set<ClientWebSocket *> clients_;
 
-    std::string GetContainerName(size_t block_id) const;
+    std::string GetContainer(size_t block_id) const;
 };
 
 class Partition {

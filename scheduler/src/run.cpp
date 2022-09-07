@@ -9,6 +9,9 @@
 #include "run.h"
 #include "scheduler.h"
 
+const std::string kHost = Config::Get().host;
+const int kPort = Config::Get().port;
+
 static SchemaValidator graph_validator("graph.json");
 static Scheduler scheduler;
 
@@ -55,7 +58,7 @@ void Run() {
         },
         .message = [&](auto *ws, std::string_view message, uWS::OpCode op_code) {
             GraphState *graph_ptr = ws->getUserData()->graph_ptr;
-            graph_ptr->OnResults(ws, message);
+            graph_ptr->OnResult(ws, message);
         },
         .close = [&](auto *ws, int code, std::string_view message) {
             scheduler.LeaveRunner(ws);
@@ -82,9 +85,9 @@ void Run() {
         .message = [&](auto *ws, std::string_view message, uWS::OpCode op_code) {
             GraphState *graph_ptr = ws->getUserData()->graph_ptr;
             try {
-                if (message == signals::kGraphRun) {
+                if (message == signals::kRun) {
                     graph_ptr->Run();
-                } else if (message == signals::kGraphStop) {
+                } else if (message == signals::kStop) {
                     graph_ptr->Stop();
                 } else {
                     throw APIError(errors::kUndefinedCommand);
@@ -96,11 +99,11 @@ void Run() {
         .close = [&](auto *ws, int code, std::string_view message) {
             scheduler.LeaveClient(ws);
         }
-    }).listen(Config::Get().host, Config::Get().port, [&](auto *listen_socket) {
+    }).listen(kHost, kPort, [&](auto *listen_socket) {
         if (listen_socket) {
-            Log("Listening on ", Config::Get().host, ":", Config::Get().port);
+            Log("Listening on ", kHost, ":", kPort);
         } else {
-            Log("Failed to listen on ", Config::Get().host, ":", Config::Get().port);
+            Log("Failed to listen on ", kHost, ":", kPort);
         }
     }).run();
 }

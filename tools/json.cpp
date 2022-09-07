@@ -11,9 +11,9 @@
 
 namespace fs = std::filesystem;
 
-rapidjson::Document ParseJSON(const std::string &s) {
+rapidjson::Document ParseJSON(const std::string &text) {
     rapidjson::Document document;
-    document.Parse(s.c_str());
+    document.Parse(text.c_str());
     return document;
 }
 
@@ -46,8 +46,8 @@ SchemaValidator::SchemaValidator(const std::string &filename) {
     schema_validator_.emplace(*schema_document_);
 }
 
-rapidjson::Document SchemaValidator::ParseAndValidate(const std::string &s) {
-    auto document = ParseJSON(s);
+rapidjson::Document SchemaValidator::ParseAndValidate(const std::string &text) {
+    auto document = ParseJSON(text);
     if (document.HasParseError()) {
         throw ParseError(FormattedError(document));
     }

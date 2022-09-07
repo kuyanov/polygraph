@@ -13,13 +13,36 @@
         "type": "object",
         "required": [
           "name",
+          "binds",
           "inputs",
           "outputs",
-          "tasks"
+          "task"
         ],
         "properties": {
           "name": {
             "type": "string"
+          },
+          "binds": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "inside",
+                "outside",
+                "permissions"
+              ],
+              "properties": {
+                "inside": {
+                  "type": "string"
+                },
+                "outside": {
+                  "type": "string"
+                },
+                "permissions": {
+                  "type": "integer"
+                }
+              }
+            }
           },
           "inputs": {
             "type": "array",
@@ -49,76 +72,80 @@
               }
             }
           },
-          "tasks": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": [
-                "argv",
-                "binds",
-                "env"
-              ],
-              "properties": {
-                "argv": {
-                  "type": "array",
-                  "items": {
+          "task": {
+            "type": "object",
+            "required": [
+              "argv",
+              "env",
+              "stdin",
+              "stdout",
+              "stderr",
+              "limits"
+            ],
+            "properties": {
+              "argv": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "env": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "stdin": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
                     "type": "string"
                   }
-                },
-                "binds": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "required": [
-                      "inside",
-                      "outside",
-                      "writable"
-                    ],
-                    "properties": {
-                      "inside": {
-                        "type": "string"
-                      },
-                      "outside": {
-                        "type": "string"
-                      },
-                      "writable": {
-                        "type": "boolean"
-                      }
-                    }
-                  }
-                },
-                "env": {
-                  "type": "array",
-                  "items": {
+                ]
+              },
+              "stdout": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
                     "type": "string"
                   }
-                },
-                "stdin": {
-                  "type": "string"
-                },
-                "stdout": {
-                  "type": "string"
-                },
-                "stderr": {
-                  "type": "string"
-                },
-                "time-limit-ms": {
-                  "type": "integer"
-                },
-                "wall-time-limit-ms": {
-                  "type": "integer"
-                },
-                "memory-limit-kb": {
-                  "type": "integer"
-                },
-                "fsize-limit-kb": {
-                  "type": "integer"
-                },
-                "max-files": {
-                  "type": "integer"
-                },
-                "max-threads": {
-                  "type": "integer"
+                ]
+              },
+              "stderr": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "time-limit-ms": {
+                    "type": "integer"
+                  },
+                  "wall-time-limit-ms": {
+                    "type": "integer"
+                  },
+                  "memory-limit-kb": {
+                    "type": "integer"
+                  },
+                  "fsize-limit-kb": {
+                    "type": "integer"
+                  },
+                  "max-files": {
+                    "type": "integer"
+                  },
+                  "max-threads": {
+                    "type": "integer"
+                  }
                 }
               }
             }
