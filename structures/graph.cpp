@@ -5,7 +5,6 @@ template <>
 void Load<Bind>(Bind &data, const rapidjson::Value &value) {
     Load(data.inside, value["inside"]);
     Load(data.outside, value["outside"]);
-    Load(data.permissions, value["permissions"]);
 }
 
 template <>
@@ -13,7 +12,6 @@ rapidjson::Value Dump<Bind>(const Bind &data, rapidjson::Document::AllocatorType
     rapidjson::Value value(rapidjson::kObjectType);
     value.AddMember("inside", Dump(data.inside, alloc), alloc);
     value.AddMember("outside", Dump(data.outside, alloc), alloc);
-    value.AddMember("permissions", Dump(data.permissions, alloc), alloc);
     return value;
 }
 

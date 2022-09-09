@@ -5,13 +5,11 @@
       "binds": [
         {
           "inside": "input",
-          "outside": "parallel/input.txt",
-          "permissions": 4
+          "outside": "parallel/input.txt"
         },
         {
           "inside": "output",
-          "outside": "parallel/output.txt",
-          "permissions": 2
+          "outside": "parallel/output.txt"
         }
       ],
       "inputs": [],
@@ -23,9 +21,6 @@
           "cat <input >output"
         ],
         "env": [],
-        "stdin": null,
-        "stdout": null,
-        "stderr": null,
         "limits": {
           "max-threads": 2
         }
@@ -45,9 +40,6 @@
         "env": [
           "CODE=57"
         ],
-        "stdin": null,
-        "stdout": null,
-        "stderr": null,
         "limits": {
           "max-threads": 2
         }
@@ -65,9 +57,6 @@
           "while true; do :; done"
         ],
         "env": [],
-        "stdin": null,
-        "stdout": null,
-        "stderr": null,
         "limits": {
           "time-limit-ms": 500
         }
@@ -84,9 +73,6 @@
           "1"
         ],
         "env": [],
-        "stdin": null,
-        "stdout": null,
-        "stderr": null,
         "limits": {
           "wall-time-limit-ms": 500
         }
@@ -104,9 +90,6 @@
           "a=(0); while true; do a+=$a; done"
         ],
         "env": [],
-        "stdin": null,
-        "stdout": null,
-        "stderr": null,
         "limits": {
           "memory-limit-kb": 102400
         }

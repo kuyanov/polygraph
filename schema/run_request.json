@@ -14,9 +14,6 @@
       "required": [
         "argv",
         "env",
-        "stdin",
-        "stdout",
-        "stderr",
         "limits"
       ],
       "properties": {
@@ -31,36 +28,6 @@
           "items": {
             "type": "string"
           }
-        },
-        "stdin": {
-          "oneOf": [
-            {
-              "type": "null"
-            },
-            {
-              "type": "string"
-            }
-          ]
-        },
-        "stdout": {
-          "oneOf": [
-            {
-              "type": "null"
-            },
-            {
-              "type": "string"
-            }
-          ]
-        },
-        "stderr": {
-          "oneOf": [
-            {
-              "type": "null"
-            },
-            {
-              "type": "string"
-            }
-          ]
         },
         "limits": {
           "type": "object",

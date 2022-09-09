@@ -5,13 +5,11 @@
       "binds": [
         {
           "inside": "main.cpp",
-          "outside": "pipeline/main.cpp",
-          "permissions": 4
+          "outside": "pipeline/main.cpp"
         },
         {
           "inside": "error",
-          "outside": "error.txt",
-          "permissions": 2
+          "outside": "error.txt"
         }
       ],
       "inputs": [],
@@ -22,15 +20,11 @@
       ],
       "task": {
         "argv": [
-          "g++",
-          "main.cpp",
-          "-o",
-          "main"
+          "bash",
+          "-c",
+          "g++ main.cpp -o main 2>error"
         ],
         "env": [],
-        "stdin": null,
-        "stdout": null,
-        "stderr": "error",
         "limits": {
           "max-threads": 128
         }
@@ -41,13 +35,11 @@
       "binds": [
         {
           "inside": "output",
-          "outside": "pipeline/output.txt",
-          "permissions": 2
+          "outside": "pipeline/output.txt"
         },
         {
           "inside": "error",
-          "outside": "error.txt",
-          "permissions": 2
+          "outside": "error.txt"
         }
       ],
       "inputs": [
@@ -60,12 +52,9 @@
         "argv": [
           "bash",
           "-c",
-          "./main 1 >>output"
+          "./main 1 >>output 2>error"
         ],
         "env": [],
-        "stdin": null,
-        "stdout": null,
-        "stderr": "error",
         "limits": {
           "time-limit-ms": 1000,
           "wall-time-limit-ms": 1000,
@@ -79,13 +68,11 @@
       "binds": [
         {
           "inside": "output",
-          "outside": "pipeline/output.txt",
-          "permissions": 2
+          "outside": "pipeline/output.txt"
         },
         {
           "inside": "error",
-          "outside": "error.txt",
-          "permissions": 2
+          "outside": "error.txt"
         }
       ],
       "inputs": [
@@ -98,12 +85,9 @@
         "argv": [
           "bash",
           "-c",
-          "./main 2 >>output"
+          "./main 2 >>output 2>error"
         ],
         "env": [],
-        "stdin": null,
-        "stdout": null,
-        "stderr": "error",
         "limits": {
           "time-limit-ms": 1000,
           "wall-time-limit-ms": 1000,

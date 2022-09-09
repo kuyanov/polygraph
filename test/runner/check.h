@@ -35,11 +35,14 @@ void InitContainer() {
         fs::remove_all(container_path);
     }
     fs::create_directories(container_path);
+    fs::permissions(container_path, fs::perms::all, fs::perm_options::add);
 }
 
-void AddFile(const std::string &filename, const std::string &content) {
+void AddFile(const std::string &filename, const std::string &content, int other_perms = 7) {
     fs::path filepath = fs::path(SANDBOX_DIR) / kTestContainer / filename;
     std::ofstream(filepath) << content;
+    fs::permissions(filepath, fs::perms::others_all, fs::perm_options::remove);
+    fs::permissions(filepath, static_cast<fs::perms>(other_perms), fs::perm_options::add);
 }
 
 std::string ReadFile(const std::string &filename) {

@@ -13,16 +13,14 @@
 namespace fs = std::filesystem;
 
 bool IsFilenameValid(const std::string &filename) {
-    return !filename.empty() && filename.find('/') == std::string::npos && filename[0] != '.';
+    return !filename.empty() && filename != "." && filename != ".." &&
+           filename.find('/') == std::string::npos;
 }
 
 void GraphState::Validate() const {
     for (const auto &block : blocks) {
         std::unordered_set<std::string> filenames;
         for (const auto &bind : block.binds) {
-            if (bind.permissions < 0 || bind.permissions > 7) {
-                throw ValidationError(errors::kInvalidPermissions);
-            }
             filenames.insert(bind.inside);
         }
         for (const auto &input : block.inputs) {
@@ -159,15 +157,11 @@ void GraphState::PrepareContainer(size_t block_id) {
     fs::path container_path = fs::path(SANDBOX_DIR) / container;
     if (!fs::exists(container_path)) {
         fs::create_directories(container_path);
-        fs::permissions(container_path, fs::perms::others_all, fs::perm_options::add);
+        fs::permissions(container_path, fs::perms::all, fs::perm_options::add);
     }
     for (const auto &bind : blocks[block_id].binds) {
         fs::copy(fs::path(USER_DIR) / bind.outside, container_path / bind.inside,
                  fs::copy_options::create_hard_links | fs::copy_options::recursive);
-        fs::permissions(container_path / bind.inside, fs::perms::others_all,
-                        fs::perm_options::remove);
-        fs::permissions(container_path / bind.inside, static_cast<fs::perms>(bind.permissions),
-                        fs::perm_options::add);
     }
 }
 
@@ -180,7 +174,7 @@ bool GraphState::TransferFile(const Connection &connection) {
     fs::path end_container_path = fs::path(SANDBOX_DIR) / end_container;
     if (!fs::exists(end_container_path)) {
         fs::create_directories(end_container_path);
-        fs::permissions(end_container_path, fs::perms::others_all, fs::perm_options::add);
+        fs::permissions(end_container_path, fs::perms::all, fs::perm_options::add);
     }
     fs::path start_output_path = fs::path(SANDBOX_DIR) / start_container / start_output_name;
     fs::path end_input_path = fs::path(SANDBOX_DIR) / end_container / end_input_name;

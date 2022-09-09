@@ -7,7 +7,6 @@
 
 struct Bind {
     std::string inside, outside;
-    int permissions;
 };
 
 struct Input {

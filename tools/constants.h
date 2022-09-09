@@ -19,7 +19,6 @@ const std::string kAPIErrorPrefix = "API error: ";
 
 const std::string kDuplicatedFilename = "duplicated filename";
 const std::string kInvalidFilename = "invalid filename";
-const std::string kInvalidPermissions = "invalid permissions";
 const std::string kInvalidConnection = "invalid connection";
 const std::string kLoopsNotSupported = "loops are not supported";
 const std::string kInvalidMaxRunners = "'max-runners' is invalid";

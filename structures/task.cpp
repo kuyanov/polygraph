@@ -51,9 +51,6 @@ template <>
 void Load<Task>(Task &data, const rapidjson::Value &value) {
     Load(data.argv, value["argv"]);
     Load(data.env, value["env"]);
-    Load(data.stdin_, value["stdin"]);
-    Load(data.stdout_, value["stdout"]);
-    Load(data.stderr_, value["stderr"]);
     Load(data.limits, value["limits"]);
 }
 
@@ -62,9 +59,6 @@ rapidjson::Value Dump<Task>(const Task &data, rapidjson::Document::AllocatorType
     rapidjson::Value value(rapidjson::kObjectType);
     value.AddMember("argv", Dump(data.argv, alloc), alloc);
     value.AddMember("env", Dump(data.env, alloc), alloc);
-    value.AddMember("stdin", Dump(data.stdin_, alloc), alloc);
-    value.AddMember("stdout", Dump(data.stdout_, alloc), alloc);
-    value.AddMember("stderr", Dump(data.stderr_, alloc), alloc);
     value.AddMember("limits", Dump(data.limits, alloc), alloc);
     return value;
 }

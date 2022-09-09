@@ -64,15 +64,6 @@ TEST(ValidationError, InvalidFilename) {
                           errors::kValidationErrorPrefix + errors::kInvalidFilename);
 }
 
-TEST(ValidationError, InvalidPermissions) {
-    CheckSubmitStartsWith(
-        StringifyJSON(Dump(Graph{{{"", {{"a", "a", -1}}, {}, {}}}, {}, kGraphMeta})),
-        errors::kValidationErrorPrefix + errors::kInvalidPermissions);
-    CheckSubmitStartsWith(
-        StringifyJSON(Dump(Graph{{{"", {{"a", "a", 8}}, {}, {}}}, {}, kGraphMeta})),
-        errors::kValidationErrorPrefix + errors::kInvalidPermissions);
-}
-
 TEST(ValidationError, InvalidConnection) {
     CheckSubmitStartsWith(
         StringifyJSON(Dump(Graph{
@@ -210,11 +201,10 @@ TEST(Execution, FailedBlocks) {
 }
 
 TEST(Execution, FilesystemError) {
-    Graph graph = {{{"0", {{"a", "a", 7}}, {}, {}},
-                    {"1", {}, {}, {{"o2"}}},
-                    {"2", {{"a", "a", 7}}, {{"i1"}}, {}}},
-                   {{1, 0, 2, 0}},
-                   kGraphMeta};
+    Graph graph = {
+        {{"0", {{"a", "a"}}, {}, {}}, {"1", {}, {}, {{"o2"}}}, {"2", {{"a", "a"}}, {{"i1"}}, {}}},
+        {{1, 0, 2, 0}},
+        kGraphMeta};
     CheckGraphExecution(graph, 3, 1, 3, kRunnerDelay, kRunnerDelay);
     CheckGraphExecution(graph, 3, 2, 3, kRunnerDelay, kRunnerDelay);
 }

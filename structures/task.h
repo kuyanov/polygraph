@@ -12,7 +12,6 @@ struct Limits {
 
 struct Task {
     std::vector<std::string> argv, env;
-    std::optional<std::string> stdin_, stdout_, stderr_;
     Limits limits;
 };
 

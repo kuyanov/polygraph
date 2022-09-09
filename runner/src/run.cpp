@@ -21,21 +21,9 @@ const int kStartDelayMs = 100;
 void FillTask(const Task &task, libsbox::Task &libsbox_task) {
     libsbox_task.set_argv(task.argv);
     libsbox_task.get_env() = task.env;
-    if (task.stdin_.has_value()) {
-        libsbox_task.get_stdin().use_file(task.stdin_.value());
-    } else {
-        libsbox_task.get_stdin().disable();
-    }
-    if (task.stdout_.has_value()) {
-        libsbox_task.get_stdout().use_file(task.stdout_.value());
-    } else {
-        libsbox_task.get_stdout().disable();
-    }
-    if (task.stderr_.has_value()) {
-        libsbox_task.get_stderr().use_file(task.stderr_.value());
-    } else {
-        libsbox_task.get_stderr().disable();
-    }
+    libsbox_task.get_stdin().disable();
+    libsbox_task.get_stdout().disable();
+    libsbox_task.get_stderr().disable();
     if (task.limits.time_limit_ms.has_value()) {
         libsbox_task.set_time_limit_ms(task.limits.time_limit_ms.value());
     }
