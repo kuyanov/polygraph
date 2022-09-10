@@ -40,10 +40,10 @@ long long Timestamp() {
         .count();
 }
 
-size_t ParseBlockId(const std::string &container_name) {
-    size_t l = container_name.find('_');
-    size_t r = container_name.find('_', l + 1);
-    return std::stoul(container_name.substr(l + 1, r - l - 1));
+size_t ParseBlockId(const std::string &container) {
+    size_t l = container.find('_');
+    size_t r = container.find('_', l + 1);
+    return std::stoul(container.substr(l + 1, r - l - 1));
 }
 
 void ImitateRun(const std::string &message, const Graph &graph, int runner_delay,

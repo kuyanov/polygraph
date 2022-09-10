@@ -200,11 +200,12 @@ TEST(Execution, FailedBlocks) {
     CheckGraphExecution(graph, 3, 2, 3, kRunnerDelay, 2 * kRunnerDelay, {0, 3});
 }
 
-TEST(Execution, FilesystemError) {
-    Graph graph = {
-        {{"0", {{"a", "a"}}, {}, {}}, {"1", {}, {}, {{"o2"}}}, {"2", {{"a", "a"}}, {{"i1"}}, {}}},
-        {{1, 0, 2, 0}},
-        kGraphMeta};
+TEST(Execution, Binds) {
+    Graph graph = {{{"0", {{"CMakeLists.txt", "../CMakeLists.txt"}}, {}, {}},
+                    {"1", {{"user", ""}}, {}, {{"o2"}}},
+                    {"2", {{"nonexistent", "nonexistent"}}, {{"i1"}}, {}}},
+                   {{1, 0, 2, 0}},
+                   kGraphMeta};
     CheckGraphExecution(graph, 3, 1, 3, kRunnerDelay, kRunnerDelay);
     CheckGraphExecution(graph, 3, 2, 3, kRunnerDelay, kRunnerDelay);
 }
