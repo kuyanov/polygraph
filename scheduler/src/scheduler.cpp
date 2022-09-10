@@ -162,7 +162,7 @@ void GraphState::PrepareContainer(size_t block_id) {
     std::string container = GetContainer(block_id);
     fs::path container_path = fs::path(SANDBOX_DIR) / container;
     if (!fs::exists(container_path)) {
-        fs::create_directories(container_path);
+        fs::create_directory(container_path);
         fs::permissions(container_path, fs::perms::all, fs::perm_options::add);
     }
     for (const auto &bind : blocks[block_id].binds) {
@@ -186,7 +186,7 @@ bool GraphState::TransferFile(const Connection &connection) {
     std::string end_input_name = blocks[end_block_id].inputs[end_input_id].name;
     fs::path end_container_path = fs::path(SANDBOX_DIR) / end_container;
     if (!fs::exists(end_container_path)) {
-        fs::create_directories(end_container_path);
+        fs::create_directory(end_container_path);
         fs::permissions(end_container_path, fs::perms::all, fs::perm_options::add);
     }
     fs::path start_output_path = fs::path(SANDBOX_DIR) / start_container / start_output_name;

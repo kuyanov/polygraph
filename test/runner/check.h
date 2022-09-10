@@ -18,7 +18,7 @@
 
 namespace fs = std::filesystem;
 
-const std::string kTestContainer = GenerateUuid();
+std::string test_container;
 
 static WebsocketServer server(Config::Get().scheduler_host, Config::Get().scheduler_port);
 static SchemaValidator response_validator("run_response.json");
@@ -30,30 +30,28 @@ long long Timestamp() {
 }
 
 void InitContainer() {
-    fs::path container_path = fs::path(SANDBOX_DIR) / kTestContainer;
-    if (fs::exists(container_path)) {
-        fs::remove_all(container_path);
-    }
+    test_container = GenerateUuid();
+    fs::path container_path = fs::path(SANDBOX_DIR) / test_container;
     fs::create_directories(container_path);
     fs::permissions(container_path, fs::perms::all, fs::perm_options::add);
 }
 
 void AddFile(const std::string &filename, const std::string &content, int other_perms = 7) {
-    fs::path filepath = fs::path(SANDBOX_DIR) / kTestContainer / filename;
+    fs::path filepath = fs::path(SANDBOX_DIR) / test_container / filename;
     std::ofstream(filepath) << content;
     fs::permissions(filepath, fs::perms::others_all, fs::perm_options::remove);
     fs::permissions(filepath, static_cast<fs::perms>(other_perms), fs::perm_options::add);
 }
 
 std::string ReadFile(const std::string &filename) {
-    fs::path filepath = fs::path(SANDBOX_DIR) / kTestContainer / filename;
+    fs::path filepath = fs::path(SANDBOX_DIR) / test_container / filename;
     std::stringstream ss;
     ss << std::ifstream(filepath).rdbuf();
     return ss.str();
 }
 
 RunResponse SendTask(const Task &task) {
-    RunRequest run_request = {.container = kTestContainer, .task = task};
+    RunRequest run_request = {.container = test_container, .task = task};
     auto session = server.Accept();
     session.Write(StringifyJSON(Dump(run_request)));
     RunResponse run_response;
