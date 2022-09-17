@@ -1,6 +1,5 @@
 #include <filesystem>
 #include <string>
-#include <system_error>
 #include <unordered_set>
 
 #include "constants.h"
@@ -16,11 +15,6 @@ namespace fs = std::filesystem;
 bool IsFilenameValid(const std::string &filename) {
     return !filename.empty() && filename != "." && filename != ".." &&
            filename.find('/') == std::string::npos;
-}
-
-bool IsAncestor(const fs::path &ancestor, const fs::path &path) {
-    fs::path p1 = fs::canonical(ancestor), p2 = fs::canonical(path);
-    return std::mismatch(p1.begin(), p1.end(), p2.begin()).first == p1.end();
 }
 
 void GraphState::Validate() const {
@@ -166,13 +160,7 @@ void GraphState::PrepareContainer(size_t block_id) {
         fs::permissions(container_path, fs::perms::all, fs::perm_options::add);
     }
     for (const auto &bind : blocks[block_id].binds) {
-        fs::path bind_inside_path = container_path / bind.inside;
-        fs::path bind_outside_path = fs::path(USER_DIR) / bind.outside;
-        if (!IsAncestor(fs::path(USER_DIR), bind_outside_path)) {
-            throw fs::filesystem_error("cannot bind", bind_outside_path,
-                                       std::make_error_code(std::errc::permission_denied));
-        }
-        fs::copy(bind_outside_path, bind_inside_path,
+        fs::copy(bind.outside, container_path / bind.inside,
                  fs::copy_options::create_hard_links | fs::copy_options::recursive |
                      fs::copy_options::skip_symlinks);
     }

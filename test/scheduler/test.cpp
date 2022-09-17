@@ -200,19 +200,9 @@ TEST(Execution, FailedBlocks) {
     CheckGraphExecution(graph, 3, 2, 3, kRunnerDelay, 2 * kRunnerDelay, {0, 3});
 }
 
-TEST(Execution, Binds) {
-    Graph graph = {{{"0", {{"CMakeLists.txt", "../CMakeLists.txt"}}, {}, {}},
-                    {"1", {{"user", ""}}, {}, {{"o2"}}},
-                    {"2", {{"nonexistent", "nonexistent"}}, {{"i1"}}, {}}},
-                   {{1, 0, 2, 0}},
-                   kGraphMeta};
-    CheckGraphExecution(graph, 3, 1, 3, kRunnerDelay, kRunnerDelay);
-    CheckGraphExecution(graph, 3, 2, 3, kRunnerDelay, kRunnerDelay);
-}
-
 TEST(Execution, Stress) {
     std::vector<Block> blocks(100);
-    Graph graph = {{blocks}, {}, kGraphMeta};
+    Graph graph = {blocks, {}, kGraphMeta};
     for (int i = 0; i < 100; i++) {
         CheckGraphExecution(graph, 4, 4, 100, 0, -1);
     }

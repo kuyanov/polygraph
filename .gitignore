@@ -36,5 +36,5 @@ build
 cmake-build-*
 
 # Temporary files
+graphs
 sandbox
-user
