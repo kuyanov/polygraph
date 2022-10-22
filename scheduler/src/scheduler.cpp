@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <string>
+#include <unistd.h>
 #include <unordered_set>
 
 #include "constants.h"
@@ -182,6 +183,7 @@ bool GraphState::TransferFile(const Connection &connection) {
     if (!fs::exists(start_output_path) || fs::exists(end_input_path)) {
         return false;
     }
+    chown(start_output_path.c_str(), 0, 0);
     fs::copy(start_output_path, end_input_path,
              fs::copy_options::create_hard_links | fs::copy_options::recursive |
                  fs::copy_options::skip_symlinks);
