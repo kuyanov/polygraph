@@ -5,9 +5,9 @@
 #include "constants.h"
 #include "error.h"
 #include "json.h"
-#include "operations.h"
 #include "result.h"
 #include "scheduler.h"
+#include "serialize.h"
 #include "uuid.h"
 
 namespace fs = std::filesystem;
@@ -57,7 +57,7 @@ void GraphState::Validate() const {
 }
 
 void GraphState::Init(const rapidjson::Document &document) {
-    Load(*static_cast<Graph *>(this), document);
+    Deserialize(*static_cast<Graph *>(this), document);
     Validate();
     blocks_state_.resize(blocks.size());
     go_.resize(blocks.size());
@@ -92,11 +92,11 @@ void GraphState::RunBlock(size_t block_id, RunnerWebSocket *ws) {
     try {
         PrepareContainer(block_id);
         SendTask(block_id, ws);
-        SendToAllClients(StringifyJSON(Dump(block_response)));
+        SendToAllClients(StringifyJSON(Serialize(block_response)));
     } catch (const fs::filesystem_error &error) {
         block_response.state = states::kComplete;
         block_response.error = errors::kRuntimeErrorPrefix + error.what();
-        SendToAllClients(StringifyJSON(Dump(block_response)));
+        SendToAllClients(StringifyJSON(Serialize(block_response)));
         ClearBlockState(block_id);
         partition_ptr->AddRunner(ws);
         DequeueBlock();
@@ -107,7 +107,7 @@ void GraphState::RunBlock(size_t block_id, RunnerWebSocket *ws) {
 void GraphState::OnResult(RunnerWebSocket *ws, std::string_view message) {
     size_t block_id = ws->getUserData()->block_id;
     RunResponse run_response;
-    Load(run_response, ParseJSON(std::string(message)));
+    Deserialize(run_response, ParseJSON(std::string(message)));
     BlockResponse block_response = {.block_id = static_cast<int>(block_id),
                                     .state = states::kComplete,
                                     .error = run_response.error,
@@ -124,7 +124,7 @@ void GraphState::OnResult(RunnerWebSocket *ws, std::string_view message) {
             block_response.error = errors::kRuntimeErrorPrefix + error.what();
         }
     }
-    SendToAllClients(StringifyJSON(Dump(block_response)));
+    SendToAllClients(StringifyJSON(Serialize(block_response)));
     ClearBlockState(block_id);
     partition_ptr->AddRunner(ws);
     DequeueBlock();
@@ -191,7 +191,7 @@ bool GraphState::TransferFile(const Connection &connection) {
 
 void GraphState::SendTask(size_t block_id, RunnerWebSocket *ws) {
     RunRequest run_request = {.container = GetContainer(block_id), .task = blocks[block_id].task};
-    ws->send(StringifyJSON(Dump(run_request)));
+    ws->send(StringifyJSON(Serialize(run_request)));
 }
 
 bool GraphState::IsBlockReady(size_t block_id) const {

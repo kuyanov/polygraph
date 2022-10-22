@@ -72,8 +72,7 @@
             "type": "object",
             "required": [
               "argv",
-              "env",
-              "limits"
+              "env"
             ],
             "properties": {
               "argv": {
@@ -88,28 +87,23 @@
                   "type": "string"
                 }
               },
-              "limits": {
-                "type": "object",
-                "properties": {
-                  "time-limit-ms": {
-                    "type": "integer"
-                  },
-                  "wall-time-limit-ms": {
-                    "type": "integer"
-                  },
-                  "memory-limit-kb": {
-                    "type": "integer"
-                  },
-                  "fsize-limit-kb": {
-                    "type": "integer"
-                  },
-                  "max-files": {
-                    "type": "integer"
-                  },
-                  "max-threads": {
-                    "type": "integer"
-                  }
-                }
+              "time-limit-ms": {
+                "type": "integer"
+              },
+              "wall-time-limit-ms": {
+                "type": "integer"
+              },
+              "memory-limit-kb": {
+                "type": "integer"
+              },
+              "fsize-limit-kb": {
+                "type": "integer"
+              },
+              "max-files": {
+                "type": "integer"
+              },
+              "max-threads": {
+                "type": "integer"
               }
             }
           }

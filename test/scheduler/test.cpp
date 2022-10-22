@@ -44,53 +44,53 @@ TEST(ValidationError, InvalidType) {
 
 TEST(ValidationError, DuplicatedFilename) {
     CheckSubmitStartsWith(
-        StringifyJSON(Dump(Graph{{{"", {}, {{"a.in"}, {"a.in"}}, {}}}, {}, kGraphMeta})),
+        StringifyJSON(Serialize(Graph{{{"", {}, {{"a.in"}, {"a.in"}}, {}}}, {}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kDuplicatedFilename);
     CheckSubmitStartsWith(
-        StringifyJSON(Dump(Graph{{{"", {}, {}, {{"a.out"}, {"a.out"}}}}, {}, kGraphMeta})),
+        StringifyJSON(Serialize(Graph{{{"", {}, {}, {{"a.out"}, {"a.out"}}}}, {}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kDuplicatedFilename);
     CheckSubmitStartsWith(
         StringifyJSON(
-            Dump(Graph{{{"", {{"a"}, {"a.out"}}, {{"a.in"}}, {{"a.out"}}}}, {}, kGraphMeta})),
+            Serialize(Graph{{{"", {{"a"}, {"a.out"}}, {{"a.in"}}, {{"a.out"}}}}, {}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kDuplicatedFilename);
 }
 
 TEST(ValidationError, InvalidFilename) {
-    CheckSubmitStartsWith(StringifyJSON(Dump(Graph{{{"", {{}}, {}, {}}}, {}, kGraphMeta})),
+    CheckSubmitStartsWith(StringifyJSON(Serialize(Graph{{{"", {{}}, {}, {}}}, {}, kGraphMeta})),
                           errors::kValidationErrorPrefix + errors::kInvalidFilename);
-    CheckSubmitStartsWith(StringifyJSON(Dump(Graph{{{"", {}, {{".."}}, {}}}, {}, kGraphMeta})),
+    CheckSubmitStartsWith(StringifyJSON(Serialize(Graph{{{"", {}, {{".."}}, {}}}, {}, kGraphMeta})),
                           errors::kValidationErrorPrefix + errors::kInvalidFilename);
-    CheckSubmitStartsWith(StringifyJSON(Dump(Graph{{{"", {}, {}, {{"a/b"}}}}, {}, kGraphMeta})),
+    CheckSubmitStartsWith(StringifyJSON(Serialize(Graph{{{"", {}, {}, {{"a/"}}}}, {}, kGraphMeta})),
                           errors::kValidationErrorPrefix + errors::kInvalidFilename);
 }
 
 TEST(ValidationError, InvalidConnection) {
     CheckSubmitStartsWith(
-        StringifyJSON(Dump(Graph{
+        StringifyJSON(Serialize(Graph{
             {{"", {}, {{"a.in"}}, {}}, {"", {}, {}, {{"a.out"}}}}, {{2, 0, 0, 0}}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kInvalidConnection);
     CheckSubmitStartsWith(
-        StringifyJSON(Dump(Graph{
+        StringifyJSON(Serialize(Graph{
             {{"", {}, {{"a.in"}}, {}}, {"", {}, {}, {{"a.out"}}}}, {{1, 1, 0, 0}}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kInvalidConnection);
     CheckSubmitStartsWith(
-        StringifyJSON(Dump(Graph{
+        StringifyJSON(Serialize(Graph{
             {{"", {}, {{"a.in"}}, {}}, {"", {}, {}, {{"a.out"}}}}, {{1, 0, -1, 0}}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kInvalidConnection);
     CheckSubmitStartsWith(
-        StringifyJSON(Dump(Graph{
+        StringifyJSON(Serialize(Graph{
             {{"", {}, {{"a.in"}}, {}}, {"", {}, {}, {{"a.out"}}}}, {{1, 0, 0, -1}}, kGraphMeta})),
         errors::kValidationErrorPrefix + errors::kInvalidConnection);
 }
 
 TEST(ValidationError, Loop) {
-    CheckSubmitStartsWith(
-        StringifyJSON(Dump(Graph{{{"", {}, {{"a.in"}}, {{"a.out"}}}}, {{0, 0, 0, 0}}, kGraphMeta})),
-        errors::kValidationErrorPrefix + errors::kLoopsNotSupported);
+    CheckSubmitStartsWith(StringifyJSON(Serialize(Graph{
+                              {{"", {}, {{"a.in"}}, {{"a.out"}}}}, {{0, 0, 0, 0}}, kGraphMeta})),
+                          errors::kValidationErrorPrefix + errors::kLoopsNotSupported);
 }
 
 TEST(Submit, GraphIdUnique) {
-    std::string body = StringifyJSON(Dump(Graph{{}, {}, kGraphMeta}));
+    std::string body = StringifyJSON(Serialize(Graph{{}, {}, kGraphMeta}));
     std::unordered_set<std::string> uuids;
     for (int i = 0; i < 1000; i++) {
         auto uuid = HttpSession(kHost, kPort).Post("/submit", body);

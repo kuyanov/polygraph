@@ -7,9 +7,9 @@
 #include "config.h"
 #include "logger.h"
 #include "net.h"
-#include "operations.h"
 #include "result.h"
 #include "run.h"
+#include "serialize.h"
 #include "task.h"
 
 namespace fs = std::filesystem;
@@ -24,23 +24,23 @@ void FillTask(const Task &task, libsbox::Task &libsbox_task) {
     libsbox_task.get_stdin().disable();
     libsbox_task.get_stdout().disable();
     libsbox_task.get_stderr().disable();
-    if (task.limits.time_limit_ms.has_value()) {
-        libsbox_task.set_time_limit_ms(task.limits.time_limit_ms.value());
+    if (task.time_limit_ms.has_value()) {
+        libsbox_task.set_time_limit_ms(task.time_limit_ms.value());
     }
-    if (task.limits.wall_time_limit_ms.has_value()) {
-        libsbox_task.set_wall_time_limit_ms(task.limits.wall_time_limit_ms.value());
+    if (task.wall_time_limit_ms.has_value()) {
+        libsbox_task.set_wall_time_limit_ms(task.wall_time_limit_ms.value());
     }
-    if (task.limits.memory_limit_kb.has_value()) {
-        libsbox_task.set_memory_limit_kb(task.limits.memory_limit_kb.value());
+    if (task.memory_limit_kb.has_value()) {
+        libsbox_task.set_memory_limit_kb(task.memory_limit_kb.value());
     }
-    if (task.limits.fsize_limit_kb.has_value()) {
-        libsbox_task.set_fsize_limit_kb(task.limits.fsize_limit_kb.value());
+    if (task.fsize_limit_kb.has_value()) {
+        libsbox_task.set_fsize_limit_kb(task.fsize_limit_kb.value());
     }
-    if (task.limits.max_files.has_value()) {
-        libsbox_task.set_max_files(task.limits.max_files.value());
+    if (task.max_files.has_value()) {
+        libsbox_task.set_max_files(task.max_files.value());
     }
-    if (task.limits.max_threads.has_value()) {
-        libsbox_task.set_max_threads(task.limits.max_threads.value());
+    if (task.max_threads.has_value()) {
+        libsbox_task.set_max_threads(task.max_threads.value());
     }
 }
 
@@ -62,7 +62,7 @@ void FillResult(const libsbox::Task &libsbox_task, Result &result) {
 
 void HandleMessage(const std::string &message, WebsocketClientSession &session) {
     RunRequest run_request;
-    Load(run_request, ParseJSON(message));
+    Deserialize(run_request, ParseJSON(message));
     auto container_path = fs::path(SANDBOX_DIR) / run_request.container;
     libsbox::Task libsbox_task;
     libsbox_task.get_binds().push_back(
@@ -76,7 +76,7 @@ void HandleMessage(const std::string &message, WebsocketClientSession &session) 
         run_response.result.emplace();
         FillResult(libsbox_task, run_response.result.value());
     }
-    session.Write(StringifyJSON(Dump(run_response)));
+    session.Write(StringifyJSON(Serialize(run_response)));
 }
 
 void Run() {

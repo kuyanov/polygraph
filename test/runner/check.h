@@ -11,8 +11,8 @@
 #include "config.h"
 #include "json.h"
 #include "net.h"
-#include "operations.h"
 #include "result.h"
+#include "serialize.h"
 #include "task.h"
 #include "uuid.h"
 
@@ -53,9 +53,9 @@ std::string ReadFile(const std::string &filename) {
 RunResponse SendTask(const Task &task) {
     RunRequest run_request = {.container = test_container, .task = task};
     auto session = server.Accept();
-    session.Write(StringifyJSON(Dump(run_request)));
+    session.Write(StringifyJSON(Serialize(run_request)));
     RunResponse run_response;
-    Load(run_response, response_validator.ParseAndValidate(session.Read()));
+    Deserialize(run_response, response_validator.ParseAndValidate(session.Read()));
     return run_response;
 }
 

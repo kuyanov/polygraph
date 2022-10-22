@@ -1,79 +1,67 @@
-#include "operations.h"
+#include "serialize.h"
 #include "task.h"
 
 template <>
-void Load<Limits>(Limits &data, const rapidjson::Value &value) {
+void Deserialize<Task>(Task &data, const rapidjson::Value &value) {
+    Deserialize(data.argv, value["argv"]);
+    Deserialize(data.env, value["env"]);
     if (value.HasMember("time-limit-ms")) {
-        Load(data.time_limit_ms, value["time-limit-ms"]);
+        Deserialize(data.time_limit_ms, value["time-limit-ms"]);
     }
     if (value.HasMember("wall-time-limit-ms")) {
-        Load(data.wall_time_limit_ms, value["wall-time-limit-ms"]);
+        Deserialize(data.wall_time_limit_ms, value["wall-time-limit-ms"]);
     }
     if (value.HasMember("memory-limit-kb")) {
-        Load(data.memory_limit_kb, value["memory-limit-kb"]);
+        Deserialize(data.memory_limit_kb, value["memory-limit-kb"]);
     }
     if (value.HasMember("fsize-limit-kb")) {
-        Load(data.fsize_limit_kb, value["fsize-limit-kb"]);
+        Deserialize(data.fsize_limit_kb, value["fsize-limit-kb"]);
     }
     if (value.HasMember("max-files")) {
-        Load(data.max_files, value["max-files"]);
+        Deserialize(data.max_files, value["max-files"]);
     }
     if (value.HasMember("max-threads")) {
-        Load(data.max_threads, value["max-threads"]);
+        Deserialize(data.max_threads, value["max-threads"]);
     }
 }
 
 template <>
-rapidjson::Value Dump<Limits>(const Limits &data, rapidjson::Document::AllocatorType &alloc) {
+rapidjson::Value Serialize<Task>(const Task &data, rapidjson::Document::AllocatorType &alloc) {
     rapidjson::Value value(rapidjson::kObjectType);
+    value.AddMember("argv", Serialize(data.argv, alloc), alloc);
+    value.AddMember("env", Serialize(data.env, alloc), alloc);
     if (data.time_limit_ms.has_value()) {
-        value.AddMember("time-limit-ms", Dump(data.time_limit_ms, alloc), alloc);
+        value.AddMember("time-limit-ms", Serialize(data.time_limit_ms, alloc), alloc);
     }
     if (data.wall_time_limit_ms.has_value()) {
-        value.AddMember("wall-time-limit-ms", Dump(data.wall_time_limit_ms, alloc), alloc);
+        value.AddMember("wall-time-limit-ms", Serialize(data.wall_time_limit_ms, alloc), alloc);
     }
     if (data.memory_limit_kb.has_value()) {
-        value.AddMember("memory-limit-kb", Dump(data.memory_limit_kb, alloc), alloc);
+        value.AddMember("memory-limit-kb", Serialize(data.memory_limit_kb, alloc), alloc);
     }
     if (data.fsize_limit_kb.has_value()) {
-        value.AddMember("fsize-limit-kb", Dump(data.fsize_limit_kb, alloc), alloc);
+        value.AddMember("fsize-limit-kb", Serialize(data.fsize_limit_kb, alloc), alloc);
     }
     if (data.max_files.has_value()) {
-        value.AddMember("max-files", Dump(data.max_files, alloc), alloc);
+        value.AddMember("max-files", Serialize(data.max_files, alloc), alloc);
     }
     if (data.max_threads.has_value()) {
-        value.AddMember("max-threads", Dump(data.max_threads, alloc), alloc);
+        value.AddMember("max-threads", Serialize(data.max_threads, alloc), alloc);
     }
     return value;
 }
 
 template <>
-void Load<Task>(Task &data, const rapidjson::Value &value) {
-    Load(data.argv, value["argv"]);
-    Load(data.env, value["env"]);
-    Load(data.limits, value["limits"]);
+void Deserialize<RunRequest>(RunRequest &data, const rapidjson::Value &value) {
+    Deserialize(data.container, value["container"]);
+    Deserialize(data.task, value["task"]);
 }
 
 template <>
-rapidjson::Value Dump<Task>(const Task &data, rapidjson::Document::AllocatorType &alloc) {
+rapidjson::Value Serialize<RunRequest>(const RunRequest &data,
+                                       rapidjson::Document::AllocatorType &alloc) {
     rapidjson::Value value(rapidjson::kObjectType);
-    value.AddMember("argv", Dump(data.argv, alloc), alloc);
-    value.AddMember("env", Dump(data.env, alloc), alloc);
-    value.AddMember("limits", Dump(data.limits, alloc), alloc);
-    return value;
-}
-
-template <>
-void Load<RunRequest>(RunRequest &data, const rapidjson::Value &value) {
-    Load(data.container, value["container"]);
-    Load(data.task, value["task"]);
-}
-
-template <>
-rapidjson::Value Dump<RunRequest>(const RunRequest &data,
-                                  rapidjson::Document::AllocatorType &alloc) {
-    rapidjson::Value value(rapidjson::kObjectType);
-    value.AddMember("container", Dump(data.container, alloc), alloc);
-    value.AddMember("task", Dump(data.task, alloc), alloc);
+    value.AddMember("container", Serialize(data.container, alloc), alloc);
+    value.AddMember("task", Serialize(data.task, alloc), alloc);
     return value;
 }

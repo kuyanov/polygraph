@@ -6,7 +6,7 @@
 #include "client.h"
 #include "config.h"
 #include "constants.h"
-#include "operations.h"
+#include "serialize.h"
 #include "uuid.h"
 
 const std::string kSchedulerHost = Config::Get().scheduler_host;
@@ -22,7 +22,7 @@ Client::Client(const std::string &graph_path) {
     }
     session_.Connect(kSchedulerHost, kSchedulerPort, "/graph/" + uuid);
     session_.OnRead([this](const std::string &message) { HandleMessage(message); });
-    Load(graph_, document);
+    Deserialize(graph_, document);
     blocks_.resize(graph_.blocks.size());
 }
 
@@ -48,7 +48,7 @@ void Client::HandleMessage(const std::string &message) {
         return;
     }
     BlockResponse block;
-    Load(block, ParseJSON(message));
+    Deserialize(block, ParseJSON(message));
     blocks_[block.block_id] = block;
     PrintBlocks();
 }

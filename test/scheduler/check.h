@@ -17,8 +17,8 @@
 #include "graph.h"
 #include "json.h"
 #include "net.h"
-#include "operations.h"
 #include "result.h"
+#include "serialize.h"
 #include "task.h"
 #include "uuid.h"
 
@@ -49,7 +49,7 @@ size_t ParseBlockId(const std::string &container) {
 void ImitateRun(const std::string &message, const Graph &graph, int runner_delay,
                 const std::vector<size_t> &failed_blocks, std::string &response) {
     RunRequest run_request;
-    Load(run_request, request_validator.ParseAndValidate(message));
+    Deserialize(run_request, request_validator.ParseAndValidate(message));
     std::string container = run_request.container;
     size_t block_id = ParseBlockId(container);
     for (const auto &bind : graph.blocks[block_id].binds) {
@@ -71,13 +71,13 @@ void ImitateRun(const std::string &message, const Graph &graph, int runner_delay
     } else {
         run_response.result = {.exited = true, .exit_code = 0};
     }
-    response = StringifyJSON(Dump(run_response));
+    response = StringifyJSON(Serialize(run_response));
 }
 
 void CheckGraphExecution(const Graph &graph, int cnt_clients, int cnt_runners, int exp_runs,
                          int runner_delay, int exp_delay,
                          const std::vector<size_t> &failed_blocks = {}) {
-    std::string body = StringifyJSON(Dump(graph));
+    std::string body = StringifyJSON(Serialize(graph));
     auto uuid = HttpSession(kHost, kPort).Post("/submit", body);
     ASSERT_TRUE(IsUuid(uuid));
 
@@ -113,7 +113,7 @@ void CheckGraphExecution(const Graph &graph, int cnt_clients, int cnt_runners, i
                     ASSERT_EQ(cnt_blocks_completed, exp_runs);
                 } else {
                     BlockResponse block_response;
-                    Load(block_response, ParseJSON(message));
+                    Deserialize(block_response, ParseJSON(message));
                     if (block_response.state == states::kComplete) {
                         ++cnt_blocks_completed;
                     }
