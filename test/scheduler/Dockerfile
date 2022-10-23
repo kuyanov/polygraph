@@ -9,7 +9,7 @@ RUN git clone https://github.com/Tencent/rapidjson.git && \
     cp -r rapidjson/include/rapidjson /usr/local/include/
 RUN git clone https://github.com/uNetworking/uWebSockets.git && \
     cd uWebSockets && \
-    git checkout c2f29c86c718e364b5586d103ad592aa396d7604 && \
+    git checkout tags/v20.25.0 && \
     git submodule init && \
     git submodule update uSockets && \
     make install && \
