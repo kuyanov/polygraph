@@ -184,6 +184,8 @@ bool GraphState::TransferFile(const Connection &connection) {
         return false;
     }
     chown(start_output_path.c_str(), 0, 0);
+    fs::permissions(start_output_path, fs::perms::group_write | fs::perms::others_write,
+                    fs::perm_options::remove);
     fs::copy(start_output_path, end_input_path,
              fs::copy_options::create_hard_links | fs::copy_options::recursive |
                  fs::copy_options::skip_symlinks);
