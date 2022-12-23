@@ -7,11 +7,11 @@
 #include "config.h"
 #include "constants.h"
 #include "serialize.h"
+#include "terminal.h"
 #include "uuid.h"
 
 const std::string kSchedulerHost = Config::Get().scheduler_host;
 const int kSchedulerPort = Config::Get().scheduler_port;
-const int kTerminalWidth = 50;
 
 Client::Client(const std::string &graph_path) {
     auto document = ReadJSON(graph_path);
@@ -20,10 +20,10 @@ Client::Client(const std::string &graph_path) {
     if (!IsUuid(uuid)) {
         throw std::runtime_error(uuid);
     }
-    session_.Connect(kSchedulerHost, kSchedulerPort, "/graph/" + uuid);
-    session_.OnRead([this](const std::string &message) { HandleMessage(message); });
     Deserialize(graph_, document);
     blocks_.resize(graph_.blocks.size());
+    session_.Connect(kSchedulerHost, kSchedulerPort, "/graph/" + uuid);
+    session_.OnRead([this](const std::string &message) { HandleMessage(message); });
 }
 
 void Client::Run() {
@@ -54,60 +54,33 @@ void Client::HandleMessage(const std::string &message) {
 }
 
 void Client::PrintBlocks() {
-    if (blocks_printed_) {
-        for (const auto &block : blocks_) {
-            std::cout << "\x1b[1A";
-        }
-        for (const auto &block : blocks_) {
-            for (int i = 0; i < kTerminalWidth; ++i) {
-                std::cout << ' ';
-            }
-            std::cout << std::endl;
-        }
-        for (const auto &block : blocks_) {
-            std::cout << "\x1b[1A";
-        }
-    } else {
-        blocks_printed_ = true;
-    }
+    TerminalWindow::Get().Clear();
     for (size_t block_id = 0; block_id < blocks_.size(); ++block_id) {
-        std::cout << "[block " << block_id << "] ";
+        std::string line = "[block " + std::to_string(block_id) + "] ";
         const auto &block = blocks_[block_id];
         if (block.state.empty()) {
-            std::cout << "Pending" << std::endl;
+            line += ColoredText("Pending", GREY);
         } else if (block.state == states::kRunning) {
-            std::cout << "Running" << std::endl;
+            line += "Running";
         } else if (block.error.has_value()) {
-            std::cout << "\033[31m";
-            std::cout << "Error  ";
-            std::cout << "\033[0m" << std::endl;
+            line += ColoredText("Error", RED);
         } else if (block.result->exited) {
-            std::cout << (block.result->exit_code == 0 ? "\033[32m" : "\033[33m");
-            std::cout << "Exited with code " << block.result->exit_code;
-            std::cout << "\033[0m" << std::endl;
+            int exit_code = block.result->exit_code;
+            line += ColoredText("Exited with code " + std::to_string(exit_code),
+                                exit_code == 0 ? GREEN : YELLOW);
         } else if (block.result->time_limit_exceeded) {
-            std::cout << "\033[33m";
-            std::cout << "Time limit exceeded";
-            std::cout << "\033[0m" << std::endl;
+            line += ColoredText("Time limit exceeded", YELLOW);
         } else if (block.result->wall_time_limit_exceeded) {
-            std::cout << "\033[33m";
-            std::cout << "Wall time limit exceeded";
-            std::cout << "\033[0m" << std::endl;
+            line += ColoredText("Wall time limit exceeded", YELLOW);
         } else if (block.result->memory_limit_exceeded) {
-            std::cout << "\033[33m";
-            std::cout << "Memory limit exceeded";
-            std::cout << "\033[0m" << std::endl;
+            line += ColoredText("Memory limit exceeded", YELLOW);
         } else if (block.result->oom_killed) {
-            std::cout << "\033[33m";
-            std::cout << "OOM killed";
-            std::cout << "\033[0m" << std::endl;
+            line += ColoredText("OOM killed", YELLOW);
         } else if (block.result->signaled) {
-            std::cout << "\033[33m";
-            std::cout << "Terminated with signal " << block.result->term_signal;
-            std::cout << "\033[0m" << std::endl;
-        } else {
-            std::cout << std::endl;
+            int term_signal = block.result->term_signal;
+            line += ColoredText("Terminated with signal " + std::to_string(term_signal), YELLOW);
         }
+        TerminalWindow::Get().PrintLine(line);
     }
 }
 

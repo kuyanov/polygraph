@@ -51,15 +51,14 @@ template <class T>
 rapidjson::Value Serialize(const T &data, rapidjson::Document::AllocatorType &alloc);
 
 template <>
-inline rapidjson::Value Serialize<bool>(const bool &data,
-                                        rapidjson::Document::AllocatorType &alloc) {
+inline rapidjson::Value Serialize<bool>(const bool &data, rapidjson::Document::AllocatorType &) {
     rapidjson::Value value;
     value.SetBool(data);
     return value;
 }
 
 template <>
-inline rapidjson::Value Serialize<int>(const int &data, rapidjson::Document::AllocatorType &alloc) {
+inline rapidjson::Value Serialize<int>(const int &data, rapidjson::Document::AllocatorType &) {
     rapidjson::Value value;
     value.SetInt(data);
     return value;
@@ -67,7 +66,7 @@ inline rapidjson::Value Serialize<int>(const int &data, rapidjson::Document::All
 
 template <>
 inline rapidjson::Value Serialize<int64_t>(const int64_t &data,
-                                           rapidjson::Document::AllocatorType &alloc) {
+                                           rapidjson::Document::AllocatorType &) {
     rapidjson::Value value;
     value.SetInt64(data);
     return value;

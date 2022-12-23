@@ -18,7 +18,6 @@ private:
     WebsocketClientSession session_;
     Graph graph_;
     std::vector<BlockResponse> blocks_;
-    bool blocks_printed_ = false;
 
     void HandleMessage(const std::string &message);
 
