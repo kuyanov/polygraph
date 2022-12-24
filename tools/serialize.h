@@ -25,7 +25,7 @@ inline void Deserialize<int64_t>(int64_t &data, const rapidjson::Value &value) {
 }
 
 template <>
-inline void Deserialize<uint64_t>(uint64_t &data, const rapidjson::Value &value) {
+inline void Deserialize<size_t>(size_t &data, const rapidjson::Value &value) {
     data = value.GetUint64();
 }
 
@@ -78,8 +78,8 @@ inline rapidjson::Value Serialize<int64_t>(const int64_t &data,
 }
 
 template <>
-inline rapidjson::Value Serialize<uint64_t>(const uint64_t &data,
-                                            rapidjson::Document::AllocatorType &) {
+inline rapidjson::Value Serialize<size_t>(const size_t &data,
+                                          rapidjson::Document::AllocatorType &) {
     rapidjson::Value value;
     value.SetUint64(data);
     return value;
