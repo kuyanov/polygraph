@@ -35,7 +35,6 @@ public:
 
     GraphState() = default;
 
-    void Validate() const;
     void Init(const rapidjson::Document &document);
 
     void Run();
@@ -62,12 +61,13 @@ public:
 
 private:
     struct BlockState {
+        size_t cnt_inputs = 0;
         size_t cnt_inputs_ready = 0;
         size_t cnt_runs = 0;
     };
 
     bool is_running_ = false;
-    int cnt_blocks_processing_ = 0;
+    size_t cnt_blocks_processing_ = 0;
     std::queue<size_t> blocks_ready_;
     std::vector<BlockState> blocks_state_;
     std::vector<std::vector<Connection>> go_;

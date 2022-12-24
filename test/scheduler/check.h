@@ -29,9 +29,12 @@ const int kPort = Config::Get().port;
 
 static thread_local SchemaValidator request_validator("run_request.json");
 
-void CheckSubmitStartsWith(const std::string &body, const std::string &prefix) {
-    auto result = HttpSession(kHost, kPort).Post("/submit", body);
-    ASSERT_TRUE(result.starts_with(prefix));
+std::string Submit(const std::string &body) {
+    return HttpSession(kHost, kPort).Post("/submit", body);
+}
+
+std::string SubmitGraph(const Graph &graph) {
+    return Submit(StringifyJSON(Serialize(graph)));
 }
 
 long long Timestamp() {
@@ -53,15 +56,23 @@ void ImitateRun(const std::string &message, const Graph &graph, int runner_delay
     std::string container = run_request.container;
     size_t block_id = ParseBlockId(container);
     for (const auto &bind : graph.blocks[block_id].binds) {
-        ASSERT_TRUE(fs::exists(fs::path(SANDBOX_DIR) / container / bind.inside));
+        ASSERT_TRUE(fs::exists(fs::path(SANDBOX_DIR) / container / bind.inside_filename));
     }
-    for (const auto &input : graph.blocks[block_id].inputs) {
-        ASSERT_TRUE(fs::exists(fs::path(SANDBOX_DIR) / container / input.name));
+    for (const auto &connection : graph.connections) {
+        if (connection.end_block_id == block_id) {
+            ASSERT_TRUE(fs::exists(fs::path(SANDBOX_DIR) / container / connection.end_filename));
+        }
+    }
+    for (const auto &connection : graph.connections) {
+        if (connection.start_block_id == block_id) {
+            ASSERT_TRUE(!fs::exists(fs::path(SANDBOX_DIR) / container / connection.start_filename));
+        }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(runner_delay));
-    for (const auto &output : graph.blocks[block_id].outputs) {
-        ASSERT_TRUE(!fs::exists(fs::path(SANDBOX_DIR) / container / output.name));
-        std::ofstream(fs::path(SANDBOX_DIR) / container / output.name);
+    for (const auto &connection : graph.connections) {
+        if (connection.start_block_id == block_id) {
+            std::ofstream(fs::path(SANDBOX_DIR) / container / connection.start_filename);
+        }
     }
     bool failed =
         std::find(failed_blocks.begin(), failed_blocks.end(), block_id) != failed_blocks.end();
@@ -78,8 +89,8 @@ void CheckGraphExecution(const Graph &graph, int cnt_clients, int cnt_runners, i
                          int runner_delay, int exp_delay,
                          const std::vector<size_t> &failed_blocks = {}) {
     std::string body = StringifyJSON(Serialize(graph));
-    auto uuid = HttpSession(kHost, kPort).Post("/submit", body);
-    ASSERT_TRUE(IsUuid(uuid));
+    auto id = HttpSession(kHost, kPort).Post("/submit", body);
+    EXPECT_THAT(id, ::testing::MatchesRegex(kUuidRegex));
 
     std::vector<std::thread> runner_threads(cnt_runners);
     std::vector<WebsocketClientSession> runner_sessions(cnt_runners);
@@ -103,7 +114,7 @@ void CheckGraphExecution(const Graph &graph, int cnt_clients, int cnt_runners, i
     for (int client_id = 0; client_id < cnt_clients; ++client_id) {
         auto &session = client_sessions[client_id];
         client_threads[client_id] = std::thread([&] {
-            session.Connect(kHost, kPort, "/graph/" + uuid);
+            session.Connect(kHost, kPort, "/graph/" + id);
             int cnt_blocks_completed = 0;
             session.OnRead([&](const std::string &message) {
                 if (message == states::kComplete) {

@@ -18,7 +18,7 @@ struct RunResponse {
 };
 
 struct BlockResponse {
-    int block_id;
+    size_t block_id;
     std::string state;
     std::optional<std::string> error;
     std::optional<Result> result;

@@ -13,57 +13,34 @@
 
 namespace fs = std::filesystem;
 
-bool IsFilenameValid(const std::string &filename) {
-    return !filename.empty() && filename != "." && filename != ".." &&
-           filename.find('/') == std::string::npos;
-}
-
-void GraphState::Validate() const {
-    for (const auto &block : blocks) {
-        std::unordered_set<std::string> filenames;
-        for (const auto &bind : block.binds) {
-            filenames.insert(bind.inside);
-        }
-        for (const auto &input : block.inputs) {
-            filenames.insert(input.name);
-        }
-        for (const auto &output : block.outputs) {
-            filenames.insert(output.name);
-        }
-        for (const auto &filename : filenames) {
-            if (!IsFilenameValid(filename)) {
-                throw ValidationError(errors::kInvalidFilename);
-            }
-        }
-        if (filenames.size() != block.binds.size() + block.inputs.size() + block.outputs.size()) {
-            throw ValidationError(errors::kDuplicatedFilename);
-        }
-    }
-    for (const auto &[start_block_id, start_output_id, end_block_id, end_input_id] : connections) {
-        if (start_block_id < 0 || start_block_id >= blocks.size() ||
-            start_output_id >= blocks[start_block_id].outputs.size() || end_block_id < 0 ||
-            end_block_id >= blocks.size() || end_input_id >= blocks[end_block_id].inputs.size()) {
-            throw ValidationError(errors::kInvalidConnection);
-        }
-        if (start_block_id == end_block_id) {
-            throw ValidationError(errors::kLoopsNotSupported);
-        }
-    }
-    if (meta.partition.empty()) {
-        throw ValidationError(errors::kInvalidPartition);
-    }
-    if (meta.max_runners < 1) {
-        throw ValidationError(errors::kInvalidMaxRunners);
-    }
-}
-
 void GraphState::Init(const rapidjson::Document &document) {
-    Deserialize(*static_cast<Graph *>(this), document);
-    Validate();
+    Deserialize(static_cast<Graph &>(*this), document);
     blocks_state_.resize(blocks.size());
     go_.resize(blocks.size());
+    std::vector<std::unordered_set<std::string>> inputs(blocks.size()), outputs(blocks.size());
     for (const auto &connection : connections) {
+        if (connection.start_block_id >= blocks.size() ||
+            connection.end_block_id >= blocks.size()) {
+            throw ValidationError(errors::kInvalidConnection);
+        }
+        if (connection.start_block_id == connection.end_block_id) {
+            throw ValidationError(errors::kLoopsNotSupported);
+        }
         go_[connection.start_block_id].push_back(connection);
+        inputs[connection.end_block_id].insert(connection.end_filename);
+        outputs[connection.start_block_id].insert(connection.start_filename);
+    }
+    for (size_t block_id = 0; block_id < blocks.size(); ++block_id) {
+        blocks_state_[block_id].cnt_inputs = inputs[block_id].size();
+        std::unordered_set<std::string> filenames;
+        for (const auto &bind : blocks[block_id].binds) {
+            filenames.insert(bind.inside_filename);
+        }
+        filenames.merge(inputs[block_id]);
+        filenames.merge(outputs[block_id]);
+        if (!inputs[block_id].empty() || !outputs[block_id].empty()) {
+            throw ValidationError(errors::kDuplicatedFilename);
+        }
     }
 }
 
@@ -88,8 +65,7 @@ void GraphState::Stop() {
 void GraphState::RunBlock(size_t block_id, RunnerWebSocket *ws) {
     ws->getUserData()->graph_ptr = this;
     ws->getUserData()->block_id = block_id;
-    BlockResponse block_response = {.block_id = static_cast<int>(block_id),
-                                    .state = states::kRunning};
+    BlockResponse block_response = {.block_id = block_id, .state = states::kRunning};
     try {
         PrepareContainer(block_id);
         SendTask(block_id, ws);
@@ -109,7 +85,7 @@ void GraphState::OnResult(RunnerWebSocket *ws, std::string_view message) {
     size_t block_id = ws->getUserData()->block_id;
     RunResponse run_response;
     Deserialize(run_response, ParseJSON(std::string(message)));
-    BlockResponse block_response = {.block_id = static_cast<int>(block_id),
+    BlockResponse block_response = {.block_id = block_id,
                                     .state = states::kComplete,
                                     .error = run_response.error,
                                     .result = run_response.result};
@@ -161,37 +137,46 @@ void GraphState::PrepareContainer(size_t block_id) {
         fs::permissions(container_path, fs::perms::all, fs::perm_options::add);
     }
     for (const auto &bind : blocks[block_id].binds) {
-        fs::copy(bind.outside, container_path / bind.inside,
+        // TODO: mount
+        fs::copy(bind.outside_path, container_path / bind.inside_filename,
                  fs::copy_options::create_hard_links | fs::copy_options::recursive |
                      fs::copy_options::skip_symlinks);
     }
 }
 
 bool GraphState::TransferFile(const Connection &connection) {
-    const auto &[start_block_id, start_output_id, end_block_id, end_input_id] = connection;
-    std::string start_container = GetContainer(start_block_id);
-    std::string start_output_name = blocks[start_block_id].outputs[start_output_id].name;
-    std::string end_container = GetContainer(end_block_id);
-    std::string end_input_name = blocks[end_block_id].inputs[end_input_id].name;
+    std::string start_container = GetContainer(connection.start_block_id);
+    std::string start_filename = connection.start_filename;
+    std::string end_container = GetContainer(connection.end_block_id);
+    std::string end_filename = connection.end_filename;
+    fs::path start_container_path = fs::path(SANDBOX_DIR) / start_container;
     fs::path end_container_path = fs::path(SANDBOX_DIR) / end_container;
     if (!fs::exists(end_container_path)) {
         fs::create_directory(end_container_path);
         fs::permissions(end_container_path, fs::perms::all, fs::perm_options::add);
     }
-    fs::path start_output_path = fs::path(SANDBOX_DIR) / start_container / start_output_name;
-    fs::path end_input_path = fs::path(SANDBOX_DIR) / end_container / end_input_name;
-    if (!fs::exists(start_output_path) || fs::exists(end_input_path)) {
+    fs::path start_filepath = start_container_path / start_filename;
+    fs::path end_filepath = end_container_path / end_filename;
+    if (!fs::exists(start_filepath) || fs::exists(end_filepath)) {
         return false;
     }
-    if (chown(start_output_path.c_str(), 0, 0)) {
-        return false;
+    if (chown(start_filepath.c_str(), 0, 0)) {
+        throw fs::filesystem_error("unable to chown", start_filepath,
+                                   std::make_error_code(static_cast<std::errc>(errno)));
     }
-    fs::permissions(start_output_path, fs::perms::group_write | fs::perms::others_write,
-                    fs::perm_options::remove);
-    fs::copy(start_output_path, end_input_path,
-             fs::copy_options::create_hard_links | fs::copy_options::recursive |
-                 fs::copy_options::skip_symlinks);
-    ++blocks_state_[end_block_id].cnt_inputs_ready;
+    // TODO: mount
+    if (connection.type == "regular") {
+        fs::copy(start_filepath, end_filepath, fs::copy_options::create_hard_links);
+        fs::permissions(end_filepath, fs::perms::group_write | fs::perms::others_write,
+                        fs::perm_options::remove);
+    } else if (connection.type == "directory") {
+        fs::copy(start_filepath, end_filepath,
+                 fs::copy_options::create_hard_links | fs::copy_options::recursive |
+                     fs::copy_options::skip_symlinks);
+        fs::permissions(end_filepath, fs::perms::group_write | fs::perms::others_write,
+                        fs::perm_options::remove);
+    }
+    ++blocks_state_[connection.end_block_id].cnt_inputs_ready;
     return true;
 }
 
@@ -201,7 +186,7 @@ void GraphState::SendTask(size_t block_id, RunnerWebSocket *ws) {
 }
 
 bool GraphState::IsBlockReady(size_t block_id) const {
-    return blocks_state_[block_id].cnt_inputs_ready == blocks[block_id].inputs.size();
+    return blocks_state_[block_id].cnt_inputs_ready == blocks_state_[block_id].cnt_inputs;
 }
 
 void GraphState::ClearBlockState(size_t block_id) {

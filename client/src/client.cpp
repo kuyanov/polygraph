@@ -1,4 +1,5 @@
 #include <iostream>
+#include <regex>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -16,13 +17,13 @@ const int kSchedulerPort = Config::Get().scheduler_port;
 Client::Client(const std::string &graph_path) {
     auto document = ReadJSON(graph_path);
     std::string body = StringifyJSON(document);
-    std::string uuid = HttpSession(kSchedulerHost, kSchedulerPort).Post("/submit", body);
-    if (!IsUuid(uuid)) {
-        throw std::runtime_error(uuid);
+    std::string graph_id = HttpSession(kSchedulerHost, kSchedulerPort).Post("/submit", body);
+    if (!regex_match(graph_id, std::regex(kUuidRegex))) {
+        throw std::runtime_error(graph_id);
     }
     Deserialize(graph_, document);
     blocks_.resize(graph_.blocks.size());
-    session_.Connect(kSchedulerHost, kSchedulerPort, "/graph/" + uuid);
+    session_.Connect(kSchedulerHost, kSchedulerPort, "/graph/" + graph_id);
     session_.OnRead([this](const std::string &message) { HandleMessage(message); });
 }
 

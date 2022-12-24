@@ -6,27 +6,19 @@
 #include "task.h"
 
 struct Bind {
-    std::string inside, outside;
-};
-
-struct Input {
-    std::string name;
-};
-
-struct Output {
-    std::string name;
+    std::string inside_filename, outside_path;
 };
 
 struct Block {
     std::string name;
     std::vector<Bind> binds;
-    std::vector<Input> inputs;
-    std::vector<Output> outputs;
     Task task;
 };
 
 struct Connection {
-    int start_block_id, start_output_id, end_block_id, end_input_id;
+    std::string type;
+    size_t start_block_id, end_block_id;
+    std::string start_filename, end_filename;
 };
 
 struct Meta {

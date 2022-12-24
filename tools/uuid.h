@@ -5,6 +5,9 @@
 #include <sstream>
 #include <string>
 
+const std::string kUuidRegex =
+    "^[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{12}$";
+
 inline std::string GenerateUuid() {
     static std::random_device rnd;
     static std::mt19937 gen(rnd());
@@ -34,8 +37,4 @@ inline std::string GenerateUuid() {
         ss << dis1(gen);
     }
     return ss.str();
-}
-
-inline bool IsUuid(const std::string &s) {
-    return s.size() == 36 && s[8] == '-' && s[13] == '-' && s[18] == '-' && s[23] == '-';
 }
