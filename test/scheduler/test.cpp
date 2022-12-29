@@ -1,4 +1,4 @@
-#include <limits.h>
+#include <climits>
 #include <string>
 #include <unordered_set>
 
@@ -12,7 +12,7 @@ using ::testing::MatchesRegex;
 using ::testing::StartsWith;
 
 const int kRunnerDelay = 500;
-const Meta kGraphMeta = {"sample graph", "all", INT_MAX};
+const Meta kWorkflowMeta = {"sample workflow", "all", INT_MAX};
 
 TEST(ParseError, Trivial) {
     EXPECT_THAT(Submit(""), StartsWith(errors::kParseErrorPrefix));
@@ -50,42 +50,45 @@ TEST(ValidationError, InvalidType) {
         StartsWith(errors::kValidationErrorPrefix));
 }
 
-TEST(ValidationError, FilenameRegex) {
-    for (const auto &filename : {"", ".", ".a", "a.", "a..b", "a b", "a/b"}) {
-        EXPECT_THAT(SubmitGraph(Graph{{{"", {{filename}}}}, {}, kGraphMeta}),
+TEST(ValidationError, LocationRegex) {
+    for (const auto &location : {"", ".", "../a", "/home", ".a", "a.", "a..b", "a b"}) {
+        EXPECT_THAT(SubmitWorkflow({{{.binds = {{location, location}}}}, {}, kWorkflowMeta}),
                     StartsWith(errors::kValidationErrorPrefix));
     }
-    for (const auto &filename : {"a", "a.in", "a.in.txt", "A.mp4", "a_b-c.DEF"}) {
-        EXPECT_THAT(SubmitGraph(Graph{{{"", {{filename}}}}, {}, kGraphMeta}),
+    for (const auto &location : {"a", "a.in", "a.in.txt", "A.mp4", "a/b/c.D.E"}) {
+        EXPECT_THAT(SubmitWorkflow({{{.binds = {{location, location}}}}, {}, kWorkflowMeta}),
                     MatchesRegex(kUuidRegex));
     }
 }
 
 TEST(ValidationError, InvalidConnection) {
-    EXPECT_THAT(SubmitGraph(Graph{{{}}, {{"regular", 0, 1, "a", "a"}}, kGraphMeta}),
+    EXPECT_THAT(SubmitWorkflow({{{.outputs = {"a"}}}, {{0, 0, 1, 0}}, kWorkflowMeta}),
                 StartsWith(errors::kValidationErrorPrefix + errors::kInvalidConnection));
-    EXPECT_THAT(SubmitGraph(Graph{{{}}, {{"regular", 1, 0, "a", "a"}}, kGraphMeta}),
+    EXPECT_THAT(SubmitWorkflow({{{.inputs = {"a"}}}, {{1, 0, 0, 0}}, kWorkflowMeta}),
                 StartsWith(errors::kValidationErrorPrefix + errors::kInvalidConnection));
+    EXPECT_THAT(
+        SubmitWorkflow({{{.outputs = {"a"}}, {.inputs = {"a"}}}, {{0, 1, 1, 0}}, kWorkflowMeta}),
+        StartsWith(errors::kValidationErrorPrefix + errors::kInvalidConnection));
+    EXPECT_THAT(
+        SubmitWorkflow({{{.outputs = {"a"}}, {.inputs = {"a"}}}, {{0, 0, 1, 1}}, kWorkflowMeta}),
+        StartsWith(errors::kValidationErrorPrefix + errors::kInvalidConnection));
 }
 
-TEST(ValidationError, DuplicatedFilename) {
-    EXPECT_THAT(
-        SubmitGraph(Graph{
-            {{}, {}, {}}, {{"regular", 0, 1, "a", "a"}, {"regular", 1, 2, "a", "a"}}, kGraphMeta}),
-        StartsWith(errors::kValidationErrorPrefix + errors::kDuplicatedFilename));
-    EXPECT_THAT(SubmitGraph(Graph{{{"", {{"a"}}}, {}}, {{"regular", 0, 1, "a", "a"}}, kGraphMeta}),
-                StartsWith(errors::kValidationErrorPrefix + errors::kDuplicatedFilename));
-    EXPECT_THAT(SubmitGraph(Graph{{{}, {"", {{"a"}}}}, {{"regular", 0, 1, "a", "a"}}, kGraphMeta}),
-                StartsWith(errors::kValidationErrorPrefix + errors::kDuplicatedFilename));
+TEST(ValidationError, DuplicatedLocation) {
+    EXPECT_THAT(SubmitWorkflow({{{.inputs = {"a"}, .binds = {{"a", "a"}}}}, {}, kWorkflowMeta}),
+                StartsWith(errors::kValidationErrorPrefix + errors::kDuplicatedLocation));
+    EXPECT_THAT(SubmitWorkflow({{{.outputs = {"a"}, .binds = {{"a", "a"}}}}, {}, kWorkflowMeta}),
+                StartsWith(errors::kValidationErrorPrefix + errors::kDuplicatedLocation));
 }
 
 TEST(ValidationError, Loop) {
-    EXPECT_THAT(SubmitGraph(Graph{{{}}, {{"regular", 0, 0, "a", "a"}}, kGraphMeta}),
-                StartsWith(errors::kValidationErrorPrefix + errors::kLoopsNotSupported));
+    EXPECT_THAT(
+        SubmitWorkflow({{{.inputs = {"a"}, .outputs = {"b"}}}, {{0, 0, 0, 0}}, kWorkflowMeta}),
+        StartsWith(errors::kValidationErrorPrefix + errors::kLoopsNotSupported));
 }
 
-TEST(Submit, GraphIdUnique) {
-    std::string body = StringifyJSON(Serialize(Graph{{}, {}, kGraphMeta}));
+TEST(Submit, WorkflowIdUnique) {
+    std::string body = StringifyJSON(Serialize(Workflow{{}, {}, kWorkflowMeta}));
     std::unordered_set<std::string> ids;
     for (int i = 0; i < 1000; i++) {
         auto id = Submit(body);
@@ -104,83 +107,99 @@ TEST(Submit, MaxPayloadSize) {
 }
 
 TEST(Execution, Empty) {
-    Graph graph = {{}, {}, kGraphMeta};
-    CheckGraphExecution(graph, 1, 1, 0, kRunnerDelay, 0);
+    Workflow workflow = {{}, {}, kWorkflowMeta};
+    CheckExecution(workflow, 1, 1, 0, kRunnerDelay, 0);
 }
 
 TEST(Execution, SingleBlock) {
-    Graph graph = {{{}}, {}, kGraphMeta};
-    CheckGraphExecution(graph, 5, 1, 1, kRunnerDelay, kRunnerDelay);
-    CheckGraphExecution(graph, 5, 10, 1, kRunnerDelay, kRunnerDelay);
+    Workflow workflow = {{{}}, {}, kWorkflowMeta};
+    CheckExecution(workflow, 5, 1, 1, kRunnerDelay, kRunnerDelay);
+    CheckExecution(workflow, 5, 10, 1, kRunnerDelay, kRunnerDelay);
 }
 
 TEST(Execution, Bamboo) {
-    Graph graph = {
-        {{}, {}, {}}, {{"regular", 0, 1, "a", "a"}, {"regular", 1, 2, "b", "b"}}, kGraphMeta};
-    CheckGraphExecution(graph, 5, 1, 3, kRunnerDelay, 3 * kRunnerDelay);
-    CheckGraphExecution(graph, 5, 10, 3, kRunnerDelay, 3 * kRunnerDelay);
+    Workflow workflow = {
+        {{.outputs = {"a"}}, {.inputs = {"a"}, .outputs = {"b"}}, {.inputs = {"b"}}},
+        {{0, 0, 1, 0}, {1, 0, 2, 0}},
+        kWorkflowMeta};
+    CheckExecution(workflow, 5, 1, 3, kRunnerDelay, 3 * kRunnerDelay);
+    CheckExecution(workflow, 5, 10, 3, kRunnerDelay, 3 * kRunnerDelay);
 }
 
 TEST(Execution, Parallel) {
-    Graph graph = {{{}, {}, {}}, {}, kGraphMeta};
-    CheckGraphExecution(graph, 5, 1, 3, kRunnerDelay, 3 * kRunnerDelay);
-    CheckGraphExecution(graph, 5, 3, 3, kRunnerDelay, kRunnerDelay);
+    Workflow workflow = {{{}, {}, {}}, {}, kWorkflowMeta};
+    CheckExecution(workflow, 5, 1, 3, kRunnerDelay, 3 * kRunnerDelay);
+    CheckExecution(workflow, 5, 3, 3, kRunnerDelay, kRunnerDelay);
 }
 
 TEST(Execution, MaxRunners) {
-    Graph graph = {{{}, {}, {}, {}, {}, {}},
-                   {{"regular", 0, 1, "a", "a"},
-                    {"regular", 0, 2, "a", "a"},
-                    {"regular", 0, 3, "a", "a"},
-                    {"regular", 0, 4, "a", "a"},
-                    {"regular", 1, 5, "b", "b1"},
-                    {"regular", 2, 5, "b", "b2"},
-                    {"regular", 3, 5, "b", "b3"},
-                    {"regular", 4, 5, "b", "b4"}},
-                   kGraphMeta};
-    CheckGraphExecution(graph, 3, 1, 6, kRunnerDelay, 6 * kRunnerDelay);
-    CheckGraphExecution(graph, 3, 2, 6, kRunnerDelay, 4 * kRunnerDelay);
-    CheckGraphExecution(graph, 3, 3, 6, kRunnerDelay, 4 * kRunnerDelay);
-    CheckGraphExecution(graph, 3, 4, 6, kRunnerDelay, 3 * kRunnerDelay);
-    CheckGraphExecution(graph, 3, 6, 6, kRunnerDelay, 3 * kRunnerDelay);
-    graph.meta.max_runners = 4;
-    CheckGraphExecution(graph, 3, 4, 6, kRunnerDelay, 3 * kRunnerDelay);
-    graph.meta.max_runners = 3;
-    CheckGraphExecution(graph, 3, 4, 6, kRunnerDelay, 4 * kRunnerDelay);
-    graph.meta.max_runners = 2;
-    CheckGraphExecution(graph, 3, 4, 6, kRunnerDelay, 4 * kRunnerDelay);
-    graph.meta.max_runners = 1;
-    CheckGraphExecution(graph, 3, 4, 6, kRunnerDelay, 6 * kRunnerDelay);
+    Workflow workflow = {{{.outputs = {"a"}},
+                          {.inputs = {"a"}, .outputs = {"b"}},
+                          {.inputs = {"a"}, .outputs = {"b"}},
+                          {.inputs = {"a"}, .outputs = {"b"}},
+                          {.inputs = {"a"}, .outputs = {"b"}},
+                          {.inputs = {"b1", "b2", "b3", "b4"}}},
+                         {{0, 0, 1, 0},
+                          {0, 0, 2, 0},
+                          {0, 0, 3, 0},
+                          {0, 0, 4, 0},
+                          {1, 0, 5, 0},
+                          {2, 0, 5, 1},
+                          {3, 0, 5, 2},
+                          {4, 0, 5, 3}},
+                         kWorkflowMeta};
+    CheckExecution(workflow, 3, 1, 6, kRunnerDelay, 6 * kRunnerDelay);
+    CheckExecution(workflow, 3, 2, 6, kRunnerDelay, 4 * kRunnerDelay);
+    CheckExecution(workflow, 3, 3, 6, kRunnerDelay, 4 * kRunnerDelay);
+    CheckExecution(workflow, 3, 4, 6, kRunnerDelay, 3 * kRunnerDelay);
+    CheckExecution(workflow, 3, 6, 6, kRunnerDelay, 3 * kRunnerDelay);
+    workflow.meta.max_runners = 4;
+    CheckExecution(workflow, 3, 4, 6, kRunnerDelay, 3 * kRunnerDelay);
+    workflow.meta.max_runners = 3;
+    CheckExecution(workflow, 3, 4, 6, kRunnerDelay, 4 * kRunnerDelay);
+    workflow.meta.max_runners = 2;
+    CheckExecution(workflow, 3, 4, 6, kRunnerDelay, 4 * kRunnerDelay);
+    workflow.meta.max_runners = 1;
+    CheckExecution(workflow, 3, 4, 6, kRunnerDelay, 6 * kRunnerDelay);
 }
 
 TEST(Execution, FiniteCycle) {
-    Graph graph = {{{}, {}, {}, {}, {}, {}, {}},
-                   {{"regular", 0, 1, "a", "a"},
-                    {"regular", 1, 2, "b", "b"},
-                    {"regular", 2, 3, "c", "c"},
-                    {"regular", 3, 4, "d", "d"},
-                    {"regular", 0, 5, "a", "f1"},
-                    {"regular", 0, 5, "a", "f2"},
-                    {"regular", 2, 5, "c", "f1"},
-                    {"regular", 4, 5, "e", "f1"},
-                    {"regular", 5, 6, "g", "g"},
-                    {"regular", 6, 5, "f", "f2"}},
-                   kGraphMeta};
-    CheckGraphExecution(graph, 3, 2, 11, kRunnerDelay, 7 * kRunnerDelay);
+    Workflow workflow = {{{.outputs = {"a"}},
+                          {.inputs = {"a"}, .outputs = {"b"}},
+                          {.inputs = {"b"}, .outputs = {"c"}},
+                          {.inputs = {"c"}, .outputs = {"d"}},
+                          {.inputs = {"d"}, .outputs = {"e"}},
+                          {.inputs = {"e1", "e2"}, .outputs = {"f"}},
+                          {.inputs = {"f"}, .outputs = {"e"}}},
+                         {{0, 0, 1, 0},
+                          {1, 0, 2, 0},
+                          {2, 0, 3, 0},
+                          {3, 0, 4, 0},
+                          {0, 0, 5, 0},
+                          {0, 0, 5, 1},
+                          {2, 0, 5, 0},
+                          {4, 0, 5, 0},
+                          {5, 0, 6, 0},
+                          {6, 0, 5, 1}},
+                         kWorkflowMeta};
+    CheckExecution(workflow, 3, 2, 11, kRunnerDelay, 7 * kRunnerDelay);
 }
 
 TEST(Execution, FailedBlocks) {
-    Graph graph = {
-        {{}, {}, {}, {}, {}},
-        {{"regular", 0, 1, "a", "a"}, {"regular", 2, 3, "b", "b"}, {"regular", 3, 4, "c", "c"}},
-        kGraphMeta};
-    CheckGraphExecution(graph, 3, 2, 3, kRunnerDelay, 2 * kRunnerDelay, {0, 3});
+    Workflow workflow = {{{.outputs = {"a"}},
+                          {.inputs = {"a"}},
+                          {.outputs = {"b"}},
+                          {.inputs = {"b"}, .outputs = {"c"}},
+                          {.inputs = {"c"}}},
+                         {{0, 0, 1, 0}, {2, 0, 3, 0}, {3, 0, 4, 0}},
+                         kWorkflowMeta};
+    CheckExecution(workflow, 3, 2, 3, kRunnerDelay, 2 * kRunnerDelay, {0, 3});
 }
 
 TEST(Execution, Stress) {
     std::vector<Block> blocks(100);
-    Graph graph = {blocks, {}, kGraphMeta};
+    Workflow workflow = {blocks, {}, kWorkflowMeta};
     for (int i = 0; i < 100; i++) {
-        CheckGraphExecution(graph, 4, 4, 100, 0, -1);
+        CheckExecution(workflow, 4, 4, 100, 0, -1);
     }
 }

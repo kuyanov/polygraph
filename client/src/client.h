@@ -3,23 +3,22 @@
 #include <string>
 #include <vector>
 
-#include "graph.h"
 #include "net.h"
-#include "result.h"
+#include "structures.h"
 
 class Client {
 public:
-    explicit Client(const std::string &graph_path);
+    explicit Client(const std::string &workflow_path);
 
     void Run();
     void Stop();
 
 private:
     WebsocketClientSession session_;
-    Graph graph_;
+    Workflow workflow_;
     std::vector<BlockResponse> blocks_;
 
-    void HandleMessage(const std::string &message);
+    void OnMessage(const std::string &message);
 
     void PrintBlocks();
     void PrintErrors();

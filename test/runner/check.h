@@ -5,20 +5,17 @@
 #include <fstream>
 #include <sstream>
 #include <string>
-#include <vector>
 
 #include "gtest/gtest.h"
 #include "config.h"
+#include "constants.h"
 #include "json.h"
 #include "net.h"
-#include "result.h"
 #include "serialize.h"
-#include "task.h"
+#include "structures.h"
 #include "uuid.h"
 
 namespace fs = std::filesystem;
-
-std::string test_container;
 
 static WebsocketServer server(Config::Get().scheduler_host, Config::Get().scheduler_port);
 static SchemaValidator response_validator("run_response.json");
@@ -29,34 +26,35 @@ long long Timestamp() {
         .count();
 }
 
-void InitContainer() {
-    test_container = GenerateUuid();
-    fs::path container_path = fs::path(SANDBOX_DIR) / test_container;
-    fs::create_directories(container_path);
-    fs::permissions(container_path, fs::perms::all, fs::perm_options::add);
+fs::path CreateContainer() {
+    fs::path container_relpath = paths::kContainersDir / GenerateUuid();
+    fs::path container_abspath = fs::path(ROOT_DIR) / container_relpath;
+    fs::create_directories(container_abspath);
+    fs::permissions(container_abspath, fs::perms::all, fs::perm_options::add);
+    return container_relpath;
 }
 
-void AddFile(const std::string &filename, const std::string &content, int other_perms = 7) {
-    fs::path filepath = fs::path(SANDBOX_DIR) / test_container / filename;
-    std::ofstream(filepath) << content;
-    fs::permissions(filepath, fs::perms::others_all, fs::perm_options::remove);
-    fs::permissions(filepath, static_cast<fs::perms>(other_perms), fs::perm_options::add);
+void CreateFile(const fs::path &relpath, const std::string &content, int other_perms = 7) {
+    fs::path abspath = fs::path(ROOT_DIR) / relpath;
+    fs::create_directories(abspath.parent_path());
+    std::ofstream(abspath.string()) << content;
+    fs::permissions(abspath, fs::perms::others_all, fs::perm_options::remove);
+    fs::permissions(abspath, static_cast<fs::perms>(other_perms), fs::perm_options::add);
 }
 
-std::string ReadFile(const std::string &filename) {
-    fs::path filepath = fs::path(SANDBOX_DIR) / test_container / filename;
+std::string ReadFile(const fs::path &relpath) {
+    fs::path abspath = fs::path(ROOT_DIR) / relpath;
     std::stringstream ss;
-    ss << std::ifstream(filepath).rdbuf();
+    ss << std::ifstream(abspath.string()).rdbuf();
     return ss.str();
 }
 
-RunResponse SendTask(const Task &task) {
-    RunRequest run_request = {.container = test_container, .task = task};
+RunResponse SendRunRequest(const RunRequest &request) {
     auto session = server.Accept();
-    session.Write(StringifyJSON(Serialize(run_request)));
-    RunResponse run_response;
-    Deserialize(run_response, response_validator.ParseAndValidate(session.Read()));
-    return run_response;
+    session.Write(StringifyJSON(Serialize(request)));
+    RunResponse response;
+    Deserialize(response, response_validator.ParseAndValidate(session.Read()));
+    return response;
 }
 
 void CheckDuration(long long duration, long long expected) {
@@ -64,8 +62,8 @@ void CheckDuration(long long duration, long long expected) {
     ASSERT_LT(duration, expected + 100);
 }
 
-void CheckExitedNormally(const RunResponse &run_response) {
-    ASSERT_TRUE(run_response.result.has_value());
-    ASSERT_TRUE(run_response.result->exited);
-    ASSERT_EQ(run_response.result->exit_code, 0);
+void CheckExitedNormally(const RunResponse &response) {
+    ASSERT_TRUE(response.status.has_value());
+    ASSERT_TRUE(response.status->exited);
+    ASSERT_EQ(response.status->exit_code, 0);
 }

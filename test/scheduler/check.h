@@ -14,12 +14,10 @@
 #include "gtest/gtest.h"
 #include "config.h"
 #include "constants.h"
-#include "graph.h"
 #include "json.h"
 #include "net.h"
-#include "result.h"
 #include "serialize.h"
-#include "task.h"
+#include "structures.h"
 #include "uuid.h"
 
 namespace fs = std::filesystem;
@@ -33,8 +31,8 @@ std::string Submit(const std::string &body) {
     return HttpSession(kHost, kPort).Post("/submit", body);
 }
 
-std::string SubmitGraph(const Graph &graph) {
-    return Submit(StringifyJSON(Serialize(graph)));
+std::string SubmitWorkflow(const Workflow &workflow) {
+    return Submit(StringifyJSON(Serialize(workflow)));
 }
 
 long long Timestamp() {
@@ -43,52 +41,39 @@ long long Timestamp() {
         .count();
 }
 
-size_t ParseBlockId(const std::string &container) {
-    size_t l = container.find('_');
-    size_t r = container.find('_', l + 1);
-    return std::stoul(container.substr(l + 1, r - l - 1));
+size_t ParseBlockId(const std::string &container_id) {
+    size_t l = container_id.find('_');
+    size_t r = container_id.find('_', l + 1);
+    return std::stoul(container_id.substr(l + 1, r - l - 1));
 }
 
-void ImitateRun(const std::string &message, const Graph &graph, int runner_delay,
-                const std::vector<size_t> &failed_blocks, std::string &response) {
-    RunRequest run_request;
-    Deserialize(run_request, request_validator.ParseAndValidate(message));
-    std::string container = run_request.container;
-    size_t block_id = ParseBlockId(container);
-    for (const auto &bind : graph.blocks[block_id].binds) {
-        ASSERT_TRUE(fs::exists(fs::path(SANDBOX_DIR) / container / bind.inside_filename));
-    }
-    for (const auto &connection : graph.connections) {
-        if (connection.end_block_id == block_id) {
-            ASSERT_TRUE(fs::exists(fs::path(SANDBOX_DIR) / container / connection.end_filename));
-        }
-    }
-    for (const auto &connection : graph.connections) {
-        if (connection.start_block_id == block_id) {
-            ASSERT_TRUE(!fs::exists(fs::path(SANDBOX_DIR) / container / connection.start_filename));
-        }
+void ImitateRun(const Workflow &workflow, int runner_delay,
+                const std::vector<size_t> &failed_blocks, const RunRequest &request,
+                RunResponse &response) {
+    fs::path container_path = fs::path(ROOT_DIR) / request.binds[0].outside;
+    std::string container_id = container_path.filename().string();
+    size_t block_id = ParseBlockId(container_id);
+    for (const auto &bind : request.binds) {
+        ASSERT_TRUE(fs::exists(fs::path(ROOT_DIR) / bind.outside));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(runner_delay));
-    for (const auto &connection : graph.connections) {
-        if (connection.start_block_id == block_id) {
-            std::ofstream(fs::path(SANDBOX_DIR) / container / connection.start_filename);
-        }
+    for (const auto &output : workflow.blocks[block_id].outputs) {
+        ASSERT_TRUE(!fs::exists(container_path / output));
+        std::ofstream((container_path / output).string());
     }
     bool failed =
         std::find(failed_blocks.begin(), failed_blocks.end(), block_id) != failed_blocks.end();
-    RunResponse run_response;
     if (failed) {
-        run_response.error = "Some error";
+        response.error = "Some error";
     } else {
-        run_response.result = {.exited = true, .exit_code = 0};
+        response.status = {.exited = true, .exit_code = 0};
     }
-    response = StringifyJSON(Serialize(run_response));
 }
 
-void CheckGraphExecution(const Graph &graph, int cnt_clients, int cnt_runners, int exp_runs,
-                         int runner_delay, int exp_delay,
-                         const std::vector<size_t> &failed_blocks = {}) {
-    std::string body = StringifyJSON(Serialize(graph));
+void CheckExecution(const Workflow &workflow, int cnt_clients, int cnt_runners, int exp_runs,
+                    int runner_delay, int exp_delay,
+                    const std::vector<size_t> &failed_blocks = {}) {
+    std::string body = StringifyJSON(Serialize(workflow));
     auto id = HttpSession(kHost, kPort).Post("/submit", body);
     EXPECT_THAT(id, ::testing::MatchesRegex(kUuidRegex));
 
@@ -97,11 +82,13 @@ void CheckGraphExecution(const Graph &graph, int cnt_clients, int cnt_runners, i
     for (int runner_id = 0; runner_id < cnt_runners; ++runner_id) {
         auto &session = runner_sessions[runner_id];
         runner_threads[runner_id] = std::thread([&] {
-            session.Connect(kHost, kPort, "/runner/" + graph.meta.partition);
+            session.Connect(kHost, kPort, "/runner/" + workflow.meta.partition);
             session.OnRead([&](const std::string &message) {
-                std::string response;
-                ImitateRun(message, graph, runner_delay, failed_blocks, response);
-                session.Write(response);
+                RunRequest request;
+                Deserialize(request, request_validator.ParseAndValidate(message));
+                RunResponse response;
+                ImitateRun(workflow, runner_delay, failed_blocks, request, response);
+                session.Write(StringifyJSON(Serialize(response)));
             });
             session.Run();
         });
@@ -114,7 +101,7 @@ void CheckGraphExecution(const Graph &graph, int cnt_clients, int cnt_runners, i
     for (int client_id = 0; client_id < cnt_clients; ++client_id) {
         auto &session = client_sessions[client_id];
         client_threads[client_id] = std::thread([&] {
-            session.Connect(kHost, kPort, "/graph/" + id);
+            session.Connect(kHost, kPort, "/workflow/" + id);
             int cnt_blocks_completed = 0;
             session.OnRead([&](const std::string &message) {
                 if (message == states::kComplete) {
@@ -123,9 +110,9 @@ void CheckGraphExecution(const Graph &graph, int cnt_clients, int cnt_runners, i
                     }
                     ASSERT_EQ(cnt_blocks_completed, exp_runs);
                 } else {
-                    BlockResponse block_response;
-                    Deserialize(block_response, ParseJSON(message));
-                    if (block_response.state == states::kComplete) {
+                    BlockResponse response;
+                    Deserialize(response, ParseJSON(message));
+                    if (response.state == states::kComplete) {
                         ++cnt_blocks_completed;
                     }
                 }

@@ -1,9 +1,9 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
-    "filename": {
+    "location": {
       "type": "string",
-      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
+      "pattern": "^([A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
     }
   },
   "type": "object",
@@ -19,50 +19,66 @@
         "type": "object",
         "required": [
           "name",
+          "inputs",
+          "outputs",
           "binds",
-          "task"
+          "argv",
+          "env",
+          "constraints"
         ],
         "properties": {
           "name": {
             "type": "string"
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/location"
+            }
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/location"
+            }
           },
           "binds": {
             "type": "array",
             "items": {
               "type": "object",
               "required": [
-                "inside-filename",
-                "outside-path"
+                "inside",
+                "outside",
+                "readonly"
               ],
               "properties": {
-                "inside-filename": {
-                  "$ref": "#/definitions/filename"
+                "inside": {
+                  "$ref": "#/definitions/location"
                 },
-                "outside-path": {
-                  "type": "string"
+                "outside": {
+                  "$ref": "#/definitions/location"
+                },
+                "readonly": {
+                  "type": "boolean"
                 }
               }
             }
           },
-          "task": {
+          "argv": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "env": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "constraints": {
             "type": "object",
-            "required": [
-              "argv",
-              "env"
-            ],
             "properties": {
-              "argv": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "env": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
               "time-limit-ms": {
                 "type": "integer"
               },
@@ -91,33 +107,27 @@
       "items": {
         "type": "object",
         "required": [
-          "type",
-          "start-block-id",
-          "start-filename",
-          "end-block-id",
-          "end-filename"
+          "source-block-id",
+          "source-output-id",
+          "target-block-id",
+          "target-input-id"
         ],
         "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "regular",
-              "directory"
-            ]
-          },
-          "start-block-id": {
+          "source-block-id": {
             "type": "integer",
             "minimum": 0
           },
-          "start-filename": {
-            "$ref": "#/definitions/filename"
-          },
-          "end-block-id": {
+          "source-output-id": {
             "type": "integer",
             "minimum": 0
           },
-          "end-filename": {
-            "$ref": "#/definitions/filename"
+          "target-block-id": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "target-input-id": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       }

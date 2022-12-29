@@ -14,17 +14,17 @@
 const std::string kSchedulerHost = Config::Get().scheduler_host;
 const int kSchedulerPort = Config::Get().scheduler_port;
 
-Client::Client(const std::string &graph_path) {
-    auto document = ReadJSON(graph_path);
+Client::Client(const std::string &workflow_path) {
+    auto document = ReadJSON(workflow_path);
     std::string body = StringifyJSON(document);
-    std::string graph_id = HttpSession(kSchedulerHost, kSchedulerPort).Post("/submit", body);
-    if (!regex_match(graph_id, std::regex(kUuidRegex))) {
-        throw std::runtime_error(graph_id);
+    std::string workflow_id = HttpSession(kSchedulerHost, kSchedulerPort).Post("/submit", body);
+    if (!regex_match(workflow_id, std::regex(kUuidRegex))) {
+        throw std::runtime_error(workflow_id);
     }
-    Deserialize(graph_, document);
-    blocks_.resize(graph_.blocks.size());
-    session_.Connect(kSchedulerHost, kSchedulerPort, "/graph/" + graph_id);
-    session_.OnRead([this](const std::string &message) { HandleMessage(message); });
+    Deserialize(workflow_, document);
+    blocks_.resize(workflow_.blocks.size());
+    session_.Connect(kSchedulerHost, kSchedulerPort, "/workflow/" + workflow_id);
+    session_.OnRead([this](const std::string &message) { OnMessage(message); });
 }
 
 void Client::Run() {
@@ -37,7 +37,7 @@ void Client::Stop() {
     session_.Write(signals::kStop);
 }
 
-void Client::HandleMessage(const std::string &message) {
+void Client::OnMessage(const std::string &message) {
     if (message == states::kComplete) {
         PrintErrors();
         session_.Stop();
@@ -65,20 +65,20 @@ void Client::PrintBlocks() {
             line += "Running";
         } else if (block.error.has_value()) {
             line += ColoredText("Error", RED);
-        } else if (block.result->exited) {
-            int exit_code = block.result->exit_code;
+        } else if (block.status->exited) {
+            int exit_code = block.status->exit_code;
             line += ColoredText("Exited with code " + std::to_string(exit_code),
                                 exit_code == 0 ? GREEN : YELLOW);
-        } else if (block.result->time_limit_exceeded) {
+        } else if (block.status->time_limit_exceeded) {
             line += ColoredText("Time limit exceeded", YELLOW);
-        } else if (block.result->wall_time_limit_exceeded) {
+        } else if (block.status->wall_time_limit_exceeded) {
             line += ColoredText("Wall time limit exceeded", YELLOW);
-        } else if (block.result->memory_limit_exceeded) {
+        } else if (block.status->memory_limit_exceeded) {
             line += ColoredText("Memory limit exceeded", YELLOW);
-        } else if (block.result->oom_killed) {
+        } else if (block.status->oom_killed) {
             line += ColoredText("OOM killed", YELLOW);
-        } else if (block.result->signaled) {
-            int term_signal = block.result->term_signal;
+        } else if (block.status->signaled) {
+            int term_signal = block.status->term_signal;
             line += ColoredText("Terminated with signal " + std::to_string(term_signal), YELLOW);
         }
         TerminalWindow::Get().PrintLine(line);

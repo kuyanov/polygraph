@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <queue>
 #include <string>
 #include <string_view>
@@ -10,30 +11,30 @@
 #include <rapidjson/document.h>
 #include <uWebSockets/App.h>
 
-#include "graph.h"
+#include "workflow.h"
 
-class GraphState;
+class WorkflowState;
 class Partition;
 
 struct RunnerPerSocketData {
     std::string partition;
-    GraphState *graph_ptr;
+    WorkflowState *workflow_ptr;
     size_t block_id;
 };
 
 struct ClientPerSocketData {
-    GraphState *graph_ptr;
+    WorkflowState *workflow_ptr;
 };
 
 using RunnerWebSocket = uWS::WebSocket<false, true, RunnerPerSocketData>;
 using ClientWebSocket = uWS::WebSocket<false, true, ClientPerSocketData>;
 
-class GraphState : public Graph {
+class WorkflowState : public Workflow {
 public:
-    std::string graph_id;
+    std::string workflow_id;
     Partition *partition_ptr;
 
-    GraphState() = default;
+    WorkflowState() = default;
 
     void Init(const rapidjson::Document &document);
 
@@ -41,19 +42,19 @@ public:
     void Stop();
 
     void RunBlock(size_t block_id, RunnerWebSocket *ws);
-    void OnResult(RunnerWebSocket *ws, std::string_view message);
+    void OnStatus(RunnerWebSocket *ws, std::string_view message);
 
     void EnqueueBlock(size_t block_id);
     void DequeueBlock();
     void UpdateBlocksProcessing();
 
-    void PrepareContainer(size_t block_id);
-    bool TransferFile(const Connection &connection);
-
-    void SendTask(size_t block_id, RunnerWebSocket *ws);
-
+    bool ProcessConnection(const Connection &connection);
     bool IsBlockReady(size_t block_id) const;
-    void ClearBlockState(size_t block_id);
+
+    void PrepareRun(size_t block_id);
+    void FinalizeRun(size_t block_id);
+
+    void SendRunRequest(size_t block_id, RunnerWebSocket *ws);
 
     void AddClient(ClientWebSocket *ws);
     void RemoveClient(ClientWebSocket *ws);
@@ -61,9 +62,9 @@ public:
 
 private:
     struct BlockState {
-        size_t cnt_inputs = 0;
         size_t cnt_inputs_ready = 0;
         size_t cnt_runs = 0;
+        std::vector<std::optional<std::string>> input_sources;
     };
 
     bool is_running_ = false;
@@ -73,18 +74,18 @@ private:
     std::vector<std::vector<Connection>> go_;
     std::unordered_set<ClientWebSocket *> clients_;
 
-    std::string GetContainer(size_t block_id) const;
+    std::string GetContainerId(size_t block_id) const;
 };
 
 class Partition {
 public:
     void AddRunner(RunnerWebSocket *ws);
     void RemoveRunner(RunnerWebSocket *ws);
-    void EnqueueBlock(GraphState *graph_ptr, size_t block_id);
+    void EnqueueBlock(WorkflowState *workflow_ptr, size_t block_id);
 
 private:
     std::unordered_set<RunnerWebSocket *> runners_waiting_;
-    std::queue<std::pair<GraphState *, size_t>> blocks_waiting_;
+    std::queue<std::pair<WorkflowState *, size_t>> blocks_waiting_;
 };
 
 class Scheduler {
@@ -94,10 +95,10 @@ public:
     void JoinClient(ClientWebSocket *ws);
     void LeaveClient(ClientWebSocket *ws);
 
-    std::string AddGraph(const rapidjson::Document &document);
-    GraphState *FindGraph(const std::string &graph_id);
+    std::string AddWorkflow(const rapidjson::Document &document);
+    WorkflowState *FindWorkflow(const std::string &workflow_id);
 
 private:
-    std::unordered_map<std::string, GraphState> graphs_;
+    std::unordered_map<std::string, WorkflowState> workflows_;
     std::unordered_map<std::string, Partition> groups_;
 };

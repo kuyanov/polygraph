@@ -3,22 +3,19 @@
 #include <string>
 #include <vector>
 
-#include "task.h"
-
-struct Bind {
-    std::string inside_filename, outside_path;
-};
+#include "bind.h"
+#include "constraints.h"
 
 struct Block {
     std::string name;
+    std::vector<std::string> inputs, outputs;
     std::vector<Bind> binds;
-    Task task;
+    std::vector<std::string> argv, env;
+    Constraints constraints;
 };
 
 struct Connection {
-    std::string type;
-    size_t start_block_id, end_block_id;
-    std::string start_filename, end_filename;
+    size_t source_block_id, source_output_id, target_block_id, target_input_id;
 };
 
 struct Meta {
@@ -26,7 +23,7 @@ struct Meta {
     int max_runners;
 };
 
-struct Graph {
+struct Workflow {
     std::vector<Block> blocks;
     std::vector<Connection> connections;
     Meta meta;

@@ -12,28 +12,28 @@
 const std::string kHost = Config::Get().host;
 const int kPort = Config::Get().port;
 
-static SchemaValidator graph_validator("graph.json");
+static SchemaValidator workflow_validator("workflow.json");
 static Scheduler scheduler;
 
 void Run() {
     Logger::Get().SetName("scheduler");
     uWS::App().post("/submit", [&](auto *res, auto *req) {
-        std::string graph_text;
+        std::string workflow_text;
         res->onAborted([] {});
-        res->onData([&, res, graph_text = std::move(graph_text)]
+        res->onData([&, res, workflow_text = std::move(workflow_text)]
                     (std::string_view chunk, bool is_last) mutable {
-            if (graph_text.size() + chunk.size() > Config::Get().max_payload_size) {
+            if (workflow_text.size() + chunk.size() > Config::Get().max_payload_size) {
                 res->writeStatus(http_response::kRequestEntityTooLarge)->end("", true);
                 return;
             }
-            graph_text.append(chunk);
+            workflow_text.append(chunk);
             if (!is_last) {
                 return;
             }
             try {
-                auto document = graph_validator.ParseAndValidate(graph_text);
-                std::string graph_id = scheduler.AddGraph(document);
-                res->end(graph_id);
+                auto document = workflow_validator.ParseAndValidate(workflow_text);
+                std::string workflow_id = scheduler.AddWorkflow(document);
+                res->end(workflow_id);
             } catch (const ParseError &error) {
                 res->writeStatus(http_response::kBadRequest)->end(
                     errors::kParseErrorPrefix + error.message);
@@ -57,22 +57,22 @@ void Run() {
             scheduler.JoinRunner(ws);
         },
         .message = [&](auto *ws, std::string_view message, uWS::OpCode op_code) {
-            GraphState *graph_ptr = ws->getUserData()->graph_ptr;
-            graph_ptr->OnResult(ws, message);
+            WorkflowState *workflow_ptr = ws->getUserData()->workflow_ptr;
+            workflow_ptr->OnStatus(ws, message);
         },
         .close = [&](auto *ws, int code, std::string_view message) {
             scheduler.LeaveRunner(ws);
         }
-    }).ws<ClientPerSocketData>("/graph/:id", {
+    }).ws<ClientPerSocketData>("/workflow/:id", {
         .maxPayloadLength = Config::Get().max_payload_size,
         .upgrade = [&](auto *res, auto *req, auto *context) {
-            std::string graph_id(req->getParameter(0));
-            GraphState *graph_ptr = scheduler.FindGraph(graph_id);
-            if (!graph_ptr) {
+            std::string workflow_id(req->getParameter(0));
+            WorkflowState *workflow_ptr = scheduler.FindWorkflow(workflow_id);
+            if (!workflow_ptr) {
                 res->writeStatus(http_response::kNotFound)->end();
                 return;
             }
-            res->template upgrade<ClientPerSocketData>({ .graph_ptr = graph_ptr },
+            res->template upgrade<ClientPerSocketData>({ .workflow_ptr = workflow_ptr },
                 req->getHeader("sec-websocket-key"),
                 req->getHeader("sec-websocket-protocol"),
                 req->getHeader("sec-websocket-extensions"),
@@ -83,12 +83,12 @@ void Run() {
             scheduler.JoinClient(ws);
         },
         .message = [&](auto *ws, std::string_view message, uWS::OpCode op_code) {
-            GraphState *graph_ptr = ws->getUserData()->graph_ptr;
+            WorkflowState *workflow_ptr = ws->getUserData()->workflow_ptr;
             try {
                 if (message == signals::kRun) {
-                    graph_ptr->Run();
+                    workflow_ptr->Run();
                 } else if (message == signals::kStop) {
-                    graph_ptr->Stop();
+                    workflow_ptr->Stop();
                 } else {
                     throw APIError(errors::kUndefinedCommand);
                 }

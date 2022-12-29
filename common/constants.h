@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <string>
 
 namespace http_response {
@@ -17,12 +18,12 @@ const std::string kValidationErrorPrefix = "Validation error: ";
 const std::string kRuntimeErrorPrefix = "Runtime error: ";
 const std::string kAPIErrorPrefix = "API error: ";
 
-const std::string kDuplicatedFilename = "duplicated filename";
+const std::string kDuplicatedLocation = "duplicated location";
 const std::string kInvalidConnection = "invalid connection";
 const std::string kLoopsNotSupported = "loops are not supported";
 const std::string kUndefinedCommand = "undefined command";
 const std::string kNotImplemented = "not implemented";
-const std::string kAlreadyRunning = "graph is already running";
+const std::string kAlreadyRunning = "workflow is already running";
 
 }  // namespace errors
 
@@ -39,3 +40,11 @@ const std::string kRunning = "running";
 const std::string kComplete = "complete";
 
 }  // namespace states
+
+namespace paths {
+
+const std::filesystem::path kContainersDir = "containers";
+const std::filesystem::path kUserDir = "user";
+const std::filesystem::path kTestDir = "test";
+
+}  // namespace paths

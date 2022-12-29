@@ -2,32 +2,49 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "required": [
-    "container",
-    "task"
+    "binds",
+    "argv",
+    "env",
+    "constraints"
   ],
   "properties": {
-    "container": {
-      "type": "string"
+    "binds": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "inside",
+          "outside",
+          "readonly"
+        ],
+        "properties": {
+          "inside": {
+            "type": "string"
+          },
+          "outside": {
+            "type": "string"
+          },
+          "readonly": {
+            "type": "boolean"
+          }
+        }
+      }
     },
-    "task": {
+    "argv": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "env": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "constraints": {
       "type": "object",
-      "required": [
-        "argv",
-        "env"
-      ],
       "properties": {
-        "argv": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "env": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
         "time-limit-ms": {
           "type": "integer"
         },
