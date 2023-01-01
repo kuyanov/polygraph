@@ -17,7 +17,6 @@ FetchContent_Declare(
         rapidjson
         GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
         GIT_SUBMODULES ""
-        GIT_PROGRESS TRUE
 )
 FetchContent_Declare(
         uWebSockets
@@ -25,13 +24,11 @@ FetchContent_Declare(
         GIT_TAG v20.22.0
         GIT_SUBMODULES uSockets
         GIT_SUBMODULES_RECURSE FALSE
-        GIT_PROGRESS TRUE
 )
 FetchContent_Declare(
         googletest
         GIT_REPOSITORY https://github.com/google/googletest.git
         GIT_TAG release-1.12.1
-        GIT_PROGRESS TRUE
 )
 
 FetchContent_GetProperties(rapidjson)
