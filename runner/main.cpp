@@ -1,4 +1,5 @@
-#include <signal.h>
+#include <csignal>
+#include <cstdio>
 #include <sys/prctl.h>
 #include <unistd.h>
 
@@ -17,6 +18,7 @@ int main() {
     if (fork() == 0) {
         prctl(PR_SET_PDEATHSIG, SIGHUP);
         StartLibsbox();
+        perror("Failed to start libsbox");
     } else {
         Run();
     }

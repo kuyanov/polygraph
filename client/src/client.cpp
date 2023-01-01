@@ -2,7 +2,6 @@
 #include <regex>
 #include <stdexcept>
 #include <string>
-#include <vector>
 
 #include "client.h"
 #include "config.h"

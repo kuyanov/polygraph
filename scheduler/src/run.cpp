@@ -1,6 +1,6 @@
 #include <string>
 #include <string_view>
-#include <uWebSockets/App.h>
+#include <App.h>
 
 #include "config.h"
 #include "constants.h"

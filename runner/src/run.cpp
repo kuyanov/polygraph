@@ -80,10 +80,12 @@ RunResponse ProcessRequest(const RunRequest &request) {
 void Run() {
     Logger::Get().SetName("runner");
     std::this_thread::sleep_for(std::chrono::milliseconds(kStartDelayMs));
+    bool connected = true;
     while (true) {
         try {
             WebsocketClientSession session;
             session.Connect(kSchedulerHost, kSchedulerPort, "/runner/" + Config::Get().partition);
+            connected = true;
             Log("Connected to ", kSchedulerHost, ":", kSchedulerPort);
             session.OnRead([&](const std::string &message) {
                 RunRequest request;
@@ -93,7 +95,10 @@ void Run() {
             });
             session.Run();
         } catch (const beast::system_error &error) {
-            Log(error.what());
+            if (connected) {
+                connected = false;
+                Log("Not connected to ", kSchedulerHost, ":", kSchedulerPort, ": ", error.what());
+            }
             std::this_thread::sleep_for(
                 std::chrono::milliseconds(Config::Get().reconnect_interval_ms));
         }

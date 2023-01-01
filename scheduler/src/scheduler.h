@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 #include <rapidjson/document.h>
-#include <uWebSockets/App.h>
+#include <App.h>
 
 #include "workflow.h"
 

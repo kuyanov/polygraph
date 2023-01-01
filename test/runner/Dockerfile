@@ -3,10 +3,7 @@ FROM ubuntu:latest
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    apt-get upgrade -y && \
     apt-get install -y build-essential git cmake bsdmainutils libboost-system-dev
-RUN git clone https://github.com/Tencent/rapidjson.git && \
-    cp -r rapidjson/include/rapidjson /usr/local/include/
 RUN git clone https://github.com/kuyanov/libsbox.git && \
     mkdir libsbox/build && \
     cd libsbox/build && \
@@ -17,13 +14,15 @@ RUN git clone https://github.com/kuyanov/libsbox.git && \
 COPY . /polygraph
 WORKDIR /polygraph
 
-RUN rm -rf cmake-build-asan && \
-    mkdir cmake-build-asan && \
-    cd cmake-build-asan && \
+ENV BUILD_DIR=cmake-build-asan
+
+RUN rm -rf $BUILD_DIR && \
+    mkdir $BUILD_DIR && \
+    cd $BUILD_DIR && \
     cmake .. \
     -D CMAKE_BUILD_TYPE=ASan \
     -D ENABLE_RUNNER=1 \
     -D ENABLE_TESTING=1 && \
     make
 
-ENTRYPOINT [ "./test/runner/entrypoint.sh" ]
+ENTRYPOINT [ "./test/runner/test.sh" ]
