@@ -22,7 +22,7 @@
 
 namespace fs = std::filesystem;
 
-const std::string kHost = Config::Get().host;
+const std::string kHost = "127.0.0.1";
 const int kPort = Config::Get().port;
 
 static thread_local SchemaValidator request_validator("run_request.json");

@@ -22,7 +22,7 @@ void Run() {
         res->onAborted([] {});
         res->onData([&, res, workflow_text = std::move(workflow_text)]
                     (std::string_view chunk, bool is_last) mutable {
-            if (workflow_text.size() + chunk.size() > Config::Get().max_payload_size) {
+            if (workflow_text.size() + chunk.size() > Config::Get().max_payload_length) {
                 res->writeStatus(http_response::kRequestEntityTooLarge)->end("", true);
                 return;
             }
@@ -43,7 +43,7 @@ void Run() {
             }
         });
     }).ws<RunnerPerSocketData>("/runner/:partition", {
-        .maxPayloadLength = Config::Get().max_payload_size,
+        .maxPayloadLength = Config::Get().max_payload_length,
         .upgrade = [&](auto *res, auto *req, auto *context) {
             std::string partition(req->getParameter(0));
             res->template upgrade<RunnerPerSocketData>({ .partition = partition },
@@ -64,7 +64,8 @@ void Run() {
             scheduler.LeaveRunner(ws);
         }
     }).ws<ClientPerSocketData>("/workflow/:id", {
-        .maxPayloadLength = Config::Get().max_payload_size,
+        .maxPayloadLength = Config::Get().max_payload_length,
+        .idleTimeout = Config::Get().idle_timeout,
         .upgrade = [&](auto *res, auto *req, auto *context) {
             std::string workflow_id(req->getParameter(0));
             WorkflowState *workflow_ptr = scheduler.FindWorkflow(workflow_id);
@@ -104,6 +105,7 @@ void Run() {
             Log("Listening on ", kHost, ":", kPort);
         } else {
             Log("Failed to listen on ", kHost, ":", kPort);
+            exit(1);
         }
     }).run();
 }

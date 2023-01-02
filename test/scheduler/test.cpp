@@ -98,9 +98,9 @@ TEST(Submit, WorkflowIdUnique) {
     ASSERT_EQ(ids.size(), 1000);
 }
 
-TEST(Submit, MaxPayloadSize) {
+TEST(Submit, MaxPayloadLength) {
     std::string body;
-    body.resize(Config::Get().max_payload_size, '.');
+    body.resize(Config::Get().max_payload_length, '.');
     EXPECT_THAT(Submit(body), StartsWith(errors::kParseErrorPrefix));
     body.push_back('.');
     EXPECT_THAT(Submit(body), IsEmpty());

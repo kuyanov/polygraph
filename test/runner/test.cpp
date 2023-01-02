@@ -24,7 +24,7 @@ TEST(Execution, Sleep) {
     CheckDuration(response.status->wall_time_usage_ms, 1000);
 }
 
-TEST(Execution, Mounts) {
+TEST(Execution, Binds) {
     auto container_path = CreateContainer();
     auto input_path = paths::kTestDir / "input";
     auto output_path = paths::kTestDir / "output";

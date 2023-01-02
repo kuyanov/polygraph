@@ -8,7 +8,8 @@ class Config {
 public:
     std::string host;
     int port;
-    unsigned int max_payload_size;
+    unsigned int max_payload_length;
+    unsigned short idle_timeout;
 
     static Config &Get() {
         static Config config(CONFIG_FILE);
@@ -20,6 +21,7 @@ private:
         auto document = ReadJSON(config_path);
         host = document["host"].GetString();
         port = document["port"].GetInt();
-        max_payload_size = document["max-payload-size"].GetUint();
+        max_payload_length = document["max-payload-length"].GetUint();
+        idle_timeout = document["idle-timeout"].GetUint();
     }
 };

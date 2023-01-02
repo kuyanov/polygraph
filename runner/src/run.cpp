@@ -88,10 +88,12 @@ void Run() {
             connected = true;
             Log("Connected to ", kSchedulerHost, ":", kSchedulerPort);
             session.OnRead([&](const std::string &message) {
-                RunRequest request;
-                Deserialize(request, ParseJSON(message));
-                RunResponse response = ProcessRequest(request);
-                session.Write(StringifyJSON(Serialize(response)));
+                std::thread([=, &session] {
+                    RunRequest request;
+                    Deserialize(request, ParseJSON(message));
+                    RunResponse response = ProcessRequest(request);
+                    session.Write(StringifyJSON(Serialize(response)));
+                }).detach();
             });
             session.Run();
         } catch (const beast::system_error &error) {

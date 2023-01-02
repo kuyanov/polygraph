@@ -17,7 +17,7 @@
 
 namespace fs = std::filesystem;
 
-static WebsocketServer server(Config::Get().scheduler_host, Config::Get().scheduler_port);
+static WebsocketServer server("0.0.0.0", Config::Get().scheduler_port);
 static SchemaValidator response_validator("run_response.json");
 
 long long Timestamp() {
