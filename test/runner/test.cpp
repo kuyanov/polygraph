@@ -40,18 +40,18 @@ TEST(Execution, Binds) {
                                      .constraints = {.max_threads = 3}});
     CheckExitedNormally(response1);
     ASSERT_EQ(ReadFile(output_path), "hello world");
-    auto error_path = paths::kTestDir / "error";
-    CreateFile(error_path, "");
+    CreateFile(output_path, "");
     auto response2 = SendRunRequest(
-        {.binds = {{".", container_path.string(), false}, {"error", error_path.string(), false}},
-         .argv = {"bash", "-c", "echo test 2>error 1>&2"}});
+        {.binds = {{".", container_path.string(), false}, {"output", output_path.string(), false}},
+         .argv = {"bash", "-c", "echo test >output"}});
     CheckExitedNormally(response2);
-    ASSERT_EQ(ReadFile(error_path), "test\n");
+    ASSERT_EQ(ReadFile(output_path), "test\n");
     auto response3 = SendRunRequest(
-        {.binds = {{".", container_path.string(), false}, {"error", error_path.string(), true}},
-         .argv = {"bash", "-c", "echo test 2>error 1>&2"}});
+        {.binds = {{".", container_path.string(), false}, {"output", output_path.string(), true}},
+         .argv = {"bash", "-c", "echo test2 >output"}});
     ASSERT_TRUE(response3.status.has_value());
     ASSERT_EQ(response3.status->exit_code, 1);
+    ASSERT_EQ(ReadFile(output_path), "test\n");
 }
 
 TEST(Execution, Permissions) {
