@@ -9,14 +9,10 @@
 #include "run.h"
 #include "scheduler.h"
 
-const std::string kHost = Config::Get().host;
-const int kPort = Config::Get().port;
-
-static SchemaValidator workflow_validator("workflow.json");
-static Scheduler scheduler;
-
 void Run() {
-    Logger::Get().SetName("scheduler");
+    SchemaValidator workflow_validator(paths::kResourcesPath + "/workflow_schema.json");
+    Scheduler scheduler;
+
     uWS::App().post("/submit", [&](auto *res, auto *req) {
         std::string workflow_text;
         res->onAborted([] {});
@@ -100,11 +96,11 @@ void Run() {
         .close = [&](auto *ws, int code, std::string_view message) {
             scheduler.LeaveClient(ws);
         }
-    }).listen(kHost, kPort, [&](auto *listen_socket) {
+    }).listen(Config::Get().host, Config::Get().port, [&](auto *listen_socket) {
         if (listen_socket) {
-            Log("Listening on ", kHost, ":", kPort);
+            Log("Listening on ", Config::Get().host, ":", Config::Get().port);
         } else {
-            Log("Failed to listen on ", kHost, ":", kPort);
+            Log("Failed to listen on ", Config::Get().host, ":", Config::Get().port);
             exit(1);
         }
     }).run();

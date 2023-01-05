@@ -1,5 +1,5 @@
-#include "block_response.h"
-#include "serialize.h"
+#include "serialization/all.h"
+#include "structures/block_response.h"
 
 template <>
 rapidjson::Value Serialize<BlockResponse>(const BlockResponse &data,

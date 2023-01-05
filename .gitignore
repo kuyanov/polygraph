@@ -35,5 +35,5 @@
 build
 cmake-build-*
 
-# Shared filesystem
-shared
+# Data files
+data

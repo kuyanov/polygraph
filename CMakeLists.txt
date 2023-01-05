@@ -7,9 +7,11 @@ set(CMAKE_CXX_FLAGS_TSAN "-g -fsanitize=thread")
 set(CMAKE_EXPORT_NO_PACKAGE_REGISTRY TRUE)
 
 add_compile_definitions(
-        SCHEMA_DIR="${CMAKE_SOURCE_DIR}/schema"
-        ROOT_DIR="${CMAKE_SOURCE_DIR}/shared"
+        DEFAULT_DATA_PATH="/var/lib/polygraph"
+        DEFAULT_RESOURCES_PATH="${CMAKE_INSTALL_PREFIX}/share/polygraph"
 )
+
+find_package(Boost REQUIRED COMPONENTS program_options)
 
 include(FetchContent)
 set(FETCHCONTENT_QUIET FALSE)
@@ -39,7 +41,6 @@ endif ()
 include_directories("${rapidjson_SOURCE_DIR}/include")
 
 add_subdirectory(common)
-add_subdirectory(structures)
 
 if (ENABLE_CLIENT)
     add_subdirectory(client)

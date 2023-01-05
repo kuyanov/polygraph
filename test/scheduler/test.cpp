@@ -203,3 +203,9 @@ TEST(Execution, Stress) {
         CheckExecution(workflow, 4, 4, 100, 0, -1);
     }
 }
+
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    Config::Get().Load(SCHEDULER_CONFIG_PATH);
+    return RUN_ALL_TESTS();
+}

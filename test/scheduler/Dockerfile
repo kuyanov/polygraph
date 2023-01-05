@@ -3,7 +3,7 @@ FROM ubuntu:latest
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    apt-get install -y build-essential git cmake libboost-system-dev && \
+    apt-get install -y build-essential git cmake libboost-program-options-dev && \
     apt-get clean
 
 COPY . /polygraph

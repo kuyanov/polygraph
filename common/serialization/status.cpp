@@ -1,5 +1,5 @@
-#include "serialize.h"
-#include "status.h"
+#include "serialization/all.h"
+#include "structures/status.h"
 
 template <>
 rapidjson::Value Serialize<Status>(const Status &data, rapidjson::Document::AllocatorType &alloc) {

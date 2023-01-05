@@ -1,6 +1,6 @@
 #pragma once
 
-#include <filesystem>
+#include <cstdlib>
 #include <string>
 
 namespace http_response {
@@ -43,8 +43,11 @@ const std::string kComplete = "complete";
 
 namespace paths {
 
-const std::filesystem::path kContainersDir = "containers";
-const std::filesystem::path kUserDir = "user";
-const std::filesystem::path kTestDir = "test";
+const std::string kResourcesPath =
+    getenv("RESOURCES_PATH") ? getenv("RESOURCES_PATH") : DEFAULT_RESOURCES_PATH;
+const std::string kDataPath = getenv("DATA_PATH") ? getenv("DATA_PATH") : DEFAULT_DATA_PATH;
+const std::string kContainersSubdir = "containers";
+const std::string kUserSubdir = "user";
+const std::string kTestSubdir = "test";
 
 }  // namespace paths

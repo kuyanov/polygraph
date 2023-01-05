@@ -2,13 +2,15 @@
 
 #include <string>
 #include <vector>
+#include <rapidjson/document.h>
 
 #include "net.h"
-#include "structures.h"
+#include "structures/all.h"
 
 class Client {
 public:
-    explicit Client(const std::string &workflow_path);
+    explicit Client(const rapidjson::Document &document, const std::string &scheduler_host,
+                    int scheduler_port);
 
     void Run();
     void Stop();

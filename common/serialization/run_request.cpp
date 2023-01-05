@@ -1,5 +1,5 @@
-#include "run_request.h"
-#include "serialize.h"
+#include "serialization/all.h"
+#include "structures/run_request.h"
 
 template <>
 rapidjson::Value Serialize<RunRequest>(const RunRequest &data,

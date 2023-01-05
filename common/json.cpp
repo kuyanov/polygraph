@@ -1,4 +1,3 @@
-#include <filesystem>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -8,8 +7,6 @@
 
 #include "error.h"
 #include "json.h"
-
-namespace fs = std::filesystem;
 
 rapidjson::Document ParseJSON(const std::string &text) {
     rapidjson::Document document;
@@ -37,8 +34,8 @@ std::string FormattedError(const rapidjson::Document &document) {
            std::to_string(document.GetErrorOffset()) + ")";
 }
 
-SchemaValidator::SchemaValidator(const std::string &filename) {
-    auto document = ReadJSON((fs::path(SCHEMA_DIR) / filename).string());
+SchemaValidator::SchemaValidator(const std::string &schema_path) {
+    auto document = ReadJSON(schema_path);
     if (document.HasParseError()) {
         throw std::runtime_error("Could not parse json schema: " + FormattedError(document));
     }

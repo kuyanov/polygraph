@@ -1,5 +1,5 @@
-#include "constraints.h"
-#include "serialize.h"
+#include "serialization/all.h"
+#include "structures/constraints.h"
 
 template <>
 rapidjson::Value Serialize<Constraints>(const Constraints &data,

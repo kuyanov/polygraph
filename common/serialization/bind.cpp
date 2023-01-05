@@ -1,5 +1,5 @@
-#include "bind.h"
-#include "serialize.h"
+#include "serialization/all.h"
+#include "structures/bind.h"
 
 template <>
 rapidjson::Value Serialize<Bind>(const Bind &data, rapidjson::Document::AllocatorType &alloc) {

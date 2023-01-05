@@ -11,7 +11,7 @@ std::string StringifyJSON(const rapidjson::Document &document);
 
 class SchemaValidator {
 public:
-    explicit SchemaValidator(const std::string &filename);
+    explicit SchemaValidator(const std::string &schema_path);
 
     rapidjson::Document ParseAndValidate(const std::string &text);
 

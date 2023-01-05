@@ -3,6 +3,7 @@
 #include "config.h"
 
 TEST(Network, Reconnect) {
+    WebsocketServer server("0.0.0.0", Config::Get().scheduler_port);
     long long start_time, end_time;
     {
         auto session = server.Accept();
@@ -26,9 +27,9 @@ TEST(Execution, Sleep) {
 
 TEST(Execution, Binds) {
     auto container_path = CreateContainer();
-    auto input_path = paths::kTestDir / "input";
-    auto output_path = paths::kTestDir / "output";
-    auto script_path = paths::kTestDir / "script";
+    auto input_path = fs::path(paths::kTestSubdir) / "input";
+    auto output_path = fs::path(paths::kTestSubdir) / "output";
+    auto script_path = fs::path(paths::kTestSubdir) / "script";
     CreateFile(input_path, "hello world");
     CreateFile(output_path, "");
     CreateFile(script_path, "#!/bin/bash\ncat");
@@ -56,7 +57,7 @@ TEST(Execution, Binds) {
 
 TEST(Execution, Permissions) {
     auto container_path = CreateContainer();
-    auto input_path = paths::kTestDir / "input";
+    auto input_path = fs::path(paths::kTestSubdir) / "input";
     CreateFile(input_path, "", 3);
     auto response1 = SendRunRequest(
         {.binds = {{".", container_path.string(), false}, {"input", input_path.string(), true}},
@@ -64,14 +65,14 @@ TEST(Execution, Permissions) {
          .constraints = {.max_threads = 2}});
     ASSERT_TRUE(response1.status.has_value());
     ASSERT_EQ(response1.status->exit_code, 1);
-    auto output_path = paths::kTestDir / "output";
+    auto output_path = fs::path(paths::kTestSubdir) / "output";
     CreateFile(output_path, "", 5);
     auto response2 = SendRunRequest(
         {.binds = {{".", container_path.string(), false}, {"output", output_path.string(), false}},
          .argv = {"bash", "-c", "echo test >output"}});
     ASSERT_TRUE(response2.status.has_value());
     ASSERT_EQ(response2.status->exit_code, 1);
-    auto script_path = paths::kTestDir / "script";
+    auto script_path = fs::path(paths::kTestSubdir) / "script";
     CreateFile(script_path, "#!/bin/bash\necho test", 6);
     auto response3 = SendRunRequest(
         {.binds = {{".", container_path.string(), false}, {"script", script_path.string(), true}},
@@ -117,4 +118,10 @@ TEST(Execution, MemoryLimit) {
                                     .constraints = {.memory_limit_kb = 1024}});
     ASSERT_TRUE(response.status.has_value());
     ASSERT_TRUE(response.status->memory_limit_exceeded);
+}
+
+int main(int argc, char **argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    Config::Get().Load(RUNNER_CONFIG_PATH);
+    return RUN_ALL_TESTS();
 }

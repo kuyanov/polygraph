@@ -10,12 +10,11 @@ public:
     int scheduler_port, reconnect_interval_ms;
 
     static Config &Get() {
-        static Config config(CONFIG_FILE);
+        static Config config;
         return config;
     }
 
-private:
-    Config(const std::string &config_path) {
+    void Load(const std::string &config_path) {
         auto document = ReadJSON(config_path);
         scheduler_host = document["scheduler-host"].GetString();
         scheduler_port = document["scheduler-port"].GetInt();

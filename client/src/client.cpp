@@ -4,25 +4,22 @@
 #include <string>
 
 #include "client.h"
-#include "config.h"
 #include "constants.h"
-#include "serialize.h"
+#include "json.h"
+#include "serialization/all.h"
 #include "terminal.h"
 #include "uuid.h"
 
-const std::string kSchedulerHost = Config::Get().scheduler_host;
-const int kSchedulerPort = Config::Get().scheduler_port;
-
-Client::Client(const std::string &workflow_path) {
-    auto document = ReadJSON(workflow_path);
+Client::Client(const rapidjson::Document &document, const std::string &scheduler_host,
+               int scheduler_port) {
     std::string body = StringifyJSON(document);
-    std::string workflow_id = HttpSession(kSchedulerHost, kSchedulerPort).Post("/submit", body);
+    std::string workflow_id = HttpSession(scheduler_host, scheduler_port).Post("/submit", body);
     if (!regex_match(workflow_id, std::regex(kUuidRegex))) {
         throw std::runtime_error(workflow_id);
     }
     Deserialize(workflow_, document);
     blocks_.resize(workflow_.blocks.size());
-    session_.Connect(kSchedulerHost, kSchedulerPort, "/workflow/" + workflow_id);
+    session_.Connect(scheduler_host, scheduler_port, "/workflow/" + workflow_id);
     session_.OnRead([this](const std::string &message) { OnMessage(message); });
 }
 

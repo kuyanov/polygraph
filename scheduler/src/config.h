@@ -12,12 +12,11 @@ public:
     unsigned short idle_timeout;
 
     static Config &Get() {
-        static Config config(CONFIG_FILE);
+        static Config config;
         return config;
     }
 
-private:
-    Config(const std::string &config_path) {
+    void Load(const std::string &config_path) {
         auto document = ReadJSON(config_path);
         host = document["host"].GetString();
         port = document["port"].GetInt();

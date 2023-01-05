@@ -1,5 +1,5 @@
-#include "serialize.h"
-#include "workflow.h"
+#include "serialization/all.h"
+#include "structures/workflow.h"
 
 template <>
 rapidjson::Value Serialize<Block>(const Block &data, rapidjson::Document::AllocatorType &alloc) {

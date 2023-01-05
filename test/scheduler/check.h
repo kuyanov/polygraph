@@ -16,19 +16,14 @@
 #include "constants.h"
 #include "json.h"
 #include "net.h"
-#include "serialize.h"
-#include "structures.h"
+#include "serialization/all.h"
+#include "structures/all.h"
 #include "uuid.h"
 
 namespace fs = std::filesystem;
 
-const std::string kHost = "127.0.0.1";
-const int kPort = Config::Get().port;
-
-static thread_local SchemaValidator request_validator("run_request.json");
-
 std::string Submit(const std::string &body) {
-    return HttpSession(kHost, kPort).Post("/submit", body);
+    return HttpSession("127.0.0.1", Config::Get().port).Post("/submit", body);
 }
 
 std::string SubmitWorkflow(const Workflow &workflow) {
@@ -50,11 +45,11 @@ size_t ParseBlockId(const std::string &container_id) {
 void ImitateRun(const Workflow &workflow, int runner_delay,
                 const std::vector<size_t> &failed_blocks, const RunRequest &request,
                 RunResponse &response) {
-    fs::path container_path = fs::path(ROOT_DIR) / request.binds[0].outside;
+    fs::path container_path = fs::path(paths::kDataPath) / request.binds[0].outside;
     std::string container_id = container_path.filename().string();
     size_t block_id = ParseBlockId(container_id);
     for (const auto &bind : request.binds) {
-        ASSERT_TRUE(fs::exists(fs::path(ROOT_DIR) / bind.outside));
+        ASSERT_TRUE(fs::exists(fs::path(paths::kDataPath) / bind.outside));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(runner_delay));
     for (const auto &output : workflow.blocks[block_id].outputs) {
@@ -74,18 +69,23 @@ void CheckExecution(const Workflow &workflow, int cnt_clients, int cnt_runners, 
                     int runner_delay, int exp_delay,
                     const std::vector<size_t> &failed_blocks = {}) {
     std::string body = StringifyJSON(Serialize(workflow));
-    auto id = HttpSession(kHost, kPort).Post("/submit", body);
+    auto id = HttpSession("127.0.0.1", Config::Get().port).Post("/submit", body);
     EXPECT_THAT(id, ::testing::MatchesRegex(kUuidRegex));
 
+    static SchemaValidator request_validator(paths::kResourcesPath + "/run_request_schema.json");
+    std::mutex request_validator_mutex;
     std::vector<std::thread> runner_threads(cnt_runners);
     std::vector<WebsocketClientSession> runner_sessions(cnt_runners);
     for (int runner_id = 0; runner_id < cnt_runners; ++runner_id) {
         auto &session = runner_sessions[runner_id];
         runner_threads[runner_id] = std::thread([&] {
-            session.Connect(kHost, kPort, "/runner/" + workflow.meta.partition);
+            session.Connect("127.0.0.1", Config::Get().port, "/runner/" + workflow.meta.partition);
             session.OnRead([&](const std::string &message) {
+                request_validator_mutex.lock();
+                auto document = request_validator.ParseAndValidate(message);
+                request_validator_mutex.unlock();
                 RunRequest request;
-                Deserialize(request, request_validator.ParseAndValidate(message));
+                Deserialize(request, document);
                 RunResponse response;
                 ImitateRun(workflow, runner_delay, failed_blocks, request, response);
                 session.Write(StringifyJSON(Serialize(response)));
@@ -101,7 +101,7 @@ void CheckExecution(const Workflow &workflow, int cnt_clients, int cnt_runners, 
     for (int client_id = 0; client_id < cnt_clients; ++client_id) {
         auto &session = client_sessions[client_id];
         client_threads[client_id] = std::thread([&] {
-            session.Connect(kHost, kPort, "/workflow/" + id);
+            session.Connect("127.0.0.1", Config::Get().port, "/workflow/" + id);
             int cnt_blocks_completed = 0;
             session.OnRead([&](const std::string &message) {
                 if (message == states::kComplete) {

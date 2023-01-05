@@ -3,7 +3,7 @@ FROM ubuntu:latest
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    apt-get install -y build-essential git cmake bsdmainutils libboost-system-dev
+    apt-get install -y build-essential git cmake bsdmainutils libboost-program-options-dev
 RUN git clone https://github.com/kuyanov/libsbox.git && \
     mkdir libsbox/build && \
     cd libsbox/build && \

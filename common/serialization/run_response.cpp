@@ -1,5 +1,5 @@
-#include "run_response.h"
-#include "serialize.h"
+#include "serialization/all.h"
+#include "structures/run_response.h"
 
 template <>
 rapidjson::Value Serialize<RunResponse>(const RunResponse &data,
