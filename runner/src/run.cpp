@@ -17,7 +17,7 @@ namespace fs = std::filesystem;
 void FillTask(const RunRequest &request, libsbox::Task &task) {
     for (const auto &bind : request.binds) {
         task.get_binds().emplace_back(bind.inside,
-                                      (fs::path(paths::kDataPath) / bind.outside).string(),
+                                      (fs::path(paths::kVarDir) / bind.outside).string(),
                                       bind.readonly ? 0 : libsbox::BindRule::WRITABLE);
     }
     task.set_argv(request.argv);

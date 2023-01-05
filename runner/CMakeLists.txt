@@ -7,5 +7,6 @@ target_include_directories(runner_impl PUBLIC src)
 target_link_libraries(runner_impl PUBLIC common ${LIBSBOX_LIBRARY})
 
 add_executable(runner main.cpp)
-target_compile_definitions(runner PRIVATE DEFAULT_CONFIG_PATH="/etc/polygraph/runner_config.json")
+target_compile_definitions(runner PRIVATE
+        DEFAULT_CONFIG_PATH="${CMAKE_INSTALL_FULL_SYSCONFDIR}/${PROJECT_NAME}/runner_conf.json")
 target_link_libraries(runner PRIVATE ${Boost_LIBRARIES} runner_impl)

@@ -10,7 +10,7 @@
 #include "scheduler.h"
 
 void Run() {
-    SchemaValidator workflow_validator(paths::kResourcesPath + "/workflow_schema.json");
+    SchemaValidator workflow_validator(paths::kDataDir + "/schema/workflow.json");
     Scheduler scheduler;
 
     uWS::App().post("/submit", [&](auto *res, auto *req) {

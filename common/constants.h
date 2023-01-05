@@ -43,11 +43,7 @@ const std::string kComplete = "complete";
 
 namespace paths {
 
-const std::string kResourcesPath =
-    getenv("RESOURCES_PATH") ? getenv("RESOURCES_PATH") : DEFAULT_RESOURCES_PATH;
-const std::string kDataPath = getenv("DATA_PATH") ? getenv("DATA_PATH") : DEFAULT_DATA_PATH;
-const std::string kContainersSubdir = "containers";
-const std::string kUserSubdir = "user";
-const std::string kTestSubdir = "test";
+const std::string kDataDir = getenv("DATA_DIR") ? getenv("DATA_DIR") : DEFAULT_DATA_DIR;
+const std::string kVarDir = getenv("VAR_DIR") ? getenv("VAR_DIR") : DEFAULT_VAR_DIR;
 
 }  // namespace paths

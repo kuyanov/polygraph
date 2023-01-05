@@ -122,10 +122,9 @@ void WorkflowState::UpdateBlocksProcessing() {
 
 bool WorkflowState::ProcessConnection(const Connection &connection) {
     const auto &[source_block_id, source_output_id, target_block_id, target_input_id] = connection;
-    fs::path source_output_path = fs::path(paths::kContainersSubdir) /
-                                  GetContainerId(source_block_id) /
+    fs::path source_output_path = fs::path("containers") / GetContainerId(source_block_id) /
                                   blocks[source_block_id].outputs[source_output_id];
-    if (!fs::exists(fs::path(paths::kDataPath) / source_output_path) ||
+    if (!fs::exists(fs::path(paths::kVarDir) / source_output_path) ||
         blocks_state_[target_block_id].input_sources[target_input_id]) {
         return false;
     }
@@ -139,8 +138,7 @@ bool WorkflowState::IsBlockReady(size_t block_id) const {
 }
 
 void WorkflowState::PrepareRun(size_t block_id) {
-    fs::path container_path =
-        fs::path(paths::kDataPath) / paths::kContainersSubdir / GetContainerId(block_id);
+    fs::path container_path = fs::path(paths::kVarDir) / "containers" / GetContainerId(block_id);
     fs::create_directories(container_path);
     fs::permissions(container_path, fs::perms::all, fs::perm_options::add);
 }
@@ -152,7 +150,7 @@ void WorkflowState::FinalizeRun(size_t block_id) {
 }
 
 void WorkflowState::SendRunRequest(size_t block_id, RunnerWebSocket *ws) {
-    fs::path container_path = fs::path(paths::kContainersSubdir) / GetContainerId(block_id);
+    fs::path container_path = fs::path("containers") / GetContainerId(block_id);
     std::vector<Bind> binds = {
         {.inside = ".", .outside = container_path.string(), .readonly = false}};
     for (size_t input_id = 0; input_id < blocks[block_id].inputs.size(); ++input_id) {
@@ -162,7 +160,7 @@ void WorkflowState::SendRunRequest(size_t block_id, RunnerWebSocket *ws) {
     }
     for (const auto &bind : blocks[block_id].binds) {
         binds.push_back({.inside = bind.inside,
-                         .outside = (fs::path(paths::kUserSubdir) / bind.outside).string(),
+                         .outside = (fs::path("user") / bind.outside).string(),
                          .readonly = bind.readonly});
     }
     RunRequest request = {.binds = std::move(binds),

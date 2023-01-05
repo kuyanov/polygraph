@@ -6,14 +6,16 @@ set(CMAKE_CXX_FLAGS_ASAN "-g -fsanitize=address")
 set(CMAKE_CXX_FLAGS_TSAN "-g -fsanitize=thread")
 set(CMAKE_EXPORT_NO_PACKAGE_REGISTRY TRUE)
 
-add_compile_definitions(
-        DEFAULT_DATA_PATH="/var/lib/polygraph"
-        DEFAULT_RESOURCES_PATH="${CMAKE_INSTALL_PREFIX}/share/polygraph"
-)
+include(FetchContent)
+include(GNUInstallDirs)
 
 find_package(Boost REQUIRED COMPONENTS program_options)
 
-include(FetchContent)
+add_compile_definitions(
+        DEFAULT_DATA_DIR="${CMAKE_INSTALL_FULL_DATADIR}/${PROJECT_NAME}"
+        DEFAULT_VAR_DIR="${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/${PROJECT_NAME}"
+)
+
 set(FETCHCONTENT_QUIET FALSE)
 FetchContent_Declare(
         rapidjson

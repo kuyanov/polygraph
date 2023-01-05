@@ -32,5 +32,6 @@ target_include_directories(scheduler_impl PUBLIC src)
 target_link_libraries(scheduler_impl PUBLIC common uWebSockets)
 
 add_executable(scheduler main.cpp)
-target_compile_definitions(scheduler PRIVATE DEFAULT_CONFIG_PATH="/etc/polygraph/scheduler_config.json")
+target_compile_definitions(scheduler PRIVATE
+        DEFAULT_CONFIG_PATH="${CMAKE_INSTALL_FULL_SYSCONFDIR}/${PROJECT_NAME}/scheduler_conf.json")
 target_link_libraries(scheduler PRIVATE ${Boost_LIBRARIES} scheduler_impl)

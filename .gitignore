@@ -35,5 +35,5 @@
 build
 cmake-build-*
 
-# Data files
-data
+# Temporary files
+var

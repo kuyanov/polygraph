@@ -24,23 +24,23 @@ long long Timestamp() {
 }
 
 fs::path CreateContainer() {
-    fs::path container_relpath = fs::path(paths::kContainersSubdir) / GenerateUuid();
-    fs::path container_abspath = fs::path(paths::kDataPath) / container_relpath;
+    fs::path container_relpath = fs::path("containers") / GenerateUuid();
+    fs::path container_abspath = fs::path(paths::kVarDir) / container_relpath;
     fs::create_directories(container_abspath);
     fs::permissions(container_abspath, fs::perms::all, fs::perm_options::add);
     return container_relpath;
 }
 
-void CreateFile(const fs::path &relpath, const std::string &content, int other_perms = 7) {
-    fs::path abspath = fs::path(paths::kDataPath) / relpath;
+void CreateFile(const std::string &relpath, const std::string &content, int other_perms = 7) {
+    fs::path abspath = fs::path(paths::kVarDir) / relpath;
     fs::create_directories(abspath.parent_path());
     std::ofstream(abspath.string()) << content;
     fs::permissions(abspath, fs::perms::others_all, fs::perm_options::remove);
     fs::permissions(abspath, static_cast<fs::perms>(other_perms), fs::perm_options::add);
 }
 
-std::string ReadFile(const fs::path &relpath) {
-    fs::path abspath = fs::path(paths::kDataPath) / relpath;
+std::string ReadFile(const std::string &relpath) {
+    fs::path abspath = fs::path(paths::kVarDir) / relpath;
     std::stringstream ss;
     ss << std::ifstream(abspath.string()).rdbuf();
     return ss.str();
@@ -48,7 +48,7 @@ std::string ReadFile(const fs::path &relpath) {
 
 RunResponse SendRunRequest(const RunRequest &request) {
     static WebsocketServer server("0.0.0.0", Config::Get().scheduler_port);
-    static SchemaValidator response_validator(paths::kResourcesPath + "/run_response_schema.json");
+    static SchemaValidator response_validator(paths::kDataDir + "/schema/run_response.json");
     auto session = server.Accept();
     session.Write(StringifyJSON(Serialize(request)));
     RunResponse response;

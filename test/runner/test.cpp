@@ -27,28 +27,28 @@ TEST(Execution, Sleep) {
 
 TEST(Execution, Binds) {
     auto container_path = CreateContainer();
-    auto input_path = fs::path(paths::kTestSubdir) / "input";
-    auto output_path = fs::path(paths::kTestSubdir) / "output";
-    auto script_path = fs::path(paths::kTestSubdir) / "script";
+    std::string input_path = "test/input";
+    std::string output_path = "test/output";
+    std::string script_path = "test/script";
     CreateFile(input_path, "hello world");
     CreateFile(output_path, "");
     CreateFile(script_path, "#!/bin/bash\ncat");
     auto response1 = SendRunRequest({.binds = {{".", container_path.string(), false},
-                                               {"input", input_path.string(), true},
-                                               {"output", output_path.string(), false},
-                                               {"script", script_path.string(), true}},
+                                               {"input", input_path, true},
+                                               {"output", output_path, false},
+                                               {"script", script_path, true}},
                                      .argv = {"bash", "-c", "./script <input >output"},
                                      .constraints = {.max_threads = 3}});
     CheckExitedNormally(response1);
     ASSERT_EQ(ReadFile(output_path), "hello world");
     CreateFile(output_path, "");
     auto response2 = SendRunRequest(
-        {.binds = {{".", container_path.string(), false}, {"output", output_path.string(), false}},
+        {.binds = {{".", container_path.string(), false}, {"output", output_path, false}},
          .argv = {"bash", "-c", "echo test >output"}});
     CheckExitedNormally(response2);
     ASSERT_EQ(ReadFile(output_path), "test\n");
     auto response3 = SendRunRequest(
-        {.binds = {{".", container_path.string(), false}, {"output", output_path.string(), true}},
+        {.binds = {{".", container_path.string(), false}, {"output", output_path, true}},
          .argv = {"bash", "-c", "echo test2 >output"}});
     ASSERT_TRUE(response3.status.has_value());
     ASSERT_EQ(response3.status->exit_code, 1);
@@ -57,25 +57,25 @@ TEST(Execution, Binds) {
 
 TEST(Execution, Permissions) {
     auto container_path = CreateContainer();
-    auto input_path = fs::path(paths::kTestSubdir) / "input";
+    std::string input_path = "test/input";
     CreateFile(input_path, "", 3);
     auto response1 = SendRunRequest(
-        {.binds = {{".", container_path.string(), false}, {"input", input_path.string(), true}},
+        {.binds = {{".", container_path.string(), false}, {"input", input_path, true}},
          .argv = {"bash", "-c", "cat <input"},
          .constraints = {.max_threads = 2}});
     ASSERT_TRUE(response1.status.has_value());
     ASSERT_EQ(response1.status->exit_code, 1);
-    auto output_path = fs::path(paths::kTestSubdir) / "output";
+    std::string output_path = "test/output";
     CreateFile(output_path, "", 5);
     auto response2 = SendRunRequest(
-        {.binds = {{".", container_path.string(), false}, {"output", output_path.string(), false}},
+        {.binds = {{".", container_path.string(), false}, {"output", output_path, false}},
          .argv = {"bash", "-c", "echo test >output"}});
     ASSERT_TRUE(response2.status.has_value());
     ASSERT_EQ(response2.status->exit_code, 1);
-    auto script_path = fs::path(paths::kTestSubdir) / "script";
+    std::string script_path = "test/script";
     CreateFile(script_path, "#!/bin/bash\necho test", 6);
     auto response3 = SendRunRequest(
-        {.binds = {{".", container_path.string(), false}, {"script", script_path.string(), true}},
+        {.binds = {{".", container_path.string(), false}, {"script", script_path, true}},
          .argv = {"bash", "-c", "./script"},
          .constraints = {.max_threads = 3}});
     ASSERT_TRUE(response3.status.has_value());
