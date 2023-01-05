@@ -40,7 +40,7 @@ if (NOT rapidjson_POPULATED)
     FetchContent_Populate(rapidjson)
 endif ()
 
-include_directories("${rapidjson_SOURCE_DIR}/include")
+include_directories(${rapidjson_SOURCE_DIR}/include)
 
 add_subdirectory(common)
 
@@ -56,3 +56,6 @@ endif ()
 if (ENABLE_TESTING)
     add_subdirectory(test)
 endif ()
+
+install(DIRECTORY data/ DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME})
+install(DIRECTORY DESTINATION ${CMAKE_INSTALL_LOCALSTATEDIR}/${PROJECT_NAME}/user)

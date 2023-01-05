@@ -56,7 +56,7 @@ void Client::PrintBlocks() {
         std::string line = "[block " + std::to_string(block_id) + "] ";
         const auto &block = blocks_[block_id];
         if (block.state.empty()) {
-            line += ColoredText("Pending", GREY);
+            line += "-";
         } else if (block.state == states::kRunning) {
             line += "Running";
         } else if (block.error.has_value()) {

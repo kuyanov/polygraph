@@ -3,12 +3,10 @@
 #include <iostream>
 #include <string>
 
-enum Color { GREY, RED, GREEN, YELLOW };
+enum Color { RED, GREEN, YELLOW };
 
 inline std::string ColoredText(const std::string &text, Color color) {
     switch (color) {
-        case GREY:
-            return "\033[30m" + text + "\033[0m";
         case RED:
             return "\033[31m" + text + "\033[0m";
         case GREEN:
