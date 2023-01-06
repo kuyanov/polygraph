@@ -1,10 +1,10 @@
-add_library(polyrun_impl)
-file(GLOB POLYRUN_SOURCES src/*.cpp)
-target_sources(polyrun_impl PRIVATE ${POLYRUN_SOURCES})
-target_include_directories(polyrun_impl PUBLIC src)
-target_link_libraries(polyrun_impl PUBLIC common)
+add_library(pclient_impl)
+file(GLOB PCLIENT_SOURCES src/*.cpp)
+target_sources(pclient_impl PRIVATE ${PCLIENT_SOURCES})
+target_include_directories(pclient_impl PUBLIC src)
+target_link_libraries(pclient_impl PUBLIC common)
 
-add_executable(polyrun main.cpp)
-target_link_libraries(polyrun PRIVATE ${Boost_LIBRARIES} polyrun_impl)
+add_executable(pclient main.cpp)
+target_link_libraries(pclient PRIVATE ${Boost_LIBRARIES} pclient_impl)
 
-install(TARGETS polyrun)
+install(TARGETS pclient)

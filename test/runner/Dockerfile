@@ -21,8 +21,8 @@ RUN rm -rf $BUILD_DIR && \
     cd $BUILD_DIR && \
     cmake .. \
     -D CMAKE_BUILD_TYPE=ASan \
-    -D ENABLE_RUNNER=1 \
-    -D ENABLE_TESTING=1 && \
+    -D DISABLE_CLIENT=1 \
+    -D DISABLE_SCHEDULER=1 && \
     make
 
 ENTRYPOINT [ "./test/runner/test.sh" ]

@@ -25,17 +25,17 @@ target_compile_definitions(uWebSockets INTERFACE UWS_NO_ZLIB)
 target_include_directories(uWebSockets INTERFACE ${uwebsockets_SOURCE_DIR}/src)
 target_link_libraries(uWebSockets INTERFACE uSockets)
 
-add_library(polyscheduler_impl)
-file(GLOB POLYSCHEDULER_SOURCES src/*.cpp)
-target_sources(polyscheduler_impl PRIVATE ${POLYSCHEDULER_SOURCES})
-target_include_directories(polyscheduler_impl PUBLIC src)
-target_link_libraries(polyscheduler_impl PUBLIC common uWebSockets)
+add_library(pscheduler_impl)
+file(GLOB PSCHEDULER_SOURCES src/*.cpp)
+target_sources(pscheduler_impl PRIVATE ${PSCHEDULER_SOURCES})
+target_include_directories(pscheduler_impl PUBLIC src)
+target_link_libraries(pscheduler_impl PUBLIC common uWebSockets)
 
-add_executable(polyscheduler main.cpp)
-target_compile_definitions(polyscheduler PRIVATE
+add_executable(pscheduler main.cpp)
+target_compile_definitions(pscheduler PRIVATE
         DEFAULT_CONFIG_PATH="${CMAKE_INSTALL_FULL_SYSCONFDIR}/${PROJECT_NAME}/scheduler_conf.json")
-target_link_libraries(polyscheduler PRIVATE ${Boost_LIBRARIES} polyscheduler_impl)
+target_link_libraries(pscheduler PRIVATE ${Boost_LIBRARIES} pscheduler_impl)
 
-install(TARGETS polyscheduler)
+install(TARGETS pscheduler)
 install(FILES scheduler_conf.json
         DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/${PROJECT_NAME})

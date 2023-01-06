@@ -1,9 +1,9 @@
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-if (ENABLE_RUNNER)
+if (NOT DISABLE_RUNNER)
     add_subdirectory(runner)
 endif ()
-if (ENABLE_SCHEDULER)
+if (NOT DISABLE_SCHEDULER)
     add_subdirectory(scheduler)
 endif ()
