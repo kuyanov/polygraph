@@ -27,22 +27,22 @@ public:
 
     void Clear() {
         for (int i = 0; i < cnt_lines_; ++i) {
-            std::cout << "\x1b[1A";
+            std::cerr << "\x1b[1A";
         }
         for (int i = 0; i < cnt_lines_; ++i) {
             for (int j = 0; j < width_; ++j) {
-                std::cout << ' ';
+                std::cerr << ' ';
             }
-            std::cout << std::endl;
+            std::cerr << std::endl;
         }
         for (int i = 0; i < cnt_lines_; ++i) {
-            std::cout << "\x1b[1A";
+            std::cerr << "\x1b[1A";
         }
         cnt_lines_ = 0;
     }
 
     void PrintLine(const std::string &line) {
-        std::cout << line << std::endl;
+        std::cerr << line << std::endl;
         ++cnt_lines_;
     }
 

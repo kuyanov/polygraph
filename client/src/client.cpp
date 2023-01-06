@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <iostream>
 #include <regex>
 #include <stdexcept>
@@ -9,6 +10,8 @@
 #include "serialization/all.h"
 #include "terminal.h"
 #include "uuid.h"
+
+namespace fs = std::filesystem;
 
 Client::Client(const rapidjson::Document &document, const std::string &scheduler_host,
                int scheduler_port) {
@@ -24,9 +27,11 @@ Client::Client(const rapidjson::Document &document, const std::string &scheduler
 }
 
 void Client::Run() {
+    PrintWarnings();
     PrintBlocks();
     session_.Write(signals::kRun);
     session_.Run();
+    PrintErrors();
 }
 
 void Client::Stop() {
@@ -35,12 +40,10 @@ void Client::Stop() {
 
 void Client::OnMessage(const std::string &message) {
     if (message == states::kComplete) {
-        PrintErrors();
         session_.Stop();
         return;
     } else if (message.starts_with(errors::kAPIErrorPrefix)) {
         std::cerr << message << std::endl;
-        PrintErrors();
         session_.Stop();
         return;
     }
@@ -48,6 +51,31 @@ void Client::OnMessage(const std::string &message) {
     Deserialize(block, ParseJSON(message));
     blocks_[block.block_id] = block;
     PrintBlocks();
+}
+
+void Client::PrintWarnings() {
+    for (const auto &block : workflow_.blocks) {
+        for (const auto &bind : block.binds) {
+            auto outside_abspath = fs::path(paths::kVarDir) / "user" / bind.outside;
+            if (!fs::exists(outside_abspath)) {
+                std::cerr << ColoredText("Warning: file " + bind.outside + " does not exist",
+                                         YELLOW)
+                          << std::endl;
+                continue;
+            }
+            auto bind_perms = fs::status(outside_abspath).permissions();
+            if ((bind_perms & fs::perms::others_read) == fs::perms::none) {
+                std::cerr << ColoredText("Warning: no read permission for file " + bind.outside,
+                                         YELLOW)
+                          << std::endl;
+            }
+            if (!bind.readonly && (bind_perms & fs::perms::others_write) == fs::perms::none) {
+                std::cerr << ColoredText("Warning: no write permission for file " + bind.outside,
+                                         YELLOW)
+                          << std::endl;
+            }
+        }
+    }
 }
 
 void Client::PrintBlocks() {
@@ -82,10 +110,9 @@ void Client::PrintBlocks() {
 }
 
 void Client::PrintErrors() {
-    for (size_t block_id = 0; block_id < blocks_.size(); ++block_id) {
-        const auto &error = blocks_[block_id].error;
-        if (error.has_value()) {
-            std::cerr << "[block " << block_id << "] " << error.value() << std::endl;
+    for (const auto &block : blocks_) {
+        if (block.error.has_value()) {
+            std::cerr << block.error.value() << std::endl;
         }
     }
 }

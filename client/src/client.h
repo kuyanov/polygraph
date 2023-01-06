@@ -22,6 +22,7 @@ private:
 
     void OnMessage(const std::string &message);
 
+    void PrintWarnings();
     void PrintBlocks();
     void PrintErrors();
 };
