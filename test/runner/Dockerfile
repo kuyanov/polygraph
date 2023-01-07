@@ -25,4 +25,4 @@ RUN rm -rf $BUILD_DIR && \
     -D DISABLE_SCHEDULER=1 && \
     make
 
-ENTRYPOINT [ "./test/runner/test.sh" ]
+ENTRYPOINT [ "bash", "-c", "./test/runner/test.sh || (cat logs/runner.log && exit 1)" ]
