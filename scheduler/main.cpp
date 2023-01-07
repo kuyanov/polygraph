@@ -1,4 +1,5 @@
 #include <iostream>
+#include <unistd.h>
 #include <boost/program_options.hpp>
 
 #include "config.h"
@@ -17,6 +18,10 @@ int main(int argc, char **argv) {
     po::notify(vm);
     if (vm.count("help")) {
         std::cerr << desc << std::endl;
+        return 1;
+    }
+    if (geteuid() != 0) {
+        std::cerr << "pscheduler must be run as root, exiting." << std::endl;
         return 1;
     }
     Logger::Get().SetName("scheduler");

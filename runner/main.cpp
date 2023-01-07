@@ -32,6 +32,10 @@ int main(int argc, char **argv) {
         std::cerr << desc << std::endl;
         return 1;
     }
+    if (geteuid() != 0) {
+        std::cerr << "prunner must be run as root, exiting." << std::endl;
+        return 1;
+    }
     signal(SIGTERM, [](int) { StopLibsbox(); });
     if (fork() == 0) {
         prctl(PR_SET_PDEATHSIG, SIGHUP);
