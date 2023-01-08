@@ -7,22 +7,24 @@
 #include "client.h"
 #include "constants.h"
 #include "json.h"
+#include "options.h"
 #include "serialization/all.h"
 #include "terminal.h"
 #include "uuid.h"
 
 namespace fs = std::filesystem;
 
-Client::Client(const rapidjson::Document &document, const std::string &scheduler_host,
-               int scheduler_port) {
+Client::Client() {
+    auto document = ReadJSON(Options::Get().workflow);
     std::string body = StringifyJSON(document);
-    std::string workflow_id = HttpSession(scheduler_host, scheduler_port).Post("/submit", body);
+    std::string workflow_id =
+        HttpSession(Options::Get().host, Options::Get().port).Post("/submit", body);
     if (!regex_match(workflow_id, std::regex(kUuidRegex))) {
         throw std::runtime_error(workflow_id);
     }
     Deserialize(workflow_, document);
     blocks_.resize(workflow_.blocks.size());
-    session_.Connect(scheduler_host, scheduler_port, "/workflow/" + workflow_id);
+    session_.Connect(Options::Get().host, Options::Get().port, "/workflow/" + workflow_id);
     session_.OnRead([this](const std::string &message) { OnMessage(message); });
 }
 

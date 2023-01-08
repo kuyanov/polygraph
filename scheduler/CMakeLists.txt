@@ -32,10 +32,6 @@ target_include_directories(pscheduler_impl PUBLIC src)
 target_link_libraries(pscheduler_impl PUBLIC common uWebSockets)
 
 add_executable(pscheduler main.cpp)
-target_compile_definitions(pscheduler PRIVATE
-        DEFAULT_CONFIG_PATH="${CMAKE_INSTALL_FULL_SYSCONFDIR}/${PROJECT_NAME}/scheduler_conf.json")
 target_link_libraries(pscheduler PRIVATE ${Boost_LIBRARIES} pscheduler_impl)
 
 install(TARGETS pscheduler)
-install(FILES scheduler_conf.json
-        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/${PROJECT_NAME})

@@ -3,7 +3,7 @@
 #include "config.h"
 
 TEST(Network, Reconnect) {
-    WebsocketServer server("0.0.0.0", Config::Get().scheduler_port);
+    WebsocketServer server(kHost, kPort);
     long long start_time, end_time;
     {
         auto session = server.Accept();
@@ -13,7 +13,7 @@ TEST(Network, Reconnect) {
         auto session = server.Accept();
         end_time = Timestamp();
     }
-    CheckDuration(end_time - start_time, Config::Get().reconnect_interval_ms);
+    CheckDuration(end_time - start_time, Config::Get().runner_reconnect_interval_ms);
 }
 
 TEST(Execution, Sleep) {
@@ -118,10 +118,4 @@ TEST(Execution, MemoryLimit) {
                                     .constraints = {.memory_limit_kb = 1024}});
     ASSERT_TRUE(response.status.has_value());
     ASSERT_TRUE(response.status->memory_limit_exceeded);
-}
-
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    Config::Get().Load(RUNNER_CONFIG_PATH);
-    return RUN_ALL_TESTS();
 }

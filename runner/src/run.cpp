@@ -5,9 +5,9 @@
 #include <libsbox.h>
 
 #include "config.h"
-#include "constants.h"
 #include "logger.h"
 #include "net.h"
+#include "options.h"
 #include "run.h"
 #include "serialization/all.h"
 #include "structures/all.h"
@@ -80,10 +80,10 @@ void Run() {
     while (true) {
         try {
             WebsocketClientSession session;
-            session.Connect(Config::Get().scheduler_host, Config::Get().scheduler_port,
-                            "/runner/" + Config::Get().partition);
+            session.Connect(Options::Get().host, Options::Get().port,
+                            "/runner/" + Options::Get().partition);
             connected = true;
-            Log("Connected to ", Config::Get().scheduler_host, ":", Config::Get().scheduler_port);
+            Log("Connected to ", Options::Get().host, ":", Options::Get().port);
             session.OnRead([&](const std::string &message) {
                 std::thread([=, &session] {
                     RunRequest request;
@@ -96,11 +96,11 @@ void Run() {
         } catch (const beast::system_error &error) {
             if (connected) {
                 connected = false;
-                Log("Not connected to ", Config::Get().scheduler_host, ":",
-                    Config::Get().scheduler_port, ": ", error.what());
+                Log("Not connected to ", Options::Get().host, ":", Options::Get().port, ": ",
+                    error.what());
             }
             std::this_thread::sleep_for(
-                std::chrono::milliseconds(Config::Get().reconnect_interval_ms));
+                std::chrono::milliseconds(Config::Get().runner_reconnect_interval_ms));
         }
     }
 }

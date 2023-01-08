@@ -43,6 +43,7 @@ const std::string kComplete = "complete";
 
 namespace paths {
 
+const std::string kConfFile = getenv("CONF_FILE") ? getenv("CONF_FILE") : DEFAULT_CONF_FILE;
 const std::string kDataDir = getenv("DATA_DIR") ? getenv("DATA_DIR") : DEFAULT_DATA_DIR;
 const std::string kVarDir = getenv("VAR_DIR") ? getenv("VAR_DIR") : DEFAULT_VAR_DIR;
 

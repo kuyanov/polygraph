@@ -100,7 +100,7 @@ TEST(Submit, WorkflowIdUnique) {
 
 TEST(Submit, MaxPayloadLength) {
     std::string body;
-    body.resize(Config::Get().max_payload_length, '.');
+    body.resize(Config::Get().scheduler_max_payload_length, '.');
     EXPECT_THAT(Submit(body), StartsWith(errors::kParseErrorPrefix));
     body.push_back('.');
     EXPECT_THAT(Submit(body), IsEmpty());
@@ -202,10 +202,4 @@ TEST(Execution, Stress) {
     for (int i = 0; i < 100; i++) {
         CheckExecution(workflow, 4, 4, 100, 0, -1);
     }
-}
-
-int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    Config::Get().Load(SCHEDULER_CONFIG_PATH);
-    return RUN_ALL_TESTS();
 }

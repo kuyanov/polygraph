@@ -7,7 +7,6 @@
 #include <string>
 
 #include "gtest/gtest.h"
-#include "config.h"
 #include "constants.h"
 #include "json.h"
 #include "net.h"
@@ -16,6 +15,9 @@
 #include "uuid.h"
 
 namespace fs = std::filesystem;
+
+const std::string kHost = "0.0.0.0";
+const int kPort = 3000;
 
 long long Timestamp() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -47,7 +49,7 @@ std::string ReadFile(const std::string &relpath) {
 }
 
 RunResponse SendRunRequest(const RunRequest &request) {
-    static WebsocketServer server("0.0.0.0", Config::Get().scheduler_port);
+    static WebsocketServer server(kHost, kPort);
     static SchemaValidator response_validator(paths::kDataDir + "/schema/run_response.json");
     auto session = server.Accept();
     session.Write(StringifyJSON(Serialize(request)));

@@ -12,7 +12,6 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "config.h"
 #include "constants.h"
 #include "json.h"
 #include "net.h"
@@ -22,8 +21,11 @@
 
 namespace fs = std::filesystem;
 
+const std::string kHost = "127.0.0.1";
+const int kPort = 3000;
+
 std::string Submit(const std::string &body) {
-    return HttpSession("127.0.0.1", Config::Get().port).Post("/submit", body);
+    return HttpSession(kHost, kPort).Post("/submit", body);
 }
 
 std::string SubmitWorkflow(const Workflow &workflow) {
@@ -69,7 +71,7 @@ void CheckExecution(const Workflow &workflow, int cnt_clients, int cnt_runners, 
                     int runner_delay, int exp_delay,
                     const std::vector<size_t> &failed_blocks = {}) {
     std::string body = StringifyJSON(Serialize(workflow));
-    auto id = HttpSession("127.0.0.1", Config::Get().port).Post("/submit", body);
+    auto id = HttpSession(kHost, kPort).Post("/submit", body);
     EXPECT_THAT(id, ::testing::MatchesRegex(kUuidRegex));
 
     static SchemaValidator request_validator(paths::kDataDir + "/schema/run_request.json");
@@ -79,7 +81,7 @@ void CheckExecution(const Workflow &workflow, int cnt_clients, int cnt_runners, 
     for (int runner_id = 0; runner_id < cnt_runners; ++runner_id) {
         auto &session = runner_sessions[runner_id];
         runner_threads[runner_id] = std::thread([&] {
-            session.Connect("127.0.0.1", Config::Get().port, "/runner/" + workflow.meta.partition);
+            session.Connect(kHost, kPort, "/runner/" + workflow.meta.partition);
             session.OnRead([&](const std::string &message) {
                 request_validator_mutex.lock();
                 auto document = request_validator.ParseAndValidate(message);
@@ -101,7 +103,7 @@ void CheckExecution(const Workflow &workflow, int cnt_clients, int cnt_runners, 
     for (int client_id = 0; client_id < cnt_clients; ++client_id) {
         auto &session = client_sessions[client_id];
         client_threads[client_id] = std::thread([&] {
-            session.Connect("127.0.0.1", Config::Get().port, "/workflow/" + id);
+            session.Connect(kHost, kPort, "/workflow/" + id);
             int cnt_blocks_completed = 0;
             session.OnRead([&](const std::string &message) {
                 if (message == states::kComplete) {

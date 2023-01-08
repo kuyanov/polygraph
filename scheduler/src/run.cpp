@@ -1,11 +1,12 @@
+#include <cstdlib>
 #include <string>
 #include <string_view>
 #include <App.h>
 
 #include "config.h"
-#include "constants.h"
 #include "error.h"
 #include "logger.h"
+#include "options.h"
 #include "run.h"
 #include "scheduler.h"
 
@@ -18,7 +19,7 @@ void Run() {
         res->onAborted([] {});
         res->onData([&, res, workflow_text = std::move(workflow_text)]
                     (std::string_view chunk, bool is_last) mutable {
-            if (workflow_text.size() + chunk.size() > Config::Get().max_payload_length) {
+            if (workflow_text.size() + chunk.size() > Config::Get().scheduler_max_payload_length) {
                 res->writeStatus(http_response::kRequestEntityTooLarge)->end("", true);
                 return;
             }
@@ -39,7 +40,7 @@ void Run() {
             }
         });
     }).ws<RunnerPerSocketData>("/runner/:partition", {
-        .maxPayloadLength = Config::Get().max_payload_length,
+        .maxPayloadLength = Config::Get().scheduler_max_payload_length,
         .upgrade = [&](auto *res, auto *req, auto *context) {
             std::string partition(req->getParameter(0));
             res->template upgrade<RunnerPerSocketData>({ .partition = partition },
@@ -60,8 +61,8 @@ void Run() {
             scheduler.LeaveRunner(ws);
         }
     }).ws<ClientPerSocketData>("/workflow/:id", {
-        .maxPayloadLength = Config::Get().max_payload_length,
-        .idleTimeout = Config::Get().idle_timeout,
+        .maxPayloadLength = Config::Get().scheduler_max_payload_length,
+        .idleTimeout = Config::Get().scheduler_idle_timeout,
         .upgrade = [&](auto *res, auto *req, auto *context) {
             std::string workflow_id(req->getParameter(0));
             WorkflowState *workflow_ptr = scheduler.FindWorkflow(workflow_id);
@@ -96,11 +97,11 @@ void Run() {
         .close = [&](auto *ws, int code, std::string_view message) {
             scheduler.LeaveClient(ws);
         }
-    }).listen(Config::Get().host, Config::Get().port, [&](auto *listen_socket) {
+    }).listen(Options::Get().host, Options::Get().port, [&](auto *listen_socket) {
         if (listen_socket) {
-            Log("Listening on ", Config::Get().host, ":", Config::Get().port);
+            Log("Listening on ", Options::Get().host, ":", Options::Get().port);
         } else {
-            Log("Failed to listen on ", Config::Get().host, ":", Config::Get().port);
+            Log("Failed to listen on ", Options::Get().host, ":", Options::Get().port);
             exit(1);
         }
     }).run();

@@ -1,6 +1,0 @@
-{
-  "scheduler-host": "127.0.0.1",
-  "scheduler-port": 3000,
-  "partition": "all",
-  "reconnect-interval-ms": 1000
-}
