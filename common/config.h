@@ -10,7 +10,7 @@ public:
     unsigned short scheduler_idle_timeout;
 
     static Config &Get() {
-        static Config config(paths::kConfFile);
+        static Config config(paths::kConfDir + "/config.json");
         return config;
     }
 
