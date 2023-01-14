@@ -102,7 +102,7 @@ void Run() {
             Log("Listening on ", Options::Get().host, ":", Options::Get().port);
         } else {
             Log("Failed to listen on ", Options::Get().host, ":", Options::Get().port);
-            exit(1);
+            exit(EXIT_FAILURE);
         }
     }).run();
 }

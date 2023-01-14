@@ -1,6 +1,6 @@
 #include <chrono>
 #include <csignal>
-#include <iostream>
+#include <cstdio>
 #include <sys/prctl.h>
 #include <thread>
 #include <unistd.h>
@@ -18,10 +18,6 @@ void StopLibsbox() {
 }
 
 int main(int argc, char **argv) {
-    if (geteuid() != 0) {
-        std::cerr << "prunner must be run as root, exiting." << std::endl;
-        return 1;
-    }
     Options::Get().Init(argc, argv);
     signal(SIGTERM, [](int) { StopLibsbox(); });
     if (fork() == 0) {
