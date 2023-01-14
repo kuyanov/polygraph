@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 PROJ_DIR=$(realpath $BUILD_DIR/..)
-export CONF_DIR=$PROJ_DIR/etc
+export CONF_DIR=$PROJ_DIR/config
 export DATA_DIR=$PROJ_DIR/data
 export VAR_DIR=$PROJ_DIR/var
 

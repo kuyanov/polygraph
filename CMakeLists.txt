@@ -62,6 +62,6 @@ if (NOT DISABLE_TESTING)
     add_subdirectory(test)
 endif ()
 
-install(DIRECTORY etc/ DESTINATION ${CONF_DIR})
+install(DIRECTORY config/ DESTINATION ${CONF_DIR})
 install(DIRECTORY data/ DESTINATION ${DATA_DIR})
 install(DIRECTORY DESTINATION ${VAR_DIR}/user)
