@@ -7,4 +7,4 @@ target_link_libraries(pclient_impl PUBLIC common)
 add_executable(pclient main.cpp)
 target_link_libraries(pclient PRIVATE ${Boost_LIBRARIES} pclient_impl)
 
-install(TARGETS pclient)
+install(TARGETS pclient RUNTIME DESTINATION ${EXEC_DIR})

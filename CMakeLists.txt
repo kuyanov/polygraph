@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.16)
 project(polygraph)
 
 include(FetchContent)
-include(GNUInstallDirs)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_FLAGS_ASAN "-g -fsanitize=address")
@@ -10,9 +9,12 @@ set(CMAKE_CXX_FLAGS_TSAN "-g -fsanitize=thread")
 set(CMAKE_EXPORT_NO_PACKAGE_REGISTRY TRUE)
 set(FETCHCONTENT_QUIET FALSE)
 
-set(CONF_DIR ${CMAKE_INSTALL_FULL_SYSCONFDIR}/${PROJECT_NAME})
-set(DATA_DIR ${CMAKE_INSTALL_FULL_DATADIR}/${PROJECT_NAME})
-set(VAR_DIR ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/${PROJECT_NAME})
+set(BIN_DIR /usr/bin)
+set(CONF_DIR /etc/${PROJECT_NAME})
+set(DATA_DIR /usr/share/${PROJECT_NAME})
+set(EXEC_DIR /usr/libexec/${PROJECT_NAME})
+set(LOG_DIR /var/log/${PROJECT_NAME})
+set(VAR_DIR /var/${PROJECT_NAME})
 
 find_package(Boost REQUIRED COMPONENTS program_options)
 
@@ -40,9 +42,11 @@ if (NOT rapidjson_POPULATED)
 endif ()
 
 add_compile_definitions(
-        DEFAULT_CONF_DIR="${CONF_DIR}"
-        DEFAULT_DATA_DIR="${DATA_DIR}"
-        DEFAULT_VAR_DIR="${VAR_DIR}"
+        CONF_DIR="${CONF_DIR}"
+        DATA_DIR="${DATA_DIR}"
+        EXEC_DIR="${EXEC_DIR}"
+        LOG_DIR="${LOG_DIR}"
+        VAR_DIR="${VAR_DIR}"
 )
 
 include_directories(${rapidjson_SOURCE_DIR}/include)
@@ -51,6 +55,9 @@ add_subdirectory(common)
 
 if (NOT DISABLE_CLIENT)
     add_subdirectory(client)
+endif ()
+if (NOT DISABLE_FRONTEND)
+    add_subdirectory(frontend)
 endif ()
 if (NOT DISABLE_RUNNER)
     add_subdirectory(runner)
@@ -64,4 +71,5 @@ endif ()
 
 install(DIRECTORY config/ DESTINATION ${CONF_DIR})
 install(DIRECTORY data/ DESTINATION ${DATA_DIR})
-install(DIRECTORY DESTINATION ${VAR_DIR}/user)
+install(DIRECTORY DESTINATION ${LOG_DIR})
+install(DIRECTORY DESTINATION ${VAR_DIR})

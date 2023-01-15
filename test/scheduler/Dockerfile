@@ -17,7 +17,8 @@ RUN rm -rf $BUILD_DIR && \
     cmake .. \
     -D CMAKE_BUILD_TYPE=ASan \
     -D DISABLE_CLIENT=1 \
+    -D DISABLE_FRONTEND=1 \
     -D DISABLE_RUNNER=1 && \
     make
 
-ENTRYPOINT [ "bash", "-c", "./test/scheduler/test.sh || (cat logs/scheduler.log && exit 1)" ]
+ENTRYPOINT [ "bash", "-c", "./test/scheduler/test.sh || (cat var/log/pscheduler.log && exit 1)" ]
