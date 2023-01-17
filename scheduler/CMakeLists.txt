@@ -32,6 +32,6 @@ target_include_directories(pscheduler_impl PUBLIC src)
 target_link_libraries(pscheduler_impl PUBLIC common uWebSockets)
 
 add_executable(pscheduler main.cpp)
-target_link_libraries(pscheduler PRIVATE ${Boost_LIBRARIES} pscheduler_impl)
+target_link_libraries(pscheduler PRIVATE pscheduler_impl)
 
 install(TARGETS pscheduler RUNTIME DESTINATION ${EXEC_DIR})

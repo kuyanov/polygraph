@@ -3,7 +3,8 @@
 #include <string>
 #include <rapidjson/document.h>
 #include <rapidjson/istreamwrapper.h>
-#include <rapidjson/writer.h>
+#include <rapidjson/ostreamwrapper.h>
+#include <rapidjson/prettywriter.h>
 
 #include "error.h"
 #include "json.h"
@@ -14,6 +15,13 @@ rapidjson::Document ParseJSON(const std::string &text) {
     return document;
 }
 
+std::string StringifyJSON(const rapidjson::Document &document) {
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer writer(buffer);
+    document.Accept(writer);
+    return buffer.GetString();
+}
+
 rapidjson::Document ReadJSON(const std::string &path) {
     std::ifstream ifs(path);
     rapidjson::IStreamWrapper isw(ifs);
@@ -22,11 +30,12 @@ rapidjson::Document ReadJSON(const std::string &path) {
     return document;
 }
 
-std::string StringifyJSON(const rapidjson::Document &document) {
-    rapidjson::StringBuffer buffer;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+void WriteJSON(const rapidjson::Document &document, const std::string &path) {
+    std::ofstream ofs(path);
+    rapidjson::OStreamWrapper osw(ofs);
+    rapidjson::PrettyWriter writer(osw);
+    writer.SetIndent(' ', 2);
     document.Accept(writer);
-    return buffer.GetString();
 }
 
 std::string FormattedError(const rapidjson::Document &document) {

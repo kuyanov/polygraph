@@ -1,9 +1,8 @@
 #include "gtest/gtest.h"
 #include "check.h"
-#include "config.h"
 
 TEST(Network, Reconnect) {
-    WebsocketServer server(kHost, kPort);
+    WebsocketServer server("0.0.0.0", Config::Get().scheduler_port);
     long long start_time, end_time;
     {
         auto session = server.Accept();

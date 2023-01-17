@@ -5,36 +5,35 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "check.h"
-#include "config.h"
 
 using ::testing::IsEmpty;
 using ::testing::MatchesRegex;
 using ::testing::StartsWith;
+using ::testing::StrEq;
 
 const int kRunnerDelay = 500;
 const Meta kWorkflowMeta = {"sample workflow", "all", INT_MAX};
 
 TEST(ParseError, Trivial) {
-    EXPECT_THAT(Submit(""), StartsWith(errors::kParseErrorPrefix));
-    EXPECT_THAT(Submit("{"), StartsWith(errors::kParseErrorPrefix));
-    EXPECT_THAT(Submit("}"), StartsWith(errors::kParseErrorPrefix));
-    EXPECT_THAT(Submit("{:}"), StartsWith(errors::kParseErrorPrefix));
-    EXPECT_THAT(Submit("{,}"), StartsWith(errors::kParseErrorPrefix));
-    EXPECT_THAT(Submit("{a:b}"), StartsWith(errors::kParseErrorPrefix));
-    EXPECT_THAT(Submit("\"a\":\"b\""), StartsWith(errors::kParseErrorPrefix));
-    EXPECT_THAT(Submit("{[]:[]}"), StartsWith(errors::kParseErrorPrefix));
-    EXPECT_THAT(Submit("{\"a\":\"b}"), StartsWith(errors::kParseErrorPrefix));
-    EXPECT_THAT(Submit("{\"a\":2,}"), StartsWith(errors::kParseErrorPrefix));
+    EXPECT_THAT(Submit(""), StartsWith(PARSE_ERROR_PREFIX));
+    EXPECT_THAT(Submit("{"), StartsWith(PARSE_ERROR_PREFIX));
+    EXPECT_THAT(Submit("}"), StartsWith(PARSE_ERROR_PREFIX));
+    EXPECT_THAT(Submit("{:}"), StartsWith(PARSE_ERROR_PREFIX));
+    EXPECT_THAT(Submit("{,}"), StartsWith(PARSE_ERROR_PREFIX));
+    EXPECT_THAT(Submit("{a:b}"), StartsWith(PARSE_ERROR_PREFIX));
+    EXPECT_THAT(Submit("\"a\":\"b\""), StartsWith(PARSE_ERROR_PREFIX));
+    EXPECT_THAT(Submit("{[]:[]}"), StartsWith(PARSE_ERROR_PREFIX));
+    EXPECT_THAT(Submit("{\"a\":\"b}"), StartsWith(PARSE_ERROR_PREFIX));
+    EXPECT_THAT(Submit("{\"a\":2,}"), StartsWith(PARSE_ERROR_PREFIX));
 }
 
 TEST(ValidationError, Trivial) {
-    EXPECT_THAT(Submit("{}"), StartsWith(errors::kValidationErrorPrefix));
-    EXPECT_THAT(Submit("[]"), StartsWith(errors::kValidationErrorPrefix));
+    EXPECT_THAT(Submit("{}"), StartsWith(VALIDATION_ERROR_PREFIX));
+    EXPECT_THAT(Submit("[]"), StartsWith(VALIDATION_ERROR_PREFIX));
 }
 
 TEST(ValidationError, MetaMissing) {
-    EXPECT_THAT(Submit("{\"blocks\":[],\"connections\":[]}"),
-                StartsWith(errors::kValidationErrorPrefix));
+    EXPECT_THAT(Submit("{\"blocks\":[],\"connections\":[]}"), StartsWith(VALIDATION_ERROR_PREFIX));
 }
 
 TEST(ValidationError, InvalidType) {
@@ -42,49 +41,49 @@ TEST(ValidationError, InvalidType) {
         Submit(
             "{\"blocks\":[],\"connections\":0,\"meta\":{\"name\":\"\",\"partition\":\"all\",\"max-"
             "runners\":1}}"),
-        StartsWith(errors::kValidationErrorPrefix));
+        StartsWith(VALIDATION_ERROR_PREFIX));
     EXPECT_THAT(
         Submit(
             "{\"blocks\":[],\"connections\":{},\"meta\":{\"name\":\"\",\"partition\":\"all\",\"max-"
             "runners\":1}}"),
-        StartsWith(errors::kValidationErrorPrefix));
+        StartsWith(VALIDATION_ERROR_PREFIX));
 }
 
 TEST(ValidationError, LocationRegex) {
     for (const auto &location : {"", ".", "../a", "/home", ".a", "a.", "a..b", "a b"}) {
         EXPECT_THAT(SubmitWorkflow({{{.binds = {{location, location}}}}, {}, kWorkflowMeta}),
-                    StartsWith(errors::kValidationErrorPrefix));
+                    StartsWith(VALIDATION_ERROR_PREFIX));
     }
     for (const auto &location : {"a", "a.in", "a.in.txt", "A.mp4", "a/b/c.D.E"}) {
         EXPECT_THAT(SubmitWorkflow({{{.binds = {{location, location}}}}, {}, kWorkflowMeta}),
-                    MatchesRegex(kUuidRegex));
+                    MatchesRegex(UUID_REGEX));
     }
 }
 
 TEST(ValidationError, InvalidConnection) {
     EXPECT_THAT(SubmitWorkflow({{{.outputs = {"a"}}}, {{0, 0, 1, 0}}, kWorkflowMeta}),
-                StartsWith(errors::kValidationErrorPrefix + errors::kInvalidConnection));
+                StrEq(VALIDATION_ERROR_PREFIX INVALID_CONNECTION_ERROR));
     EXPECT_THAT(SubmitWorkflow({{{.inputs = {"a"}}}, {{1, 0, 0, 0}}, kWorkflowMeta}),
-                StartsWith(errors::kValidationErrorPrefix + errors::kInvalidConnection));
+                StrEq(VALIDATION_ERROR_PREFIX INVALID_CONNECTION_ERROR));
     EXPECT_THAT(
         SubmitWorkflow({{{.outputs = {"a"}}, {.inputs = {"a"}}}, {{0, 1, 1, 0}}, kWorkflowMeta}),
-        StartsWith(errors::kValidationErrorPrefix + errors::kInvalidConnection));
+        StrEq(VALIDATION_ERROR_PREFIX INVALID_CONNECTION_ERROR));
     EXPECT_THAT(
         SubmitWorkflow({{{.outputs = {"a"}}, {.inputs = {"a"}}}, {{0, 0, 1, 1}}, kWorkflowMeta}),
-        StartsWith(errors::kValidationErrorPrefix + errors::kInvalidConnection));
+        StrEq(VALIDATION_ERROR_PREFIX INVALID_CONNECTION_ERROR));
 }
 
 TEST(ValidationError, DuplicatedLocation) {
     EXPECT_THAT(SubmitWorkflow({{{.inputs = {"a"}, .binds = {{"a", "a"}}}}, {}, kWorkflowMeta}),
-                StartsWith(errors::kValidationErrorPrefix + errors::kDuplicatedLocation));
+                StrEq(VALIDATION_ERROR_PREFIX DUPLICATED_LOCATION_ERROR));
     EXPECT_THAT(SubmitWorkflow({{{.outputs = {"a"}, .binds = {{"a", "a"}}}}, {}, kWorkflowMeta}),
-                StartsWith(errors::kValidationErrorPrefix + errors::kDuplicatedLocation));
+                StrEq(VALIDATION_ERROR_PREFIX DUPLICATED_LOCATION_ERROR));
 }
 
 TEST(ValidationError, Loop) {
     EXPECT_THAT(
         SubmitWorkflow({{{.inputs = {"a"}, .outputs = {"b"}}}, {{0, 0, 0, 0}}, kWorkflowMeta}),
-        StartsWith(errors::kValidationErrorPrefix + errors::kLoopsNotSupported));
+        StrEq(VALIDATION_ERROR_PREFIX LOOPS_NOT_SUPPORTED_ERROR));
 }
 
 TEST(Submit, WorkflowIdUnique) {
@@ -92,7 +91,7 @@ TEST(Submit, WorkflowIdUnique) {
     std::unordered_set<std::string> ids;
     for (int i = 0; i < 1000; i++) {
         auto id = Submit(body);
-        EXPECT_THAT(id, MatchesRegex(kUuidRegex));
+        EXPECT_THAT(id, MatchesRegex(UUID_REGEX));
         ids.insert(id);
     }
     ASSERT_EQ(ids.size(), 1000);
@@ -101,7 +100,7 @@ TEST(Submit, WorkflowIdUnique) {
 TEST(Submit, MaxPayloadLength) {
     std::string body;
     body.resize(Config::Get().scheduler_max_payload_length, '.');
-    EXPECT_THAT(Submit(body), StartsWith(errors::kParseErrorPrefix));
+    EXPECT_THAT(Submit(body), StartsWith(PARSE_ERROR_PREFIX));
     body.push_back('.');
     EXPECT_THAT(Submit(body), IsEmpty());
 }

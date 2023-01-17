@@ -5,46 +5,46 @@
 #include <string>
 
 #include "client.h"
-#include "constants.h"
-#include "json.h"
-#include "options.h"
+#include "config.h"
+#include "definitions.h"
 #include "serialization/all.h"
 #include "terminal.h"
-#include "uuid.h"
 
 namespace fs = std::filesystem;
 
-Client::Client() {
-    auto document = ReadJSON(Options::Get().workflow);
+Client::Client(const std::string &workflow_path) {
+    auto document = ReadJSON(workflow_path);
     std::string body = StringifyJSON(document);
     std::string workflow_id =
-        HttpSession(Options::Get().host, Options::Get().port).Post("/submit", body);
-    if (!regex_match(workflow_id, std::regex(kUuidRegex))) {
+        HttpSession(Config::Get().scheduler_host, Config::Get().scheduler_port)
+            .Post("/submit", body);
+    if (!regex_match(workflow_id, std::regex(UUID_REGEX))) {
         throw std::runtime_error(workflow_id);
     }
     Deserialize(workflow_, document);
     blocks_.resize(workflow_.blocks.size());
-    session_.Connect(Options::Get().host, Options::Get().port, "/workflow/" + workflow_id);
+    session_.Connect(Config::Get().scheduler_host, Config::Get().scheduler_port,
+                     "/workflow/" + workflow_id);
     session_.OnRead([this](const std::string &message) { OnMessage(message); });
 }
 
 void Client::Run() {
     PrintWarnings();
     PrintBlocks();
-    session_.Write(signals::kRun);
+    session_.Write(RUN_SIGNAL);
     session_.Run();
     PrintErrors();
 }
 
 void Client::Stop() {
-    session_.Write(signals::kStop);
+    session_.Write(STOP_SIGNAL);
 }
 
 void Client::OnMessage(const std::string &message) {
-    if (message == states::kComplete) {
+    if (message == COMPLETE_STATE) {
         session_.Stop();
         return;
-    } else if (message.starts_with(errors::kAPIErrorPrefix)) {
+    } else if (message.starts_with(API_ERROR_PREFIX)) {
         std::cerr << message << std::endl;
         session_.Stop();
         return;
@@ -58,7 +58,7 @@ void Client::OnMessage(const std::string &message) {
 void Client::PrintWarnings() {
     for (const auto &block : workflow_.blocks) {
         for (const auto &bind : block.binds) {
-            auto outside_abspath = fs::path(paths::kVarDir) / "user" / bind.outside;
+            auto outside_abspath = fs::path(GetVarDir()) / "user" / bind.outside;
             if (!fs::exists(outside_abspath)) {
                 std::cerr << ColoredText("Warning: file " + bind.outside + " does not exist",
                                          YELLOW)
@@ -87,7 +87,7 @@ void Client::PrintBlocks() {
         const auto &block = blocks_[block_id];
         if (block.state.empty()) {
             line += "-";
-        } else if (block.state == states::kRunning) {
+        } else if (block.state == RUNNING_STATE) {
             line += "Running";
         } else if (block.error.has_value()) {
             line += ColoredText("Error", RED);

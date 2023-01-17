@@ -7,6 +7,6 @@ target_include_directories(prunner_impl PUBLIC src)
 target_link_libraries(prunner_impl PUBLIC common ${LIBSBOX_LIBRARY})
 
 add_executable(prunner main.cpp)
-target_link_libraries(prunner PRIVATE ${Boost_LIBRARIES} prunner_impl)
+target_link_libraries(prunner PRIVATE prunner_impl)
 
 install(TARGETS prunner RUNTIME DESTINATION ${EXEC_DIR})

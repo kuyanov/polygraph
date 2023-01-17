@@ -2,7 +2,8 @@
 #include <string>
 #include <unordered_set>
 
-#include "constants.h"
+#include "definitions.h"
+#include "environment.h"
 #include "error.h"
 #include "json.h"
 #include "scheduler.h"
@@ -24,7 +25,7 @@ void WorkflowState::Init(const rapidjson::Document &document) {
             locations.insert(bind.inside);
         }
         if (locations.size() != block.inputs.size() + block.outputs.size() + block.binds.size()) {
-            throw ValidationError(errors::kDuplicatedLocation);
+            throw ValidationError(DUPLICATED_LOCATION_ERROR);
         }
     }
     for (const auto &connection : connections) {
@@ -32,10 +33,10 @@ void WorkflowState::Init(const rapidjson::Document &document) {
             connection.source_output_id >= blocks[connection.source_block_id].outputs.size() ||
             connection.target_block_id >= blocks.size() ||
             connection.target_input_id >= blocks[connection.target_block_id].inputs.size()) {
-            throw ValidationError(errors::kInvalidConnection);
+            throw ValidationError(INVALID_CONNECTION_ERROR);
         }
         if (connection.source_block_id == connection.target_block_id) {
-            throw ValidationError(errors::kLoopsNotSupported);
+            throw ValidationError(LOOPS_NOT_SUPPORTED_ERROR);
         }
         go_[connection.source_block_id].push_back(connection);
     }
@@ -46,7 +47,7 @@ void WorkflowState::Init(const rapidjson::Document &document) {
 
 void WorkflowState::Run() {
     if (is_running_) {
-        throw APIError(errors::kAlreadyRunning);
+        throw APIError(ALREADY_RUNNING_ERROR);
     }
     is_running_ = true;
     for (size_t block_id = 0; block_id < blocks.size(); ++block_id) {
@@ -59,7 +60,7 @@ void WorkflowState::Run() {
 
 void WorkflowState::Stop() {
     // TODO
-    throw APIError(errors::kNotImplemented);
+    throw APIError(NOT_IMPLEMENTED_ERROR);
 }
 
 void WorkflowState::RunBlock(size_t block_id, RunnerWebSocket *ws) {
@@ -68,10 +69,10 @@ void WorkflowState::RunBlock(size_t block_id, RunnerWebSocket *ws) {
     try {
         PrepareRun(block_id);
         SendRunRequest(block_id, ws);
-        BlockResponse response = {.block_id = block_id, .state = states::kRunning};
+        BlockResponse response = {.block_id = block_id, .state = RUNNING_STATE};
         SendToAllClients(StringifyJSON(Serialize(response)));
     } catch (const fs::filesystem_error &error) {
-        RunResponse response = {.error = errors::kRuntimeErrorPrefix + error.what()};
+        RunResponse response = {.error = RUNTIME_ERROR_PREFIX + std::string(error.what())};
         OnStatus(ws, StringifyJSON(Serialize(response)));
     }
 }
@@ -90,7 +91,7 @@ void WorkflowState::OnStatus(RunnerWebSocket *ws, std::string_view message) {
     }
     FinalizeRun(block_id);
     BlockResponse block_response = {.block_id = block_id,
-                                    .state = states::kComplete,
+                                    .state = COMPLETE_STATE,
                                     .error = run_response.error,
                                     .status = run_response.status};
     SendToAllClients(StringifyJSON(Serialize(block_response)));
@@ -116,7 +117,7 @@ void WorkflowState::UpdateBlocksProcessing() {
     }
     if (is_running_ && cnt_blocks_processing_ == 0 && blocks_ready_.empty()) {
         is_running_ = false;
-        SendToAllClients(states::kComplete);
+        SendToAllClients(COMPLETE_STATE);
     }
 }
 
@@ -124,7 +125,7 @@ bool WorkflowState::ProcessConnection(const Connection &connection) {
     const auto &[source_block_id, source_output_id, target_block_id, target_input_id] = connection;
     fs::path source_output_path = fs::path("containers") / GetContainerId(source_block_id) /
                                   blocks[source_block_id].outputs[source_output_id];
-    if (!fs::exists(fs::path(paths::kVarDir) / source_output_path) ||
+    if (!fs::exists(fs::path(GetVarDir()) / source_output_path) ||
         blocks_state_[target_block_id].input_sources[target_input_id]) {
         return false;
     }
@@ -138,7 +139,7 @@ bool WorkflowState::IsBlockReady(size_t block_id) const {
 }
 
 void WorkflowState::PrepareRun(size_t block_id) {
-    fs::path container_path = fs::path(paths::kVarDir) / "containers" / GetContainerId(block_id);
+    fs::path container_path = fs::path(GetVarDir()) / "containers" / GetContainerId(block_id);
     fs::create_directories(container_path);
     fs::permissions(container_path, fs::perms::all, fs::perm_options::add);
 }

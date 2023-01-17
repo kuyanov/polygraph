@@ -7,7 +7,6 @@
 #include "config.h"
 #include "logger.h"
 #include "net.h"
-#include "options.h"
 #include "run.h"
 #include "serialization/all.h"
 #include "structures/all.h"
@@ -16,8 +15,7 @@ namespace fs = std::filesystem;
 
 void FillTask(const RunRequest &request, libsbox::Task &task) {
     for (const auto &bind : request.binds) {
-        task.get_binds().emplace_back(bind.inside,
-                                      (fs::path(paths::kVarDir) / bind.outside).string(),
+        task.get_binds().emplace_back(bind.inside, (fs::path(GetVarDir()) / bind.outside).string(),
                                       bind.readonly ? 0 : libsbox::BindRule::WRITABLE);
     }
     task.set_argv(request.argv);
@@ -75,15 +73,15 @@ RunResponse ProcessRequest(const RunRequest &request) {
     return response;
 }
 
-void Run() {
+void Run(const std::string &partition) {
     bool connected = true;
     while (true) {
         try {
             WebsocketClientSession session;
-            session.Connect(Options::Get().host, Options::Get().port,
-                            "/runner/" + Options::Get().partition);
+            session.Connect(Config::Get().scheduler_host, Config::Get().scheduler_port,
+                            "/runner/" + partition);
             connected = true;
-            Log("Connected to ", Options::Get().host, ":", Options::Get().port);
+            Log("Connected to ", Config::Get().scheduler_host, ":", Config::Get().scheduler_port);
             session.OnRead([&](const std::string &message) {
                 std::thread([=, &session] {
                     RunRequest request;
@@ -96,8 +94,8 @@ void Run() {
         } catch (const beast::system_error &error) {
             if (connected) {
                 connected = false;
-                Log("Not connected to ", Options::Get().host, ":", Options::Get().port, ": ",
-                    error.what());
+                Log("Not connected to ", Config::Get().scheduler_host, ":",
+                    Config::Get().scheduler_port, ": ", error.what());
             }
             std::this_thread::sleep_for(
                 std::chrono::milliseconds(Config::Get().runner_reconnect_interval_ms));

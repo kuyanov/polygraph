@@ -1,3 +1,5 @@
 #pragma once
 
-void Run();
+#include <string>
+
+void Run(const std::string &partition);

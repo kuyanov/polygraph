@@ -64,8 +64,6 @@ private:
 
 class RunOptions {
 public:
-    std::string host;
-    int port;
     std::string workflow;
 
     static RunOptions &Get() {
@@ -76,10 +74,6 @@ public:
     void Init(const std::vector<std::string> &run_options) {
         po::options_description desc("Options");
         desc.add_options()("help", "print help message");
-        desc.add_options()("host", po::value<std::string>()->default_value("127.0.0.1"),
-                           "polygraph host to connect to");
-        desc.add_options()("port", po::value<int>()->default_value(3000),
-                           "polygraph port to connect to");
         desc.add_options()("workflow", po::value<std::string>(), "path to workflow file");
         po::variables_map vm;
         po::store(po::command_line_parser(run_options).options(desc).run(), vm);
@@ -95,8 +89,6 @@ public:
             std::cerr << "See 'polygraph run --help'." << std::endl;
             exit(EXIT_FAILURE);
         }
-        host = vm["host"].as<std::string>();
-        port = vm["port"].as<int>();
         workflow = vm["workflow"].as<std::string>();
     }
 };

@@ -1,5 +1,7 @@
 {
   "runner-reconnect-interval-ms": 1000,
+  "scheduler-host": "127.0.0.1",
+  "scheduler-port": 3000,
   "scheduler-max-payload-length": 1048576,
   "scheduler-idle-timeout": 60
 }

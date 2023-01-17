@@ -6,7 +6,7 @@ export DATA_DIR=$PROJ_DIR/data
 export VAR_DIR=$PROJ_DIR/var
 
 mkdir -p $VAR_DIR/log
-$BUILD_DIR/runner/prunner 2>$VAR_DIR/log/prunner.log &
+$BUILD_DIR/runner/prunner all 2>$VAR_DIR/log/prunner.log &
 sleep 1 && $BUILD_DIR/test/runner/test_prunner
 STATUS=$?
 pkill prunner
