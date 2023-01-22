@@ -27,6 +27,10 @@ inline std::string GetLogDir() {
     return GetEnvOr("LOG_DIR", LOG_DIR);
 }
 
+inline std::string GetRunDir() {
+    return GetEnvOr("RUN_DIR", RUN_DIR);
+}
+
 inline std::string GetVarDir() {
     return GetEnvOr("VAR_DIR", VAR_DIR);
 }

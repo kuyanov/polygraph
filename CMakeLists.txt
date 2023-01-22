@@ -9,12 +9,9 @@ set(CMAKE_CXX_FLAGS_TSAN "-g -fsanitize=thread")
 set(CMAKE_EXPORT_NO_PACKAGE_REGISTRY TRUE)
 set(FETCHCONTENT_QUIET FALSE)
 
-set(BIN_DIR /usr/bin)
-set(CONF_DIR /etc/${PROJECT_NAME})
-set(DATA_DIR /usr/share/${PROJECT_NAME})
-set(EXEC_DIR /usr/libexec/${PROJECT_NAME})
-set(LOG_DIR /var/log/${PROJECT_NAME})
-set(VAR_DIR /var/${PROJECT_NAME})
+if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif ()
 
 find_package(Boost REQUIRED COMPONENTS program_options)
 
@@ -42,14 +39,16 @@ if (NOT rapidjson_POPULATED)
 endif ()
 
 add_compile_definitions(
-        CONF_DIR="${CONF_DIR}"
-        DATA_DIR="${DATA_DIR}"
-        EXEC_DIR="${EXEC_DIR}"
-        LOG_DIR="${LOG_DIR}"
-        VAR_DIR="${VAR_DIR}"
+        CONF_DIR="/etc/${PROJECT_NAME}"
+        DATA_DIR="${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}"
+        EXEC_DIR="${CMAKE_INSTALL_PREFIX}/libexec"
+        LOG_DIR="/var/log/${PROJECT_NAME}"
+        RUN_DIR="/var/run/${PROJECT_NAME}"
+        VAR_DIR="/var/${PROJECT_NAME}"
 )
 
-include_directories(${rapidjson_SOURCE_DIR}/include)
+include_directories(${Boost_INCLUDE_DIR} ${rapidjson_SOURCE_DIR}/include)
+link_libraries(${Boost_LIBRARIES})
 
 add_subdirectory(common)
 
@@ -69,7 +68,5 @@ if (NOT DISABLE_TESTING)
     add_subdirectory(test)
 endif ()
 
-install(DIRECTORY config/ DESTINATION ${CONF_DIR})
-install(DIRECTORY data/ DESTINATION ${DATA_DIR})
-install(DIRECTORY DESTINATION ${LOG_DIR})
-install(DIRECTORY DESTINATION ${VAR_DIR})
+install(DIRECTORY config/ DESTINATION /etc/${PROJECT_NAME})
+install(DIRECTORY data/ DESTINATION share/${PROJECT_NAME})

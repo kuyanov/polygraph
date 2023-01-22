@@ -9,4 +9,6 @@ target_link_libraries(prunner_impl PUBLIC common ${LIBSBOX_LIBRARY})
 add_executable(prunner main.cpp)
 target_link_libraries(prunner PRIVATE prunner_impl)
 
-install(TARGETS prunner RUNTIME DESTINATION ${EXEC_DIR})
+install(TARGETS prunner
+        DESTINATION libexec
+        PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ WORLD_READ)

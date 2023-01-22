@@ -1,4 +1,4 @@
 add_executable(polygraph main.cpp)
-target_link_libraries(polygraph PRIVATE ${Boost_LIBRARIES} common)
+target_link_libraries(polygraph PRIVATE common)
 
-install(TARGETS polygraph RUNTIME DESTINATION ${BIN_DIR})
+install(TARGETS polygraph DESTINATION bin)

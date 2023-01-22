@@ -12,6 +12,7 @@ public:
     int scheduler_port;
     unsigned int scheduler_max_payload_length;
     unsigned short scheduler_idle_timeout;
+    std::string user_dir;
 
     static Config &Get() {
         static Config config;
@@ -25,6 +26,7 @@ public:
         scheduler_port = document["scheduler-port"].GetInt();
         scheduler_max_payload_length = document["scheduler-max-payload-length"].GetUint();
         scheduler_idle_timeout = document["scheduler-idle-timeout"].GetUint();
+        user_dir = document["user-dir"].GetString();
     }
 
     void Dump() {
@@ -39,6 +41,8 @@ public:
                            rapidjson::Value().SetUint(scheduler_max_payload_length), alloc);
         document.AddMember("scheduler-idle-timeout",
                            rapidjson::Value().SetUint(scheduler_idle_timeout), alloc);
+        document.AddMember("user-dir", rapidjson::Value().SetString(user_dir.c_str(), alloc),
+                           alloc);
         WriteJSON(document, GetConfDir() + "/config.json");
     }
 

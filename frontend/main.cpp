@@ -63,21 +63,24 @@ int main(int argc, char **argv) {
         RequireRoot();
         Config::Get().scheduler_host = StartOptions::Get().host;
         Config::Get().scheduler_port = StartOptions::Get().port;
+        Config::Get().user_dir = StartOptions::Get().user_dir;
         Config::Get().Dump();
-        fs::path source_user_dir = StartOptions::Get().user_dir;
         fs::path internal_user_dir = fs::path(GetVarDir()) / "user";
-        if (!fs::exists(source_user_dir)) {
-            std::cerr << "Directory " << source_user_dir << " not exists, creating it."
-                      << std::endl;
-            fs::create_directories(source_user_dir);
-            fs::permissions(source_user_dir, fs::perms::all);
+        fs::path outside_user_dir = Config::Get().user_dir;
+        if (!fs::exists(internal_user_dir)) {
+            fs::create_directories(internal_user_dir);
+            fs::permissions(internal_user_dir, fs::perms::all);
         }
-        fs::create_directory(internal_user_dir);
-        if (mount(source_user_dir.c_str(), internal_user_dir.c_str(), "", MS_BIND, "")) {
+        if (!fs::exists(outside_user_dir)) {
+            std::cerr << "Directory " << outside_user_dir << " not exists, creating it."
+                      << std::endl;
+            fs::create_directories(outside_user_dir);
+        }
+        if (mount(internal_user_dir.c_str(), outside_user_dir.c_str(), "", MS_BIND, "")) {
             perror("Failed to mount user directory");
             exit(EXIT_FAILURE);
         }
-        if (StartOptions::Get().host == "127.0.0.1") {
+        if (Config::Get().scheduler_host == "127.0.0.1") {
             Daemonize();
             fs::path scheduler_path = fs::path(GetExecDir()) / "pscheduler";
             execl(scheduler_path.c_str(), "pscheduler", nullptr);
@@ -93,8 +96,7 @@ int main(int argc, char **argv) {
         if (system("pkill pscheduler")) {
             std::cerr << "Not killed pscheduler" << std::endl;
         }
-        fs::path user_dir = fs::path(GetVarDir()) / "user";
-        if (umount(user_dir.c_str())) {
+        if (umount(Config::Get().user_dir.c_str())) {
             perror("Failed to unmount user directory");
             exit(EXIT_FAILURE);
         }
