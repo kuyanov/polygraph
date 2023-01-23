@@ -68,5 +68,5 @@ if (NOT DISABLE_TESTING)
     add_subdirectory(test)
 endif ()
 
-install(DIRECTORY config/ DESTINATION /etc/${PROJECT_NAME})
-install(DIRECTORY data/ DESTINATION share/${PROJECT_NAME})
+install(FILES config.json DESTINATION /etc/${PROJECT_NAME})
+install(DIRECTORY schema DESTINATION share/${PROJECT_NAME})
