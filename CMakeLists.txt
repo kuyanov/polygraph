@@ -13,6 +13,10 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif ()
 
+if (NOT USER_DIR)
+    set(USER_DIR /home/polygraph)
+endif ()
+
 find_package(Boost REQUIRED COMPONENTS program_options)
 
 FetchContent_Declare(
@@ -68,5 +72,16 @@ if (NOT DISABLE_TESTING)
     add_subdirectory(test)
 endif ()
 
+macro(install_symlink file_path symlink_path)
+    install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${file_path} ${symlink_path})")
+    install(CODE "message(\"-- Created symlink: ${symlink_path} -> ${file_path}\")")
+endmacro()
+
 install(FILES config.json DESTINATION /etc/${PROJECT_NAME})
 install(DIRECTORY schema DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY DESTINATION /var/${PROJECT_NAME}/user DIRECTORY_PERMISSIONS
+        OWNER_READ OWNER_WRITE OWNER_EXECUTE
+        GROUP_READ GROUP_WRITE GROUP_EXECUTE
+        WORLD_READ WORLD_WRITE WORLD_EXECUTE)
+
+install_symlink(/var/${PROJECT_NAME}/user ${USER_DIR})

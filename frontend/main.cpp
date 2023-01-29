@@ -1,8 +1,8 @@
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <iostream>
-#include <sys/mount.h>
 #include <unistd.h>
 
 #include "config.h"
@@ -18,6 +18,9 @@ void RequireRoot() {
 }
 
 void Daemonize() {
+    if (!fs::exists(GetLogDir())) {
+        fs::create_directories(GetLogDir());
+    }
     fs::path log_path = fs::path(GetLogDir()) / "common.log";
     FILE *fs_null = fopen("/dev/null", "r+");
     FILE *fs_log = fopen(log_path.c_str(), "a");
@@ -40,68 +43,183 @@ void Daemonize() {
     }
 }
 
-int main(int argc, char **argv) {
-    GlobalOptions::Get().Init(argc, argv);
-    if (GlobalOptions::Get().command == "run") {
-        RunOptions::Get().Init(GlobalOptions::Get().command_options);
-        fs::path client_path = fs::path(GetExecDir()) / "pclient";
-        execl(client_path.c_str(), "pclient", RunOptions::Get().workflow.c_str(), nullptr);
-    } else if (GlobalOptions::Get().command == "runner") {
-        RunnerOptions::Get().Init(GlobalOptions::Get().command_options);
-        if (RunnerOptions::Get().action == "add") {
-            RequireRoot();
-        } else if (RunnerOptions::Get().action == "list") {
+void ConfigGetCmd(int argc, char **argv) {
+    if (argc != 3) {
+        std::cerr << "Usage:  " << argv[0] << " config get" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "This command displays config values used by polygraph." << std::endl;
+        std::cerr << "To change them, run '" << argv[0] << " config set [--FIELD VALUE ...]'."
+                  << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    std::cerr << "host : " << Config::Get().scheduler_host << std::endl;
+    std::cerr << "port : " << Config::Get().scheduler_port << std::endl;
+}
 
-        } else if (RunnerOptions::Get().action == "remove") {
-            RequireRoot();
-        } else {
-            std::cerr << "Unknown action '" << RunnerOptions::Get().action << "'." << std::endl;
-            std::cerr << "See 'polygraph runner --help'." << std::endl;
-        }
-    } else if (GlobalOptions::Get().command == "start") {
-        StartOptions::Get().Init(GlobalOptions::Get().command_options);
-        RequireRoot();
-        Config::Get().scheduler_host = StartOptions::Get().host;
-        Config::Get().scheduler_port = StartOptions::Get().port;
-        Config::Get().user_dir = StartOptions::Get().user_dir;
-        Config::Get().Dump();
-        fs::path internal_user_dir = fs::path(GetVarDir()) / "user";
-        fs::path outside_user_dir = Config::Get().user_dir;
-        if (!fs::exists(internal_user_dir)) {
-            fs::create_directories(internal_user_dir);
-            fs::permissions(internal_user_dir, fs::perms::all);
-        }
-        if (!fs::exists(outside_user_dir)) {
-            std::cerr << "Directory " << outside_user_dir << " not exists, creating it."
-                      << std::endl;
-            fs::create_directories(outside_user_dir);
-        }
-        if (mount(internal_user_dir.c_str(), outside_user_dir.c_str(), "", MS_BIND, "")) {
-            perror("Failed to mount user directory");
-            exit(EXIT_FAILURE);
-        }
-        if (Config::Get().scheduler_host == "127.0.0.1") {
-            Daemonize();
-            fs::path scheduler_path = fs::path(GetExecDir()) / "pscheduler";
-            execl(scheduler_path.c_str(), "pscheduler", nullptr);
-            perror("Failed to start scheduler");
-            exit(EXIT_FAILURE);
-        }
-    } else if (GlobalOptions::Get().command == "stop") {
-        StopOptions::Get().Init(GlobalOptions::Get().command_options);
-        RequireRoot();
-        if (system("pkill prunner")) {
-            std::cerr << "Not killed prunner" << std::endl;
-        }
-        if (system("pkill pscheduler")) {
-            std::cerr << "Not killed pscheduler" << std::endl;
-        }
-        if (umount(Config::Get().user_dir.c_str())) {
-            perror("Failed to unmount user directory");
-            exit(EXIT_FAILURE);
-        }
+void ConfigSetCmd(int argc, char **argv) {
+    if (argc <= 3 || argc % 2 != 1) {
+        std::cerr << "Usage:  " << argv[0] << " config set [--FIELD VALUE ...]" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "This command changes config values used by polygraph." << std::endl;
+        std::cerr << "For example, '" << argv[0]
+                  << " config set --port 3001' will set the listen port to 3001." << std::endl;
+        std::cerr << "To display current config values, run '" << argv[0] << " config get'."
+                  << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    ConfigOptions::Get().Init(argc - 2, argv + 2);
+    RequireRoot();
+    ConfigOptions::Get().SetConfig();
+    Config::Get().Dump();
+}
+
+void ConfigCmd(int argc, char **argv) {
+    if (argc < 3 || strcmp(argv[2], "--help") == 0) {
+        std::cerr << "Usage:  " << argv[0] << " config ACTION [OPTIONS]" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "Actions:" << std::endl;
+        std::cerr << "  get      "
+                  << "Display config values" << std::endl;
+        std::cerr << "  set      "
+                  << "Update config values" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "Run '" << argv[0]
+                  << " config ACTION --help' for more information about the action." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    if (strcmp(argv[2], "get") == 0) {
+        ConfigGetCmd(argc, argv);
+    } else if (strcmp(argv[2], "set") == 0) {
+        ConfigSetCmd(argc, argv);
     } else {
-        std::cerr << "Unknown command '" << GlobalOptions::Get().command << "'." << std::endl;
-        std::cerr << "See 'polygraph --help'." << std::endl;
+        std::cerr << "Unknown action '" << argv[2] << "'." << std::endl;
+        std::cerr << "See '" << argv[0] << " config --help'." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+void RunCmd(int argc, char **argv) {
+    if (argc < 3 || strcmp(argv[2], "--help") == 0) {
+        std::cerr << "Usage:  " << argv[0] << " run WORKFLOW_PATH" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "This command runs a workflow given by its path WORKFLOW_PATH." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    fs::path client_path = fs::path(GetExecDir()) / "pclient";
+    execl(client_path.c_str(), "pclient", argv[2], nullptr);
+    perror("Failed to run");
+    exit(EXIT_FAILURE);
+}
+
+void RunnerAddCmd(int argc, char **argv) {
+    // TODO
+}
+
+void RunnerListCmd(int argc, char **argv) {
+    // TODO
+}
+
+void RunnerRemoveCmd(int argc, char **argv) {
+    // TODO
+}
+
+void RunnerCmd(int argc, char **argv) {
+    if (argc < 3 || strcmp(argv[2], "--help") == 0) {
+        std::cerr << "Usage:  " << argv[0] << " runner ACTION [OPTIONS]" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "Actions:" << std::endl;
+        std::cerr << "  add      "
+                  << "Connect a new runner" << std::endl;
+        std::cerr << "  list     "
+                  << "Show all runners" << std::endl;
+        std::cerr << "  remove   "
+                  << "Disconnect an existing runner" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "Run '" << argv[0]
+                  << " runner ACTION --help' for more information about the action." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    if (strcmp(argv[2], "add") == 0) {
+        RunnerAddCmd(argc, argv);
+    } else if (strcmp(argv[2], "list") == 0) {
+        RunnerListCmd(argc, argv);
+    } else if (strcmp(argv[2], "remove") == 0) {
+        RunnerRemoveCmd(argc, argv);
+    } else {
+        std::cerr << "Unknown action '" << argv[2] << "'." << std::endl;
+        std::cerr << "See '" << argv[0] << " runner --help'." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+void StartCmd(int argc, char **argv) {
+    if (argc != 2) {
+        std::cerr << "Usage:  " << argv[0] << " start" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "This command starts polygraph service with no runners." << std::endl;
+        std::cerr << "To start runners, you should execute '" << argv[0] << " runner add'."
+                  << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    RequireRoot();
+    if (Config::Get().scheduler_host == "127.0.0.1") {
+        Daemonize();
+        fs::path scheduler_path = fs::path(GetExecDir()) / "pscheduler";
+        execl(scheduler_path.c_str(), "pscheduler", nullptr);
+        perror("Failed to start scheduler");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void StopCmd(int argc, char **argv) {
+    if (argc != 2) {
+        std::cerr << "Usage:  " << argv[0] << " stop" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "This command stops polygraph service." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    RequireRoot();
+    if (system("pkill prunner")) {
+        std::cerr << "Not killed prunner" << std::endl;
+    }
+    if (system("pkill pscheduler")) {
+        std::cerr << "Not killed pscheduler" << std::endl;
+    }
+}
+
+int main(int argc, char **argv) {
+    if (argc < 2 || strcmp(argv[1], "--help") == 0) {
+        std::cerr << "Usage:  " << argv[0] << " COMMAND [OPTIONS]" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "Commands:" << std::endl;
+        std::cerr << "  config   "
+                  << "Manage config" << std::endl;
+        std::cerr << "  run      "
+                  << "Run workflow" << std::endl;
+        std::cerr << "  runner   "
+                  << "Manage runners" << std::endl;
+        std::cerr << "  start    "
+                  << "Start polygraph service" << std::endl;
+        std::cerr << "  stop     "
+                  << "Stop polygraph service" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "Run '" << argv[0]
+                  << " COMMAND --help' for more information about the command." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    if (strcmp(argv[1], "config") == 0) {
+        ConfigCmd(argc, argv);
+    } else if (strcmp(argv[1], "run") == 0) {
+        RunCmd(argc, argv);
+    } else if (strcmp(argv[1], "runner") == 0) {
+        RunnerCmd(argc, argv);
+    } else if (strcmp(argv[1], "start") == 0) {
+        StartCmd(argc, argv);
+    } else if (strcmp(argv[1], "stop") == 0) {
+        StopCmd(argc, argv);
+    } else {
+        std::cerr << "Unknown command '" << argv[1] << "'." << std::endl;
+        std::cerr << "See '" << argv[0] << " --help'." << std::endl;
+        exit(EXIT_FAILURE);
     }
 }
