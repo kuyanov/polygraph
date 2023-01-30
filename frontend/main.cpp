@@ -1,7 +1,9 @@
+#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <unistd.h>
 
@@ -10,6 +12,14 @@
 
 namespace fs = std::filesystem;
 
+bool IsMasterNode() {
+    return Config::Get().scheduler_host == "127.0.0.1";
+}
+
+bool IsSchedulerUp() {
+    return fs::exists(fs::path(GetRunDir()) / "pscheduler.pid");
+}
+
 void RequireRoot() {
     if (geteuid() != 0) {
         std::cerr << "Error: this command requires root privileges." << std::endl;
@@ -17,10 +27,27 @@ void RequireRoot() {
     }
 }
 
-void Daemonize() {
-    if (!fs::exists(GetLogDir())) {
-        fs::create_directories(GetLogDir());
+void RequireUp() {
+    if (IsMasterNode() && !IsSchedulerUp()) {
+        std::cerr << "Error: polygraph service is not running." << std::endl;
+        exit(EXIT_FAILURE);
     }
+}
+
+void RequireDown() {
+    if (IsMasterNode() && IsSchedulerUp()) {
+        std::cerr << "Error: polygraph service is already running." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+void CreateDirs() {
+    fs::create_directories(fs::path(GetLogDir()));
+    fs::create_directories(fs::path(GetRunDir()));
+    fs::create_directories(fs::path(GetVarDir()));
+}
+
+void Daemonize() {
     fs::path log_path = fs::path(GetLogDir()) / "common.log";
     FILE *fs_null = fopen("/dev/null", "r+");
     FILE *fs_log = fopen(log_path.c_str(), "a");
@@ -57,7 +84,7 @@ void ConfigGetCmd(int argc, char **argv) {
 }
 
 void ConfigSetCmd(int argc, char **argv) {
-    if (argc <= 3 || argc % 2 != 1) {
+    if (argc < 4 || strcmp(argv[3], "--help") == 0) {
         std::cerr << "Usage:  " << argv[0] << " config set [--FIELD VALUE ...]" << std::endl;
         std::cerr << std::endl;
         std::cerr << "This command changes config values used by polygraph." << std::endl;
@@ -69,6 +96,7 @@ void ConfigSetCmd(int argc, char **argv) {
     }
     ConfigOptions::Get().Init(argc - 2, argv + 2);
     RequireRoot();
+    RequireDown();
     ConfigOptions::Get().SetConfig();
     Config::Get().Dump();
 }
@@ -105,14 +133,30 @@ void RunCmd(int argc, char **argv) {
         std::cerr << "This command runs a workflow given by its path WORKFLOW_PATH." << std::endl;
         exit(EXIT_FAILURE);
     }
-    fs::path client_path = fs::path(GetExecDir()) / "pclient";
-    execl(client_path.c_str(), "pclient", argv[2], nullptr);
+    RequireUp();
+    fs::path exec_path = fs::path(GetExecDir()) / "pclient";
+    execl(exec_path.c_str(), "pclient", argv[2], nullptr);
     perror("Failed to run");
     exit(EXIT_FAILURE);
 }
 
 void RunnerAddCmd(int argc, char **argv) {
-    // TODO
+    if (argc < 3 || (argc >= 4 && strcmp(argv[3], "--help") == 0)) {
+        std::cerr << "Usage:  " << argv[0] << " runner add [OPTIONS]" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "This command connects a new runner to polygraph." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    RequireRoot();
+    RequireUp();
+    Daemonize();
+    fs::path pid_path = fs::path(GetRunDir()) / "prunner.pid";
+    std::ofstream(pid_path.string()) << getpid() << std::endl;
+    fs::path exec_path = fs::path(GetExecDir()) / "prunner";
+    execl(exec_path.c_str(), "prunner", "all", nullptr);
+    fs::remove(pid_path);
+    perror("Failed to start runner");
+    exit(EXIT_FAILURE);
 }
 
 void RunnerListCmd(int argc, char **argv) {
@@ -162,10 +206,15 @@ void StartCmd(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
     RequireRoot();
-    if (Config::Get().scheduler_host == "127.0.0.1") {
+    RequireDown();
+    CreateDirs();
+    if (IsMasterNode()) {
         Daemonize();
-        fs::path scheduler_path = fs::path(GetExecDir()) / "pscheduler";
-        execl(scheduler_path.c_str(), "pscheduler", nullptr);
+        fs::path pid_path = fs::path(GetRunDir()) / "pscheduler.pid";
+        std::ofstream(pid_path.string()) << getpid() << std::endl;
+        fs::path exec_path = fs::path(GetExecDir()) / "pscheduler";
+        execl(exec_path.c_str(), "pscheduler", nullptr);
+        fs::remove(pid_path);
         perror("Failed to start scheduler");
         exit(EXIT_FAILURE);
     }
@@ -179,11 +228,15 @@ void StopCmd(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
     RequireRoot();
-    if (system("pkill prunner")) {
-        std::cerr << "Not killed prunner" << std::endl;
-    }
-    if (system("pkill pscheduler")) {
-        std::cerr << "Not killed pscheduler" << std::endl;
+    RequireUp();
+    for (const auto &entry : fs::directory_iterator(fs::path(GetRunDir()))) {
+        pid_t pid;
+        std::ifstream(entry.path().string()) >> pid;
+        if (kill(pid, SIGTERM)) {
+            perror("Failed to kill");
+            exit(EXIT_FAILURE);
+        }
+        fs::remove(entry.path());
     }
 }
 
