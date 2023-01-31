@@ -25,14 +25,11 @@ target_compile_definitions(uWebSockets INTERFACE UWS_NO_ZLIB)
 target_include_directories(uWebSockets INTERFACE ${uwebsockets_SOURCE_DIR}/src)
 target_link_libraries(uWebSockets INTERFACE uSockets)
 
-add_library(pscheduler_impl)
-file(GLOB PSCHEDULER_SOURCES src/*.cpp)
-target_sources(pscheduler_impl PRIVATE ${PSCHEDULER_SOURCES})
-target_include_directories(pscheduler_impl PUBLIC src)
-target_link_libraries(pscheduler_impl PUBLIC common uWebSockets)
-
 add_executable(pscheduler main.cpp)
-target_link_libraries(pscheduler PRIVATE pscheduler_impl)
+file(GLOB PSCHEDULER_SOURCES src/*.cpp)
+target_sources(pscheduler PRIVATE ${PSCHEDULER_SOURCES})
+target_include_directories(pscheduler PUBLIC src)
+target_link_libraries(pscheduler PRIVATE common uWebSockets)
 
 install(TARGETS pscheduler
         DESTINATION libexec

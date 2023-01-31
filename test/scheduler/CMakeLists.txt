@@ -1,2 +1,2 @@
 add_executable(test_pscheduler test.cpp)
-target_link_libraries(test_pscheduler PRIVATE pscheduler_impl gmock_main)
+target_link_libraries(test_pscheduler PRIVATE common gmock_main)
