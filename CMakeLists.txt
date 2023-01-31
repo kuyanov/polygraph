@@ -55,7 +55,6 @@ include_directories(${Boost_INCLUDE_DIR} ${rapidjson_SOURCE_DIR}/include)
 link_libraries(${Boost_LIBRARIES})
 
 add_subdirectory(common)
-add_subdirectory(client)
 add_subdirectory(frontend)
 if (NOT DISABLE_RUNNER)
     add_subdirectory(runner)

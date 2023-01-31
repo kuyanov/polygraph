@@ -1,7 +1,7 @@
+#include <cstdlib>
 #include <filesystem>
 #include <iostream>
 #include <regex>
-#include <stdexcept>
 #include <string>
 
 #include "client.h"
@@ -19,7 +19,10 @@ Client::Client(const std::string &workflow_path) {
         HttpSession(Config::Get().scheduler_host, Config::Get().scheduler_port)
             .Post("/submit", body);
     if (!regex_match(workflow_id, std::regex(UUID_REGEX))) {
-        throw std::runtime_error(workflow_id);
+        std::cerr << "Process terminated with the following exception:" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << workflow_id << std::endl;
+        exit(EXIT_FAILURE);
     }
     Deserialize(workflow_, document);
     blocks_.resize(workflow_.blocks.size());
@@ -82,8 +85,16 @@ void Client::PrintWarnings() {
 
 void Client::PrintBlocks() {
     TerminalWindow::Get().Clear();
+    size_t max_name_width = 0;
+    for (const auto &block : workflow_.blocks) {
+        max_name_width = std::max(max_name_width, block.name.length());
+    }
     for (size_t block_id = 0; block_id < blocks_.size(); ++block_id) {
-        std::string line = "[block " + std::to_string(block_id) + "] ";
+        std::string block_name = workflow_.blocks[block_id].name;
+        size_t left_padding = (max_name_width - block_name.length()) / 2;
+        size_t right_padding = (max_name_width - block_name.length() + 1) / 2;
+        std::string line = "[" + std::string(left_padding, ' ') + block_name +
+                           std::string(right_padding, ' ') + "] ";
         const auto &block = blocks_[block_id];
         if (block.state.empty()) {
             line += "-";

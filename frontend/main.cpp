@@ -4,9 +4,11 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <unistd.h>
 
+#include "client.h"
 #include "config.h"
 #include "options.h"
 
@@ -126,6 +128,8 @@ void ConfigCmd(int argc, char **argv) {
     }
 }
 
+std::function<void()> interrupt_handler;
+
 void RunCmd(int argc, char **argv) {
     if (argc < 3 || strcmp(argv[2], "--help") == 0) {
         std::cerr << "Usage:  " << argv[0] << " run WORKFLOW_PATH" << std::endl;
@@ -134,10 +138,10 @@ void RunCmd(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
     RequireUp();
-    fs::path exec_path = fs::path(GetExecDir()) / "pclient";
-    execl(exec_path.c_str(), "pclient", argv[2], nullptr);
-    perror("Failed to run");
-    exit(EXIT_FAILURE);
+    Client client(argv[2]);
+    interrupt_handler = [&client] { client.Stop(); };
+    signal(SIGINT, [](int) { interrupt_handler(); });
+    client.Run();
 }
 
 void RunnerAddCmd(int argc, char **argv) {
