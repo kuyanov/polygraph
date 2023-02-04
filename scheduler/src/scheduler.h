@@ -74,7 +74,7 @@ private:
     std::vector<std::vector<Connection>> go_;
     std::unordered_set<ClientWebSocket *> clients_;
 
-    std::string GetContainerId(size_t block_id) const;
+    std::string GetContainerId(size_t block_id, size_t run_id) const;
 };
 
 class Partition {

@@ -80,12 +80,6 @@ TEST(ValidationError, DuplicatedLocation) {
                 StrEq(VALIDATION_ERROR_PREFIX DUPLICATED_LOCATION_ERROR));
 }
 
-TEST(ValidationError, Loop) {
-    EXPECT_THAT(
-        SubmitWorkflow({{{.inputs = {"a"}, .outputs = {"b"}}}, {{0, 0, 0, 0}}, kWorkflowMeta}),
-        StrEq(VALIDATION_ERROR_PREFIX LOOPS_NOT_SUPPORTED_ERROR));
-}
-
 TEST(Submit, WorkflowIdUnique) {
     std::string body = StringifyJSON(Serialize(Workflow{{}, {}, kWorkflowMeta}));
     std::unordered_set<std::string> ids;
@@ -160,6 +154,26 @@ TEST(Execution, MaxRunners) {
     CheckExecution(workflow, 3, 4, 6, kRunnerDelay, 4 * kRunnerDelay);
     workflow.meta.max_runners = 1;
     CheckExecution(workflow, 3, 4, 6, kRunnerDelay, 6 * kRunnerDelay);
+}
+
+TEST(Execution, FiniteLoop) {
+    Workflow workflow = {{{.outputs = {"a"}},
+                          {.inputs = {"a"}, .outputs = {"b"}},
+                          {.inputs = {"b"}, .outputs = {"c"}},
+                          {.inputs = {"c"}, .outputs = {"d"}},
+                          {.inputs = {"d"}, .outputs = {"e"}},
+                          {.inputs = {"e1", "e2"}, .outputs = {"e"}}},
+                         {{0, 0, 1, 0},
+                          {1, 0, 2, 0},
+                          {2, 0, 3, 0},
+                          {3, 0, 4, 0},
+                          {0, 0, 5, 0},
+                          {0, 0, 5, 1},
+                          {2, 0, 5, 0},
+                          {4, 0, 5, 0},
+                          {5, 0, 5, 1}},
+                         kWorkflowMeta};
+    CheckExecution(workflow, 3, 2, 8, kRunnerDelay, 6 * kRunnerDelay);
 }
 
 TEST(Execution, FiniteCycle) {
