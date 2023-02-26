@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <filesystem>
+#include <iomanip>
 #include <iostream>
 #include <regex>
 #include <string>
@@ -118,17 +119,21 @@ std::string GetExecutionStatus(const BlockResponse &block, size_t cnt_runs) {
 }
 
 std::string GetTimeUsage(const BlockResponse &block) {
+    std::stringstream time_usage;
+    time_usage << std::setprecision(3) << std::fixed;
     if (block.status.has_value() && block.status->time_usage_ms != -1) {
-        return std::to_string(block.status->time_usage_ms);
+        time_usage << block.status->time_usage_ms / 1000.0;
     }
-    return "";
+    return time_usage.str();
 }
 
 std::string GetMemoryUsage(const BlockResponse &block) {
+    std::stringstream memory_usage;
+    memory_usage << std::setprecision(3) << std::fixed;
     if (block.status.has_value() && block.status->memory_usage_kb != -1) {
-        return std::to_string(block.status->memory_usage_kb);
+        memory_usage << block.status->memory_usage_kb / 1024.0;
     }
-    return "";
+    return memory_usage.str();
 }
 
 void Client::PrintBlocks() {
@@ -138,16 +143,16 @@ void Client::PrintBlocks() {
         name_width = std::max(name_width, block.name.length());
     }
     size_t status_width = 26;
-    size_t time_width = 9;
-    size_t memory_width = 11;
+    size_t time_width = 10;
+    size_t memory_width = 12;
     std::string header;
     header += AlignCenter("", name_width + 2);
     header += " ";
     header += AlignLeft("Status", status_width);
     header += "  ";
-    header += AlignLeft("Time (ms)", time_width);
+    header += AlignLeft("Time (sec)", time_width);
     header += "  ";
-    header += AlignLeft("Memory (kb)", memory_width);
+    header += AlignLeft("Memory (MiB)", memory_width);
     TerminalWindow::Get().PrintLine(header);
     for (size_t block_id = 0; block_id < blocks_.size(); ++block_id) {
         std::string line;
