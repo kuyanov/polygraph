@@ -18,6 +18,40 @@ inline std::string ColoredText(const std::string &text, Color color) {
     }
 }
 
+inline size_t DisplayedWidth(const std::string &text) {
+    size_t width = 0;
+    bool color_char = false;
+    for (char c : text) {
+        if (c == '\033') {
+            color_char = true;
+        } else if (color_char && c == 'm') {
+            color_char = false;
+        } else if (!color_char) {
+            ++width;
+        }
+    }
+    return width;
+}
+
+inline std::string AlignCenter(const std::string &text, size_t width) {
+    size_t text_width = DisplayedWidth(text);
+    if (width < text_width) {
+        return text;
+    }
+    size_t left_padding = (width - text_width) / 2;
+    size_t right_padding = (width - text_width + 1) / 2;
+    return std::string(left_padding, ' ') + text + std::string(right_padding, ' ');
+}
+
+inline std::string AlignLeft(const std::string &text, size_t width) {
+    size_t text_width = DisplayedWidth(text);
+    if (width < text_width) {
+        return text;
+    }
+    size_t right_padding = width - text_width;
+    return text + std::string(right_padding, ' ');
+}
+
 class TerminalWindow {
 public:
     static TerminalWindow &Get() {
@@ -26,15 +60,6 @@ public:
     }
 
     void Clear() {
-        for (int i = 0; i < cnt_lines_; ++i) {
-            std::cerr << "\x1b[1A";
-        }
-        for (int i = 0; i < cnt_lines_; ++i) {
-            for (int j = 0; j < width_; ++j) {
-                std::cerr << ' ';
-            }
-            std::cerr << std::endl;
-        }
         for (int i = 0; i < cnt_lines_; ++i) {
             std::cerr << "\x1b[1A";
         }
@@ -47,6 +72,5 @@ public:
     }
 
 private:
-    int width_ = 50;
     int cnt_lines_ = 0;
 };

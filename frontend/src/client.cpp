@@ -87,44 +87,77 @@ void Client::PrintWarnings() {
     }
 }
 
+std::string GetExecutionStatus(const BlockResponse &block, size_t cnt_runs) {
+    if (block.state.empty()) {
+        return "-";
+    } else if (block.state == RUNNING_STATE) {
+        std::string status = "Running";
+        if (cnt_runs != 1) {
+            status += " (" + std::to_string(cnt_runs) + ")";
+        }
+        return status;
+    } else if (block.error.has_value()) {
+        return ColoredText("Error", RED);
+    } else if (block.status->exited) {
+        int exit_code = block.status->exit_code;
+        return ColoredText("Exited with code " + std::to_string(exit_code),
+                           exit_code == 0 ? GREEN : YELLOW);
+    } else if (block.status->time_limit_exceeded) {
+        return ColoredText("Time limit exceeded", YELLOW);
+    } else if (block.status->wall_time_limit_exceeded) {
+        return ColoredText("Wall time limit exceeded", YELLOW);
+    } else if (block.status->memory_limit_exceeded) {
+        return ColoredText("Memory limit exceeded", YELLOW);
+    } else if (block.status->oom_killed) {
+        return ColoredText("OOM killed", YELLOW);
+    } else if (block.status->signaled) {
+        int term_signal = block.status->term_signal;
+        return ColoredText("Terminated with signal " + std::to_string(term_signal), YELLOW);
+    }
+    return "";
+}
+
+std::string GetTimeUsage(const BlockResponse &block) {
+    if (block.status.has_value() && block.status->time_usage_ms != -1) {
+        return std::to_string(block.status->time_usage_ms);
+    }
+    return "";
+}
+
+std::string GetMemoryUsage(const BlockResponse &block) {
+    if (block.status.has_value() && block.status->memory_usage_kb != -1) {
+        return std::to_string(block.status->memory_usage_kb);
+    }
+    return "";
+}
+
 void Client::PrintBlocks() {
     TerminalWindow::Get().Clear();
-    size_t max_name_width = 0;
+    size_t name_width = 0;
     for (const auto &block : workflow_.blocks) {
-        max_name_width = std::max(max_name_width, block.name.length());
+        name_width = std::max(name_width, block.name.length());
     }
+    size_t status_width = 26;
+    size_t time_width = 9;
+    size_t memory_width = 11;
+    std::string header;
+    header += AlignCenter("", name_width + 2);
+    header += " ";
+    header += AlignLeft("Status", status_width);
+    header += "  ";
+    header += AlignLeft("Time (ms)", time_width);
+    header += "  ";
+    header += AlignLeft("Memory (kb)", memory_width);
+    TerminalWindow::Get().PrintLine(header);
     for (size_t block_id = 0; block_id < blocks_.size(); ++block_id) {
-        std::string block_name = workflow_.blocks[block_id].name;
-        size_t left_padding = (max_name_width - block_name.length()) / 2;
-        size_t right_padding = (max_name_width - block_name.length() + 1) / 2;
-        std::string line = "[" + std::string(left_padding, ' ') + block_name +
-                           std::string(right_padding, ' ') + "] ";
-        const auto &block = blocks_[block_id];
-        if (block.state.empty()) {
-            line += "-";
-        } else if (block.state == RUNNING_STATE) {
-            line += "Running";
-            if (cnt_runs_[block_id] != 1) {
-                line += " (" + std::to_string(cnt_runs_[block_id]) + ")";
-            }
-        } else if (block.error.has_value()) {
-            line += ColoredText("Error", RED);
-        } else if (block.status->exited) {
-            int exit_code = block.status->exit_code;
-            line += ColoredText("Exited with code " + std::to_string(exit_code),
-                                exit_code == 0 ? GREEN : YELLOW);
-        } else if (block.status->time_limit_exceeded) {
-            line += ColoredText("Time limit exceeded", YELLOW);
-        } else if (block.status->wall_time_limit_exceeded) {
-            line += ColoredText("Wall time limit exceeded", YELLOW);
-        } else if (block.status->memory_limit_exceeded) {
-            line += ColoredText("Memory limit exceeded", YELLOW);
-        } else if (block.status->oom_killed) {
-            line += ColoredText("OOM killed", YELLOW);
-        } else if (block.status->signaled) {
-            int term_signal = block.status->term_signal;
-            line += ColoredText("Terminated with signal " + std::to_string(term_signal), YELLOW);
-        }
+        std::string line;
+        line += "[" + AlignCenter(workflow_.blocks[block_id].name, name_width) + "]";
+        line += " ";
+        line += AlignLeft(GetExecutionStatus(blocks_[block_id], cnt_runs_[block_id]), status_width);
+        line += "  ";
+        line += AlignLeft(GetTimeUsage(blocks_[block_id]), time_width);
+        line += "  ";
+        line += AlignLeft(GetMemoryUsage(blocks_[block_id]), memory_width);
         TerminalWindow::Get().PrintLine(line);
     }
 }
