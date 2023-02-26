@@ -26,6 +26,7 @@ Client::Client(const std::string &workflow_path) {
     }
     Deserialize(workflow_, document);
     blocks_.resize(workflow_.blocks.size());
+    cnt_runs_.resize(workflow_.blocks.size());
     session_.Connect(Config::Get().scheduler_host, Config::Get().scheduler_port,
                      "/workflow/" + workflow_id);
     session_.OnRead([this](const std::string &message) { OnMessage(message); });
@@ -55,6 +56,9 @@ void Client::OnMessage(const std::string &message) {
     BlockResponse block;
     Deserialize(block, ParseJSON(message));
     blocks_[block.block_id] = block;
+    if (block.state == RUNNING_STATE) {
+        ++cnt_runs_[block.block_id];
+    }
     PrintBlocks();
 }
 
@@ -100,6 +104,9 @@ void Client::PrintBlocks() {
             line += "-";
         } else if (block.state == RUNNING_STATE) {
             line += "Running";
+            if (cnt_runs_[block_id] != 1) {
+                line += " (" + std::to_string(cnt_runs_[block_id]) + ")";
+            }
         } else if (block.error.has_value()) {
             line += ColoredText("Error", RED);
         } else if (block.status->exited) {

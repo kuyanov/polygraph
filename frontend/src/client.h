@@ -17,6 +17,7 @@ private:
     WebsocketClientSession session_;
     Workflow workflow_;
     std::vector<BlockResponse> blocks_;
+    std::vector<size_t> cnt_runs_;
 
     void OnMessage(const std::string &message);
 

@@ -81,8 +81,14 @@ void ConfigGetCmd(int argc, char **argv) {
                   << std::endl;
         exit(EXIT_FAILURE);
     }
-    std::cerr << "host : " << Config::Get().scheduler_host << std::endl;
-    std::cerr << "port : " << Config::Get().scheduler_port << std::endl;
+    std::cerr << "runner-reconnect-interval-ms : " << Config::Get().runner_reconnect_interval_ms
+              << std::endl;
+    std::cerr << "scheduler-host               : " << Config::Get().scheduler_host << std::endl;
+    std::cerr << "scheduler-port               : " << Config::Get().scheduler_port << std::endl;
+    std::cerr << "scheduler-max-payload-length : " << Config::Get().scheduler_max_payload_length
+              << std::endl;
+    std::cerr << "scheduler-idle-timeout       : " << Config::Get().scheduler_idle_timeout
+              << std::endl;
 }
 
 void ConfigSetCmd(int argc, char **argv) {
@@ -91,7 +97,8 @@ void ConfigSetCmd(int argc, char **argv) {
         std::cerr << std::endl;
         std::cerr << "This command changes config values used by polygraph." << std::endl;
         std::cerr << "For example, '" << argv[0]
-                  << " config set --port 3001' will set the listen port to 3001." << std::endl;
+                  << " config set --scheduler-port 3001' will set the scheduler port to 3001."
+                  << std::endl;
         std::cerr << "To display current config values, run '" << argv[0] << " config get'."
                   << std::endl;
         exit(EXIT_FAILURE);
@@ -134,7 +141,7 @@ void RunCmd(int argc, char **argv) {
     if (argc < 3 || strcmp(argv[2], "--help") == 0) {
         std::cerr << "Usage:  " << argv[0] << " run WORKFLOW_PATH" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "This command runs a workflow given by its path WORKFLOW_PATH." << std::endl;
+        std::cerr << "This command runs the workflow located at WORKFLOW_PATH" << std::endl;
         exit(EXIT_FAILURE);
     }
     RequireUp();
@@ -144,11 +151,11 @@ void RunCmd(int argc, char **argv) {
     client.Run();
 }
 
-void RunnerAddCmd(int argc, char **argv) {
+void RunnerAttachCmd(int argc, char **argv) {
     if (argc < 3 || (argc >= 4 && strcmp(argv[3], "--help") == 0)) {
-        std::cerr << "Usage:  " << argv[0] << " runner add [OPTIONS]" << std::endl;
+        std::cerr << "Usage:  " << argv[0] << " runner attach [OPTIONS]" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "This command connects a new runner to polygraph." << std::endl;
+        std::cerr << "This command attaches new runners to polygraph." << std::endl;
         exit(EXIT_FAILURE);
     }
     RequireRoot();
@@ -167,7 +174,7 @@ void RunnerListCmd(int argc, char **argv) {
     // TODO
 }
 
-void RunnerRemoveCmd(int argc, char **argv) {
+void RunnerDetachCmd(int argc, char **argv) {
     // TODO
 }
 
@@ -176,23 +183,23 @@ void RunnerCmd(int argc, char **argv) {
         std::cerr << "Usage:  " << argv[0] << " runner ACTION [OPTIONS]" << std::endl;
         std::cerr << std::endl;
         std::cerr << "Actions:" << std::endl;
-        std::cerr << "  add      "
-                  << "Connect a new runner" << std::endl;
+        std::cerr << "  attach   "
+                  << "Attach new runners" << std::endl;
         std::cerr << "  list     "
                   << "Show all runners" << std::endl;
-        std::cerr << "  remove   "
-                  << "Disconnect an existing runner" << std::endl;
+        std::cerr << "  detach   "
+                  << "Detach existing runners" << std::endl;
         std::cerr << std::endl;
         std::cerr << "Run '" << argv[0]
                   << " runner ACTION --help' for more information about the action." << std::endl;
         exit(EXIT_FAILURE);
     }
-    if (strcmp(argv[2], "add") == 0) {
-        RunnerAddCmd(argc, argv);
+    if (strcmp(argv[2], "attach") == 0) {
+        RunnerAttachCmd(argc, argv);
     } else if (strcmp(argv[2], "list") == 0) {
         RunnerListCmd(argc, argv);
-    } else if (strcmp(argv[2], "remove") == 0) {
-        RunnerRemoveCmd(argc, argv);
+    } else if (strcmp(argv[2], "detach") == 0) {
+        RunnerDetachCmd(argc, argv);
     } else {
         std::cerr << "Unknown action '" << argv[2] << "'." << std::endl;
         std::cerr << "See '" << argv[0] << " runner --help'." << std::endl;
@@ -205,8 +212,7 @@ void StartCmd(int argc, char **argv) {
         std::cerr << "Usage:  " << argv[0] << " start" << std::endl;
         std::cerr << std::endl;
         std::cerr << "This command starts polygraph service with no runners." << std::endl;
-        std::cerr << "To start runners, you should execute '" << argv[0] << " runner add'."
-                  << std::endl;
+        std::cerr << "To start runners, execute '" << argv[0] << " runner attach'." << std::endl;
         exit(EXIT_FAILURE);
     }
     RequireRoot();
