@@ -2,6 +2,32 @@
 #include "structures/workflow.h"
 
 template <>
+rapidjson::Value Serialize<Input>(const Input &data, rapidjson::Document::AllocatorType &alloc) {
+    rapidjson::Value value(rapidjson::kObjectType);
+    value.AddMember("path", Serialize(data.path, alloc), alloc);
+    value.AddMember("cached", Serialize(data.cached, alloc), alloc);
+    return value;
+}
+
+template <>
+void Deserialize<Input>(Input &data, const rapidjson::Value &value) {
+    Deserialize(data.path, value["path"]);
+    Deserialize(data.cached, value["cached"]);
+}
+
+template <>
+rapidjson::Value Serialize<Output>(const Output &data, rapidjson::Document::AllocatorType &alloc) {
+    rapidjson::Value value(rapidjson::kObjectType);
+    value.AddMember("path", Serialize(data.path, alloc), alloc);
+    return value;
+}
+
+template <>
+void Deserialize<Output>(Output &data, const rapidjson::Value &value) {
+    Deserialize(data.path, value["path"]);
+}
+
+template <>
 rapidjson::Value Serialize<Block>(const Block &data, rapidjson::Document::AllocatorType &alloc) {
     rapidjson::Value value(rapidjson::kObjectType);
     value.AddMember("name", Serialize(data.name, alloc), alloc);

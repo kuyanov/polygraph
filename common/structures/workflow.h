@@ -6,9 +6,19 @@
 #include "bind.h"
 #include "constraints.h"
 
+struct Input {
+    std::string path;
+    bool cached;
+};
+
+struct Output {
+    std::string path;
+};
+
 struct Block {
     std::string name;
-    std::vector<std::string> inputs, outputs;
+    std::vector<Input> inputs;
+    std::vector<Output> outputs;
     std::vector<Bind> binds;
     std::vector<std::string> argv, env;
     Constraints constraints;

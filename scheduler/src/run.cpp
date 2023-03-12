@@ -91,7 +91,7 @@ void Run() {
                     throw APIError(UNDEFINED_COMMAND_ERROR);
                 }
             } catch (const APIError &error) {
-                ws->send(API_ERROR_PREFIX + error.message);
+                ws->send(API_ERROR_PREFIX + error.message, uWS::OpCode::TEXT);
             }
         },
         .close = [&](auto *ws, int code, std::string_view message) {

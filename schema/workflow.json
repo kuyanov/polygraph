@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
-    "location": {
+    "path": {
       "type": "string",
       "pattern": "^([A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
     }
@@ -33,13 +33,33 @@
           "inputs": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/location"
+              "type": "object",
+              "required": [
+                "path",
+                "cached"
+              ],
+              "properties": {
+                "path": {
+                  "$ref": "#/definitions/path"
+                },
+                "cached": {
+                  "type": "boolean"
+                }
+              }
             }
           },
           "outputs": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/location"
+              "type": "object",
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "$ref": "#/definitions/path"
+                }
+              }
             }
           },
           "binds": {
@@ -53,10 +73,10 @@
               ],
               "properties": {
                 "inside": {
-                  "$ref": "#/definitions/location"
+                  "$ref": "#/definitions/path"
                 },
                 "outside": {
-                  "$ref": "#/definitions/location"
+                  "$ref": "#/definitions/path"
                 },
                 "readonly": {
                   "type": "boolean"

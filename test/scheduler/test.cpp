@@ -49,35 +49,38 @@ TEST(ValidationError, InvalidType) {
         StartsWith(VALIDATION_ERROR_PREFIX));
 }
 
-TEST(ValidationError, LocationRegex) {
-    for (const auto &location : {"", ".", "../a", "/home", ".a", "a.", "a..b", "a b"}) {
-        EXPECT_THAT(SubmitWorkflow({{{.binds = {{location, location}}}}, {}, kWorkflowMeta}),
+TEST(ValidationError, PathRegex) {
+    for (const auto &path : {"", ".", "../a", "/home", ".a", "a.", "a..b", "a b"}) {
+        EXPECT_THAT(SubmitWorkflow({{{.binds = {{path, path}}}}, {}, kWorkflowMeta}),
                     StartsWith(VALIDATION_ERROR_PREFIX));
     }
-    for (const auto &location : {"a", "a.in", "a.in.txt", "A.mp4", "a/b/c.D.E"}) {
-        EXPECT_THAT(SubmitWorkflow({{{.binds = {{location, location}}}}, {}, kWorkflowMeta}),
+    for (const auto &path : {"a", "a.in", "a.in.txt", "A.mp4", "a/b/c.D.E"}) {
+        EXPECT_THAT(SubmitWorkflow({{{.binds = {{path, path}}}}, {}, kWorkflowMeta}),
                     MatchesRegex(UUID_REGEX));
     }
 }
 
 TEST(ValidationError, InvalidConnection) {
-    EXPECT_THAT(SubmitWorkflow({{{.outputs = {"a"}}}, {{0, 0, 1, 0}}, kWorkflowMeta}),
+    EXPECT_THAT(SubmitWorkflow({{{.outputs = {{"a"}}}}, {{0, 0, 1, 0}}, kWorkflowMeta}),
                 StrEq(VALIDATION_ERROR_PREFIX INVALID_CONNECTION_ERROR));
-    EXPECT_THAT(SubmitWorkflow({{{.inputs = {"a"}}}, {{1, 0, 0, 0}}, kWorkflowMeta}),
+    EXPECT_THAT(SubmitWorkflow({{{.inputs = {{"a", false}}}}, {{1, 0, 0, 0}}, kWorkflowMeta}),
                 StrEq(VALIDATION_ERROR_PREFIX INVALID_CONNECTION_ERROR));
     EXPECT_THAT(
-        SubmitWorkflow({{{.outputs = {"a"}}, {.inputs = {"a"}}}, {{0, 1, 1, 0}}, kWorkflowMeta}),
+        SubmitWorkflow(
+            {{{.outputs = {{"a"}}}, {.inputs = {{"a", false}}}}, {{0, 1, 1, 0}}, kWorkflowMeta}),
         StrEq(VALIDATION_ERROR_PREFIX INVALID_CONNECTION_ERROR));
     EXPECT_THAT(
-        SubmitWorkflow({{{.outputs = {"a"}}, {.inputs = {"a"}}}, {{0, 0, 1, 1}}, kWorkflowMeta}),
+        SubmitWorkflow(
+            {{{.outputs = {{"a"}}}, {.inputs = {{"a", false}}}}, {{0, 0, 1, 1}}, kWorkflowMeta}),
         StrEq(VALIDATION_ERROR_PREFIX INVALID_CONNECTION_ERROR));
 }
 
 TEST(ValidationError, DuplicatedLocation) {
-    EXPECT_THAT(SubmitWorkflow({{{.inputs = {"a"}, .binds = {{"a", "a"}}}}, {}, kWorkflowMeta}),
-                StrEq(VALIDATION_ERROR_PREFIX DUPLICATED_LOCATION_ERROR));
-    EXPECT_THAT(SubmitWorkflow({{{.outputs = {"a"}, .binds = {{"a", "a"}}}}, {}, kWorkflowMeta}),
-                StrEq(VALIDATION_ERROR_PREFIX DUPLICATED_LOCATION_ERROR));
+    EXPECT_THAT(
+        SubmitWorkflow({{{.inputs = {{"a", false}}, .binds = {{"a", "a"}}}}, {}, kWorkflowMeta}),
+        StrEq(VALIDATION_ERROR_PREFIX DUPLICATED_PATH_ERROR));
+    EXPECT_THAT(SubmitWorkflow({{{.outputs = {{"a"}}, .binds = {{"a", "a"}}}}, {}, kWorkflowMeta}),
+                StrEq(VALIDATION_ERROR_PREFIX DUPLICATED_PATH_ERROR));
 }
 
 TEST(Submit, WorkflowIdUnique) {
@@ -111,10 +114,11 @@ TEST(Execution, SingleBlock) {
 }
 
 TEST(Execution, Bamboo) {
-    Workflow workflow = {
-        {{.outputs = {"a"}}, {.inputs = {"a"}, .outputs = {"b"}}, {.inputs = {"b"}}},
-        {{0, 0, 1, 0}, {1, 0, 2, 0}},
-        kWorkflowMeta};
+    Workflow workflow = {{{.outputs = {{"a"}}},
+                          {.inputs = {{"a", false}}, .outputs = {{"b"}}},
+                          {.inputs = {{"b", false}}}},
+                         {{0, 0, 1, 0}, {1, 0, 2, 0}},
+                         kWorkflowMeta};
     CheckExecution(workflow, 5, 1, 3, kRunnerDelay, 3 * kRunnerDelay);
     CheckExecution(workflow, 5, 10, 3, kRunnerDelay, 3 * kRunnerDelay);
 }
@@ -126,12 +130,12 @@ TEST(Execution, Parallel) {
 }
 
 TEST(Execution, MaxRunners) {
-    Workflow workflow = {{{.outputs = {"a"}},
-                          {.inputs = {"a"}, .outputs = {"b"}},
-                          {.inputs = {"a"}, .outputs = {"b"}},
-                          {.inputs = {"a"}, .outputs = {"b"}},
-                          {.inputs = {"a"}, .outputs = {"b"}},
-                          {.inputs = {"b1", "b2", "b3", "b4"}}},
+    Workflow workflow = {{{.outputs = {{"a"}}},
+                          {.inputs = {{"a", false}}, .outputs = {{"b"}}},
+                          {.inputs = {{"a", false}}, .outputs = {{"b"}}},
+                          {.inputs = {{"a", false}}, .outputs = {{"b"}}},
+                          {.inputs = {{"a", false}}, .outputs = {{"b"}}},
+                          {.inputs = {{"b1", false}, {"b2", false}, {"b3", false}, {"b4", false}}}},
                          {{0, 0, 1, 0},
                           {0, 0, 2, 0},
                           {0, 0, 3, 0},
@@ -157,12 +161,12 @@ TEST(Execution, MaxRunners) {
 }
 
 TEST(Execution, FiniteLoop) {
-    Workflow workflow = {{{.outputs = {"a"}},
-                          {.inputs = {"a"}, .outputs = {"b"}},
-                          {.inputs = {"b"}, .outputs = {"c"}},
-                          {.inputs = {"c"}, .outputs = {"d"}},
-                          {.inputs = {"d"}, .outputs = {"e"}},
-                          {.inputs = {"e1", "e2"}, .outputs = {"e"}}},
+    Workflow workflow = {{{.outputs = {{"a"}}},
+                          {.inputs = {{"a", false}}, .outputs = {{"b"}}},
+                          {.inputs = {{"b", false}}, .outputs = {{"c"}}},
+                          {.inputs = {{"c", false}}, .outputs = {{"d"}}},
+                          {.inputs = {{"d", false}}, .outputs = {{"e"}}},
+                          {.inputs = {{"e1", false}, {"e2", false}}, .outputs = {{"e"}}}},
                          {{0, 0, 1, 0},
                           {1, 0, 2, 0},
                           {2, 0, 3, 0},
@@ -177,13 +181,13 @@ TEST(Execution, FiniteLoop) {
 }
 
 TEST(Execution, FiniteCycle) {
-    Workflow workflow = {{{.outputs = {"a"}},
-                          {.inputs = {"a"}, .outputs = {"b"}},
-                          {.inputs = {"b"}, .outputs = {"c"}},
-                          {.inputs = {"c"}, .outputs = {"d"}},
-                          {.inputs = {"d"}, .outputs = {"e"}},
-                          {.inputs = {"e1", "e2"}, .outputs = {"f"}},
-                          {.inputs = {"f"}, .outputs = {"e"}}},
+    Workflow workflow = {{{.outputs = {{"a"}}},
+                          {.inputs = {{"a", false}}, .outputs = {{"b"}}},
+                          {.inputs = {{"b", false}}, .outputs = {{"c"}}},
+                          {.inputs = {{"c", false}}, .outputs = {{"d"}}},
+                          {.inputs = {{"d", false}}, .outputs = {{"e"}}},
+                          {.inputs = {{"e1", false}, {"e2", false}}, .outputs = {{"f"}}},
+                          {.inputs = {{"f", false}}, .outputs = {{"e"}}}},
                          {{0, 0, 1, 0},
                           {1, 0, 2, 0},
                           {2, 0, 3, 0},
@@ -198,12 +202,34 @@ TEST(Execution, FiniteCycle) {
     CheckExecution(workflow, 3, 2, 11, kRunnerDelay, 7 * kRunnerDelay);
 }
 
+TEST(Execution, CachedInputs) {
+    Workflow workflow = {{{.outputs = {{"a"}}},
+                          {.inputs = {{"a", false}}, .outputs = {{"b"}}},
+                          {.inputs = {{"b", false}}, .outputs = {{"c"}}},
+                          {.inputs = {{"c", false}}, .outputs = {{"d"}}},
+                          {.inputs = {{"d", false}}, .outputs = {{"e"}}},
+                          {.inputs = {{"e1", false}, {"e2", true}}, .outputs = {{"f"}}},
+                          {.inputs = {{"f1", false}, {"f2", true}}}},
+                         {{0, 0, 1, 0},
+                          {1, 0, 2, 0},
+                          {2, 0, 3, 0},
+                          {3, 0, 4, 0},
+                          {0, 0, 5, 0},
+                          {0, 0, 5, 1},
+                          {0, 0, 6, 1},
+                          {2, 0, 5, 0},
+                          {4, 0, 5, 0},
+                          {5, 0, 6, 0}},
+                         kWorkflowMeta};
+    CheckExecution(workflow, 3, 2, 11, kRunnerDelay, 7 * kRunnerDelay);
+}
+
 TEST(Execution, FailedBlocks) {
-    Workflow workflow = {{{.outputs = {"a"}},
-                          {.inputs = {"a"}},
-                          {.outputs = {"b"}},
-                          {.inputs = {"b"}, .outputs = {"c"}},
-                          {.inputs = {"c"}}},
+    Workflow workflow = {{{.outputs = {{"a"}}},
+                          {.inputs = {{"a", false}}},
+                          {.outputs = {{"b"}}},
+                          {.inputs = {{"b", false}}, .outputs = {{"c"}}},
+                          {.inputs = {{"c", false}}}},
                          {{0, 0, 1, 0}, {2, 0, 3, 0}, {3, 0, 4, 0}},
                          kWorkflowMeta};
     CheckExecution(workflow, 3, 2, 3, kRunnerDelay, 2 * kRunnerDelay, {0, 3});

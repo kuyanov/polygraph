@@ -54,8 +54,8 @@ void ImitateRun(const Workflow &workflow, int runner_delay,
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(runner_delay));
     for (const auto &output : workflow.blocks[block_id].outputs) {
-        ASSERT_TRUE(!fs::exists(container_path / output));
-        std::ofstream((container_path / output).string());
+        ASSERT_TRUE(!fs::exists(container_path / output.path));
+        std::ofstream((container_path / output.path).string());
     }
     bool failed =
         std::find(failed_blocks.begin(), failed_blocks.end(), block_id) != failed_blocks.end();

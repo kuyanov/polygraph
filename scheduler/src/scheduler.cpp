@@ -18,14 +18,18 @@ void WorkflowState::Init(const rapidjson::Document &document) {
     blocks_state_.resize(blocks.size());
     go_.resize(blocks.size());
     for (const auto &block : blocks) {
-        std::unordered_set<std::string> locations;
-        locations.insert(block.inputs.begin(), block.inputs.end());
-        locations.insert(block.outputs.begin(), block.outputs.end());
-        for (const auto &bind : block.binds) {
-            locations.insert(bind.inside);
+        std::unordered_set<std::string> paths;
+        for (const auto &input : block.inputs) {
+            paths.insert(input.path);
         }
-        if (locations.size() != block.inputs.size() + block.outputs.size() + block.binds.size()) {
-            throw ValidationError(DUPLICATED_LOCATION_ERROR);
+        for (const auto &output : block.outputs) {
+            paths.insert(output.path);
+        }
+        for (const auto &bind : block.binds) {
+            paths.insert(bind.inside);
+        }
+        if (paths.size() != block.inputs.size() + block.outputs.size() + block.binds.size()) {
+            throw ValidationError(DUPLICATED_PATH_ERROR);
         }
     }
     for (const auto &connection : connections) {
@@ -37,9 +41,6 @@ void WorkflowState::Init(const rapidjson::Document &document) {
         }
         go_[connection.source_block_id].push_back(connection);
     }
-    for (size_t block_id = 0; block_id < blocks.size(); ++block_id) {
-        blocks_state_[block_id].input_sources.resize(blocks[block_id].inputs.size());
-    }
 }
 
 void WorkflowState::Run() {
@@ -48,6 +49,8 @@ void WorkflowState::Run() {
     }
     is_running_ = true;
     for (size_t block_id = 0; block_id < blocks.size(); ++block_id) {
+        blocks_state_[block_id].cnt_inputs_ready = 0;
+        blocks_state_[block_id].input_sources.assign(blocks[block_id].inputs.size(), {});
         if (IsBlockReady(block_id)) {
             EnqueueBlock(block_id);
         }
@@ -123,7 +126,7 @@ bool WorkflowState::ProcessConnection(const Connection &connection) {
     fs::path source_output_path =
         fs::path("containers") /
         GetContainerId(source_block_id, blocks_state_[source_block_id].cnt_runs - 1) /
-        blocks[source_block_id].outputs[source_output_id];
+        blocks[source_block_id].outputs[source_output_id].path;
     if (!fs::exists(fs::path(GetVarDir()) / source_output_path) ||
         blocks_state_[target_block_id].input_sources[target_input_id]) {
         return false;
@@ -145,9 +148,15 @@ void WorkflowState::PrepareRun(size_t block_id) {
 }
 
 void WorkflowState::FinalizeRun(size_t block_id) {
-    blocks_state_[block_id].cnt_inputs_ready = 0;
     ++blocks_state_[block_id].cnt_runs;
-    blocks_state_[block_id].input_sources.assign(blocks[block_id].inputs.size(), {});
+    blocks_state_[block_id].cnt_inputs_ready = 0;
+    for (size_t input_id = 0; input_id < blocks[block_id].inputs.size(); ++input_id) {
+        if (!blocks[block_id].inputs[input_id].cached) {
+            blocks_state_[block_id].input_sources[input_id].reset();
+        } else {
+            ++blocks_state_[block_id].cnt_inputs_ready;
+        }
+    }
 }
 
 void WorkflowState::SendRunRequest(size_t block_id, RunnerWebSocket *ws) {
@@ -156,7 +165,7 @@ void WorkflowState::SendRunRequest(size_t block_id, RunnerWebSocket *ws) {
     std::vector<Bind> binds = {
         {.inside = ".", .outside = container_path.string(), .readonly = false}};
     for (size_t input_id = 0; input_id < blocks[block_id].inputs.size(); ++input_id) {
-        binds.push_back({.inside = blocks[block_id].inputs[input_id],
+        binds.push_back({.inside = blocks[block_id].inputs[input_id].path,
                          .outside = blocks_state_[block_id].input_sources[input_id].value(),
                          .readonly = true});
     }
@@ -182,7 +191,7 @@ void WorkflowState::RemoveClient(ClientWebSocket *ws) {
 
 void WorkflowState::SendToAllClients(std::string_view message) {
     for (ClientWebSocket *ws : clients_) {
-        ws->send(message);
+        ws->send(message, uWS::OpCode::TEXT);
     }
 }
 

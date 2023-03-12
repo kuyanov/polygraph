@@ -62,8 +62,8 @@ public:
 
 private:
     struct BlockState {
-        size_t cnt_inputs_ready = 0;
         size_t cnt_runs = 0;
+        size_t cnt_inputs_ready = 0;
         std::vector<std::optional<std::string>> input_sources;
     };
 

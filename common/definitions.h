@@ -9,7 +9,7 @@
 #define RUNTIME_ERROR_PREFIX "Runtime error: "
 #define API_ERROR_PREFIX "API error: "
 
-#define DUPLICATED_LOCATION_ERROR "duplicated location"
+#define DUPLICATED_PATH_ERROR "duplicated path"
 #define INVALID_CONNECTION_ERROR "invalid connection"
 #define UNDEFINED_COMMAND_ERROR "undefined command"
 #define NOT_IMPLEMENTED_ERROR "not implemented"
