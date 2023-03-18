@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -15,11 +16,10 @@ public:
         name_ = name;
     }
 
-    template <class... Args>
-    void Print(std::ostream &out, Args... args) {
-        out << "[" << name_ << "] ";
-        ((out << args), ...);
-        out << std::endl;
+    void Print(std::ostream &out, const std::string &text) {
+        std::string line = "[" + name_ + "] " + text + "\n";
+        out << line;
+        out.flush();
     }
 
 private:
@@ -28,6 +28,13 @@ private:
 };
 
 template <class... Args>
+inline std::string JoinToString(Args... args) {
+    std::stringstream ss;
+    ((ss << args), ...);
+    return ss.str();
+}
+
+template <class... Args>
 inline void Log(Args... args) {
-    Logger::Get().template Print(std::cerr, std::forward<Args>(args)...);
+    Logger::Get().Print(std::clog, JoinToString(std::forward<Args>(args)...));
 }

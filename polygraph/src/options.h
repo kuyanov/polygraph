@@ -66,3 +66,29 @@ public:
         }
     }
 };
+
+class RunnerStartOptions {
+public:
+    int num = 1;
+    std::string partition = "all";
+
+    static RunnerStartOptions &Get() {
+        static RunnerStartOptions options;
+        return options;
+    }
+
+    void Init(int argc, char **argv) {
+        po::options_description desc;
+        desc.add_options()("num,n", po::value<int>());
+        desc.add_options()("partition,p", po::value<std::string>());
+        po::variables_map vm;
+        po::store(po::parse_command_line(argc, argv, desc), vm);
+        po::notify(vm);
+        if (vm.count("num")) {
+            num = vm["num"].as<int>();
+        }
+        if (vm.count("partition")) {
+            partition = vm["partition"].as<std::string>();
+        }
+    }
+};

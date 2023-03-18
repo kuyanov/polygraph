@@ -141,7 +141,7 @@ void RunCmd(int argc, char **argv) {
     if (argc < 3 || strcmp(argv[2], "--help") == 0) {
         std::cerr << "Usage:  " << argv[0] << " run WORKFLOW_PATH" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "This command runs the workflow located at WORKFLOW_PATH" << std::endl;
+        std::cerr << "This command runs a workflow file stored at WORKFLOW_PATH" << std::endl;
         exit(EXIT_FAILURE);
     }
     RequireUp();
@@ -151,30 +151,49 @@ void RunCmd(int argc, char **argv) {
     client.Run();
 }
 
-void RunnerAttachCmd(int argc, char **argv) {
-    if (argc < 3 || (argc >= 4 && strcmp(argv[3], "--help") == 0)) {
-        std::cerr << "Usage:  " << argv[0] << " runner attach [OPTIONS]" << std::endl;
-        std::cerr << std::endl;
-        std::cerr << "This command attaches new runners to polygraph." << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    RequireRoot();
-    RequireUp();
-    Daemonize();
-    fs::path pid_path = fs::path(GetRunDir()) / "prunner.pid";
-    std::ofstream(pid_path.string()) << getpid() << std::endl;
-    fs::path exec_path = fs::path(GetExecDir()) / "prunner";
-    execl(exec_path.c_str(), "prunner", "all", nullptr);
-    fs::remove(pid_path);
-    perror("Failed to start runner");
-    exit(EXIT_FAILURE);
-}
-
 void RunnerListCmd(int argc, char **argv) {
     // TODO
 }
 
-void RunnerDetachCmd(int argc, char **argv) {
+void RunnerStartCmd(int argc, char **argv) {
+    if (argc < 3 || (argc >= 4 && strcmp(argv[3], "--help") == 0)) {
+        std::cerr << "Usage:  " << argv[0] << " runner start [OPTIONS]" << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "This command starts new runners." << std::endl;
+        std::cerr << std::endl;
+        std::cerr << "Options:" << std::endl;
+        std::cerr << "  -n, --num integer        "
+                  << "Number of runners to start (default 1)" << std::endl;
+        std::cerr << "  -p, --partition string   "
+                  << "Partition to subscribe to (default 'all')" << std::endl;
+        std::cerr << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    RunnerStartOptions::Get().Init(argc - 2, argv + 2);
+    RequireRoot();
+    RequireUp();
+    int runner_id = 0;
+    for (int iter = 0; iter < RunnerStartOptions::Get().num; ++iter) {
+        fs::path pid_path;
+        while (fs::exists(pid_path = fs::path(GetRunDir()) /
+                                     ("prunner" + std::to_string(runner_id) + ".pid"))) {
+            ++runner_id;
+        }
+        std::ofstream pid_file(pid_path.string());
+        if (fork() == 0) {
+            Daemonize();
+            pid_file << getpid() << std::endl;
+            fs::path exec_path = fs::path(GetExecDir()) / "prunner";
+            execl(exec_path.c_str(), "prunner", std::to_string(runner_id).c_str(),
+                  RunnerStartOptions::Get().partition.c_str(), nullptr);
+            fs::remove(pid_path);
+            perror("Failed to start runner");
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
+void RunnerStopCmd(int argc, char **argv) {
     // TODO
 }
 
@@ -183,23 +202,23 @@ void RunnerCmd(int argc, char **argv) {
         std::cerr << "Usage:  " << argv[0] << " runner ACTION [OPTIONS]" << std::endl;
         std::cerr << std::endl;
         std::cerr << "Actions:" << std::endl;
-        std::cerr << "  attach   "
-                  << "Attach new runners" << std::endl;
         std::cerr << "  list     "
-                  << "Show all runners" << std::endl;
-        std::cerr << "  detach   "
-                  << "Detach existing runners" << std::endl;
+                  << "Show runner list" << std::endl;
+        std::cerr << "  start    "
+                  << "Start new runners" << std::endl;
+        std::cerr << "  stop     "
+                  << "Stop runners" << std::endl;
         std::cerr << std::endl;
         std::cerr << "Run '" << argv[0]
                   << " runner ACTION --help' for more information about the action." << std::endl;
         exit(EXIT_FAILURE);
     }
-    if (strcmp(argv[2], "attach") == 0) {
-        RunnerAttachCmd(argc, argv);
-    } else if (strcmp(argv[2], "list") == 0) {
+    if (strcmp(argv[2], "list") == 0) {
         RunnerListCmd(argc, argv);
-    } else if (strcmp(argv[2], "detach") == 0) {
-        RunnerDetachCmd(argc, argv);
+    } else if (strcmp(argv[2], "start") == 0) {
+        RunnerStartCmd(argc, argv);
+    } else if (strcmp(argv[2], "stop") == 0) {
+        RunnerStopCmd(argc, argv);
     } else {
         std::cerr << "Unknown action '" << argv[2] << "'." << std::endl;
         std::cerr << "See '" << argv[0] << " runner --help'." << std::endl;
@@ -211,8 +230,8 @@ void StartCmd(int argc, char **argv) {
     if (argc != 2) {
         std::cerr << "Usage:  " << argv[0] << " start" << std::endl;
         std::cerr << std::endl;
-        std::cerr << "This command starts polygraph service with no runners." << std::endl;
-        std::cerr << "To start runners, execute '" << argv[0] << " runner attach'." << std::endl;
+        std::cerr << "This command starts polygraph service." << std::endl;
+        std::cerr << "To start runners, execute '" << argv[0] << " runner start'." << std::endl;
         exit(EXIT_FAILURE);
     }
     RequireRoot();
@@ -221,7 +240,8 @@ void StartCmd(int argc, char **argv) {
     if (IsMasterNode()) {
         Daemonize();
         fs::path pid_path = fs::path(GetRunDir()) / "pscheduler.pid";
-        std::ofstream(pid_path.string()) << getpid() << std::endl;
+        std::ofstream pid_file(pid_path.string());
+        pid_file << getpid() << std::endl;
         fs::path exec_path = fs::path(GetExecDir()) / "pscheduler";
         execl(exec_path.c_str(), "pscheduler", nullptr);
         fs::remove(pid_path);
@@ -240,14 +260,26 @@ void StopCmd(int argc, char **argv) {
     RequireRoot();
     RequireUp();
     for (const auto &entry : fs::directory_iterator(fs::path(GetRunDir()))) {
-        pid_t pid;
-        std::ifstream(entry.path().string()) >> pid;
-        if (kill(pid, SIGTERM)) {
-            perror("Failed to kill");
-            exit(EXIT_FAILURE);
+        if (!entry.path().filename().string().starts_with("prunner")) {
+            continue;
+        }
+        std::ifstream runner_pid_file(entry.path().string());
+        pid_t runner_pid;
+        runner_pid_file >> runner_pid;
+        if (kill(runner_pid, SIGTERM)) {
+            perror("Failed to stop runner");
         }
         fs::remove(entry.path());
     }
+    fs::path scheduler_pid_path = fs::path(GetRunDir()) / "pscheduler.pid";
+    std::ifstream scheduler_pid_file(scheduler_pid_path.string());
+    pid_t scheduler_pid;
+    scheduler_pid_file >> scheduler_pid;
+    if (kill(scheduler_pid, SIGTERM)) {
+        perror("Failed to stop scheduler");
+        exit(EXIT_FAILURE);
+    }
+    fs::remove(scheduler_pid_path);
 }
 
 int main(int argc, char **argv) {

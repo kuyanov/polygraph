@@ -19,9 +19,7 @@ ENV BUILD_DIR=cmake-build-asan
 RUN rm -rf $BUILD_DIR && \
     mkdir $BUILD_DIR && \
     cd $BUILD_DIR && \
-    cmake .. \
-    -D CMAKE_BUILD_TYPE=ASan \
-    -D DISABLE_SCHEDULER=1 && \
+    cmake .. -D CMAKE_BUILD_TYPE=ASan -D ENABLE_TESTING=1 && \
     make
 
-ENTRYPOINT [ "bash", "-c", "./test/runner/test.sh || (cat /var/log/polygraph/common.log && exit 1)" ]
+ENTRYPOINT [ "bash", "-c", "./test/runner/test.sh $BUILD_DIR || (cat /var/log/polygraph/common.log && exit 1)" ]
