@@ -3,8 +3,13 @@ FROM ubuntu:latest
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    apt-get install -y build-essential git cmake libboost-program-options-dev && \
-    apt-get clean
+    apt-get install -y build-essential git cmake bsdmainutils libboost-program-options-dev
+RUN git clone https://github.com/kuyanov/libsbox.git && \
+    mkdir libsbox/build && \
+    cd libsbox/build && \
+    cmake .. && \
+    make && \
+    yes | make install
 
 COPY . /polygraph
 WORKDIR /polygraph
