@@ -2,83 +2,82 @@
 #include <string>
 #include <unordered_set>
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "check.h"
-
-using ::testing::IsEmpty;
-using ::testing::MatchesRegex;
-using ::testing::StartsWith;
-using ::testing::StrEq;
 
 const int kRunnerDelay = 500;
 const Meta kWorkflowMeta = {"sample workflow", "all", INT_MAX};
 
 TEST(ParseError, Trivial) {
-    EXPECT_THAT(Submit(""), StartsWith(PARSE_ERROR_PREFIX));
-    EXPECT_THAT(Submit("{"), StartsWith(PARSE_ERROR_PREFIX));
-    EXPECT_THAT(Submit("}"), StartsWith(PARSE_ERROR_PREFIX));
-    EXPECT_THAT(Submit("{:}"), StartsWith(PARSE_ERROR_PREFIX));
-    EXPECT_THAT(Submit("{,}"), StartsWith(PARSE_ERROR_PREFIX));
-    EXPECT_THAT(Submit("{a:b}"), StartsWith(PARSE_ERROR_PREFIX));
-    EXPECT_THAT(Submit("\"a\":\"b\""), StartsWith(PARSE_ERROR_PREFIX));
-    EXPECT_THAT(Submit("{[]:[]}"), StartsWith(PARSE_ERROR_PREFIX));
-    EXPECT_THAT(Submit("{\"a\":\"b}"), StartsWith(PARSE_ERROR_PREFIX));
-    EXPECT_THAT(Submit("{\"a\":2,}"), StartsWith(PARSE_ERROR_PREFIX));
+    EXPECT_EQ(Submit("").status, SUBMIT_PARSE_ERROR);
+    EXPECT_EQ(Submit("{").status, SUBMIT_PARSE_ERROR);
+    EXPECT_EQ(Submit("}").status, SUBMIT_PARSE_ERROR);
+    EXPECT_EQ(Submit("{:}").status, SUBMIT_PARSE_ERROR);
+    EXPECT_EQ(Submit("{,}").status, SUBMIT_PARSE_ERROR);
+    EXPECT_EQ(Submit("{a:b}").status, SUBMIT_PARSE_ERROR);
+    EXPECT_EQ(Submit("\"a\":\"b\"").status, SUBMIT_PARSE_ERROR);
+    EXPECT_EQ(Submit("{[]:[]}").status, SUBMIT_PARSE_ERROR);
+    EXPECT_EQ(Submit("{\"a\":\"b}").status, SUBMIT_PARSE_ERROR);
+    EXPECT_EQ(Submit("{\"a\":2,}").status, SUBMIT_PARSE_ERROR);
 }
 
 TEST(ValidationError, Trivial) {
-    EXPECT_THAT(Submit("{}"), StartsWith(VALIDATION_ERROR_PREFIX));
-    EXPECT_THAT(Submit("[]"), StartsWith(VALIDATION_ERROR_PREFIX));
+    EXPECT_EQ(Submit("{}").status, SUBMIT_VALIDATION_ERROR);
+    EXPECT_EQ(Submit("[]").status, SUBMIT_VALIDATION_ERROR);
 }
 
 TEST(ValidationError, MetaMissing) {
-    EXPECT_THAT(Submit("{\"blocks\":[],\"connections\":[]}"), StartsWith(VALIDATION_ERROR_PREFIX));
+    EXPECT_EQ(Submit("{\"blocks\":[],\"connections\":[]}").status, SUBMIT_VALIDATION_ERROR);
 }
 
 TEST(ValidationError, InvalidType) {
-    EXPECT_THAT(
+    EXPECT_EQ(
         Submit(
             "{\"blocks\":[],\"connections\":0,\"meta\":{\"name\":\"\",\"partition\":\"all\",\"max-"
-            "runners\":1}}"),
-        StartsWith(VALIDATION_ERROR_PREFIX));
-    EXPECT_THAT(
+            "runners\":1}}")
+            .status,
+        SUBMIT_VALIDATION_ERROR);
+    EXPECT_EQ(
         Submit(
             "{\"blocks\":[],\"connections\":{},\"meta\":{\"name\":\"\",\"partition\":\"all\",\"max-"
-            "runners\":1}}"),
-        StartsWith(VALIDATION_ERROR_PREFIX));
+            "runners\":1}}")
+            .status,
+        SUBMIT_VALIDATION_ERROR);
 }
 
 TEST(ValidationError, InvalidConnection) {
-    EXPECT_THAT(SubmitWorkflow({{{.outputs = {{"a"}}}}, {{0, 0, 1, 0}}, kWorkflowMeta}),
-                StrEq(VALIDATION_ERROR_PREFIX INVALID_CONNECTION_ERROR));
-    EXPECT_THAT(SubmitWorkflow({{{.inputs = {{"a", false}}}}, {{1, 0, 0, 0}}, kWorkflowMeta}),
-                StrEq(VALIDATION_ERROR_PREFIX INVALID_CONNECTION_ERROR));
-    EXPECT_THAT(
+    EXPECT_EQ(SubmitWorkflow({{{.outputs = {{"a"}}}}, {{0, 0, 1, 0}}, kWorkflowMeta}).data,
+              INVALID_CONNECTION_ERROR);
+    EXPECT_EQ(SubmitWorkflow({{{.inputs = {{"a", false}}}}, {{1, 0, 0, 0}}, kWorkflowMeta}).data,
+              INVALID_CONNECTION_ERROR);
+    EXPECT_EQ(
         SubmitWorkflow(
-            {{{.outputs = {{"a"}}}, {.inputs = {{"a", false}}}}, {{0, 1, 1, 0}}, kWorkflowMeta}),
-        StrEq(VALIDATION_ERROR_PREFIX INVALID_CONNECTION_ERROR));
-    EXPECT_THAT(
+            {{{.outputs = {{"a"}}}, {.inputs = {{"a", false}}}}, {{0, 1, 1, 0}}, kWorkflowMeta})
+            .data,
+        INVALID_CONNECTION_ERROR);
+    EXPECT_EQ(
         SubmitWorkflow(
-            {{{.outputs = {{"a"}}}, {.inputs = {{"a", false}}}}, {{0, 0, 1, 1}}, kWorkflowMeta}),
-        StrEq(VALIDATION_ERROR_PREFIX INVALID_CONNECTION_ERROR));
+            {{{.outputs = {{"a"}}}, {.inputs = {{"a", false}}}}, {{0, 0, 1, 1}}, kWorkflowMeta})
+            .data,
+        INVALID_CONNECTION_ERROR);
 }
 
 TEST(ValidationError, DuplicatedLocation) {
-    EXPECT_THAT(
-        SubmitWorkflow({{{.inputs = {{"a", false}}, .binds = {{"a", "a"}}}}, {}, kWorkflowMeta}),
-        StrEq(VALIDATION_ERROR_PREFIX DUPLICATED_PATH_ERROR));
-    EXPECT_THAT(SubmitWorkflow({{{.outputs = {{"a"}}, .binds = {{"a", "a"}}}}, {}, kWorkflowMeta}),
-                StrEq(VALIDATION_ERROR_PREFIX DUPLICATED_PATH_ERROR));
+    EXPECT_EQ(
+        SubmitWorkflow({{{.inputs = {{"a", false}}, .binds = {{"a", "a"}}}}, {}, kWorkflowMeta})
+            .data,
+        DUPLICATED_PATH_ERROR);
+    EXPECT_EQ(
+        SubmitWorkflow({{{.outputs = {{"a"}}, .binds = {{"a", "a"}}}}, {}, kWorkflowMeta}).data,
+        DUPLICATED_PATH_ERROR);
 }
 
 TEST(Submit, WorkflowIdUnique) {
-    std::string body = StringifyJSON(Serialize(Workflow{{}, {}, kWorkflowMeta}));
     std::unordered_set<std::string> ids;
     for (int i = 0; i < 1000; i++) {
-        auto id = Submit(body);
-        EXPECT_THAT(id, MatchesRegex(UUID_REGEX));
-        ids.insert(id);
+        auto response = SubmitWorkflow(Workflow{{}, {}, kWorkflowMeta});
+        EXPECT_EQ(response.status, SUBMIT_ACCEPTED);
+        ids.insert(response.data);
     }
     ASSERT_EQ(ids.size(), 1000);
 }
@@ -86,9 +85,13 @@ TEST(Submit, WorkflowIdUnique) {
 TEST(Submit, MaxPayloadLength) {
     std::string body;
     body.resize(TestSchedulerConfig::Get().max_payload_length, '.');
-    EXPECT_THAT(Submit(body), StartsWith(PARSE_ERROR_PREFIX));
+    EXPECT_EQ(Submit(body).status, SUBMIT_PARSE_ERROR);
     body.push_back('.');
-    EXPECT_THAT(Submit(body), IsEmpty());
+    try {
+        Submit(body);
+        ASSERT_TRUE(false);
+    } catch (const std::runtime_error &) {
+    }
 }
 
 TEST(Execution, Empty) {

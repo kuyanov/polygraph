@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-struct Status {
+struct RunStatus {
     bool exited, signaled, time_limit_exceeded, wall_time_limit_exceeded, memory_limit_exceeded,
         oom_killed;
     int exit_code, term_signal;

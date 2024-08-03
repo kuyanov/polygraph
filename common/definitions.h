@@ -4,10 +4,9 @@
 #define HTTP_NOT_FOUND "404 Not Found"
 #define HTTP_REQUEST_ENTITY_TOO_LARGE "413 Request Entity Too Large"
 
-#define PARSE_ERROR_PREFIX "Could not parse json: "
-#define VALIDATION_ERROR_PREFIX "Validation error: "
-#define RUNTIME_ERROR_PREFIX "Runtime error: "
-#define API_ERROR_PREFIX "API error: "
+#define SUBMIT_ACCEPTED "accepted"
+#define SUBMIT_PARSE_ERROR "parse error"
+#define SUBMIT_VALIDATION_ERROR "validation error"
 
 #define DUPLICATED_PATH_ERROR "duplicated path"
 #define INVALID_CONNECTION_ERROR "invalid connection"
@@ -15,10 +14,11 @@
 #define NOT_IMPLEMENTED_ERROR "not implemented"
 #define ALREADY_RUNNING_ERROR "workflow is already running"
 
+#define BLOCK_SIGNAL "block"
+#define ERROR_SIGNAL "error"
 #define RUN_SIGNAL "run"
 #define STOP_SIGNAL "stop"
+#define WORKFLOW_SIGNAL "workflow"
 
 #define RUNNING_STATE "running"
-#define COMPLETE_STATE "complete"
-
-#define UUID_REGEX "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+#define FINISHED_STATE "finished"

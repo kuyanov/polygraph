@@ -1,8 +1,9 @@
 #include "serialization/all.h"
-#include "structures/status.h"
+#include "structures/run_status.h"
 
 template <>
-rapidjson::Value Serialize<Status>(const Status &data, rapidjson::Document::AllocatorType &alloc) {
+rapidjson::Value Serialize<RunStatus>(const RunStatus &data,
+                                      rapidjson::Document::AllocatorType &alloc) {
     rapidjson::Value value(rapidjson::kObjectType);
     value.AddMember("exited", Serialize(data.exited, alloc), alloc);
     value.AddMember("signaled", Serialize(data.signaled, alloc), alloc);
@@ -22,7 +23,7 @@ rapidjson::Value Serialize<Status>(const Status &data, rapidjson::Document::Allo
 }
 
 template <>
-void Deserialize<Status>(Status &data, const rapidjson::Value &value) {
+void Deserialize<RunStatus>(RunStatus &data, const rapidjson::Value &value) {
     Deserialize(data.exited, value["exited"]);
     Deserialize(data.signaled, value["signaled"]);
     Deserialize(data.time_limit_exceeded, value["time-limit-exceeded"]);

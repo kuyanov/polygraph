@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -22,12 +23,19 @@
 
 namespace fs = std::filesystem;
 
-std::string Submit(const std::string &body) {
-    return HttpSession(TestSchedulerConfig::Get().host, TestSchedulerConfig::Get().port)
-        .Post("/submit", body);
+SubmitResponse Submit(const std::string &body) {
+    std::string submit_response_text =
+        HttpSession(TestSchedulerConfig::Get().host, TestSchedulerConfig::Get().port)
+            .Post("/submit", body);
+    if (submit_response_text.empty()) {
+        throw std::runtime_error("submit response empty");
+    }
+    SubmitResponse submit_response;
+    Deserialize(submit_response, ParseJSON(submit_response_text));
+    return submit_response;
 }
 
-std::string SubmitWorkflow(const Workflow &workflow) {
+SubmitResponse SubmitWorkflow(const Workflow &workflow) {
     return Submit(StringifyJSON(Serialize(workflow)));
 }
 
@@ -69,10 +77,9 @@ void ImitateRun(const Workflow &workflow, int runner_delay,
 void CheckExecution(const Workflow &workflow, int cnt_clients, int cnt_runners, int exp_runs,
                     int runner_delay, int exp_delay,
                     const std::vector<size_t> &failed_blocks = {}) {
-    std::string body = StringifyJSON(Serialize(workflow));
-    auto id = HttpSession(TestSchedulerConfig::Get().host, TestSchedulerConfig::Get().port)
-                  .Post("/submit", body);
-    EXPECT_THAT(id, ::testing::MatchesRegex(UUID_REGEX));
+    auto submit_response = SubmitWorkflow(workflow);
+    EXPECT_EQ(submit_response.status, SUBMIT_ACCEPTED);
+    std::string workflow_id = submit_response.data;
 
     static SchemaValidator request_validator(GetDataDir() + "/schema/run_request.json");
     std::mutex request_validator_mutex;
@@ -80,9 +87,9 @@ void CheckExecution(const Workflow &workflow, int cnt_clients, int cnt_runners, 
     std::vector<WebsocketClientSession> runner_sessions(cnt_runners);
     for (int runner_id = 0; runner_id < cnt_runners; ++runner_id) {
         auto &session = runner_sessions[runner_id];
-        runner_threads[runner_id] = std::thread([&] {
+        runner_threads[runner_id] = std::thread([&, runner_id] {
             session.Connect(TestSchedulerConfig::Get().host, TestSchedulerConfig::Get().port,
-                            "/runner/" + workflow.meta.partition);
+                            "/runner/" + workflow.meta.partition + "/" + std::to_string(runner_id));
             session.OnRead([&](const std::string &message) {
                 request_validator_mutex.lock();
                 auto document = request_validator.ParseAndValidate(message);
@@ -105,18 +112,21 @@ void CheckExecution(const Workflow &workflow, int cnt_clients, int cnt_runners, 
         auto &session = client_sessions[client_id];
         client_threads[client_id] = std::thread([&] {
             session.Connect(TestSchedulerConfig::Get().host, TestSchedulerConfig::Get().port,
-                            "/workflow/" + id);
+                            "/workflow/" + workflow_id);
             int cnt_blocks_completed = 0;
             session.OnRead([&](const std::string &message) {
-                if (message == COMPLETE_STATE) {
-                    if (++cnt_clients_completed == cnt_clients) {
-                        completed.notify_one();
+                if (message.starts_with(WORKFLOW_SIGNAL)) {
+                    if (message.substr(strlen(WORKFLOW_SIGNAL) + 1) == FINISHED_STATE) {
+                        if (++cnt_clients_completed == cnt_clients) {
+                            completed.notify_one();
+                        }
+                        ASSERT_EQ(cnt_blocks_completed, exp_runs);
                     }
-                    ASSERT_EQ(cnt_blocks_completed, exp_runs);
-                } else {
+                } else if (message.starts_with(BLOCK_SIGNAL)) {
+                    std::string response_text = message.substr(strlen(BLOCK_SIGNAL) + 1);
                     BlockResponse response;
-                    Deserialize(response, ParseJSON(message));
-                    if (response.state == COMPLETE_STATE) {
+                    Deserialize(response, ParseJSON(response_text));
+                    if (response.state == FINISHED_STATE) {
                         ++cnt_blocks_completed;
                     }
                 }

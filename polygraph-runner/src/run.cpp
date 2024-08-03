@@ -44,7 +44,7 @@ void FillTask(const RunRequest &request, libsbox::Task &task) {
     }
 }
 
-void FillStatus(const libsbox::Task &task, Status &status) {
+void FillStatus(const libsbox::Task &task, RunStatus &status) {
     status.exited = task.exited();
     status.signaled = task.signaled();
     status.time_limit_exceeded = task.is_time_limit_exceeded();
@@ -80,7 +80,8 @@ void Run() {
         try {
             WebsocketClientSession session;
             session.Connect(RunnerConfig::Get().host, RunnerConfig::Get().port,
-                            "/runner/" + RunnerConfig::Get().partition);
+                            "/runner/" + RunnerConfig::Get().partition + "/" +
+                                std::to_string(RunnerConfig::Get().id));
             connected = true;
             Log("Connected to ", RunnerConfig::Get().host, ":", RunnerConfig::Get().port);
             session.OnRead([&](const std::string &message) {

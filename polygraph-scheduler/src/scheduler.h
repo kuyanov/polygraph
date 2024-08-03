@@ -18,6 +18,7 @@ class Partition;
 
 struct RunnerPerSocketData {
     std::string partition;
+    int runner_id;
     WorkflowState *workflow_ptr;
     size_t block_id;
 };

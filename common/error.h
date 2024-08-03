@@ -17,9 +17,9 @@ struct ValidationError : public std::exception {
     }
 };
 
-struct APIError : public std::exception {
+struct RuntimeError : public std::exception {
     std::string message;
 
-    explicit APIError(std::string message = "") : message(std::move(message)) {
+    explicit RuntimeError(std::string message = "") : message(std::move(message)) {
     }
 };

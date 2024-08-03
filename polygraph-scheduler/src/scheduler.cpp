@@ -6,6 +6,7 @@
 #include "environment.h"
 #include "error.h"
 #include "json.h"
+#include "logger.h"
 #include "scheduler.h"
 #include "serialization/all.h"
 #include "structures/all.h"
@@ -45,7 +46,7 @@ void WorkflowState::Init(const rapidjson::Document &document) {
 
 void WorkflowState::Run() {
     if (is_running_) {
-        throw APIError(ALREADY_RUNNING_ERROR);
+        throw RuntimeError(ALREADY_RUNNING_ERROR);
     }
     is_running_ = true;
     for (size_t block_id = 0; block_id < blocks.size(); ++block_id) {
@@ -60,7 +61,7 @@ void WorkflowState::Run() {
 
 void WorkflowState::Stop() {
     // TODO
-    throw APIError(NOT_IMPLEMENTED_ERROR);
+    throw RuntimeError(NOT_IMPLEMENTED_ERROR);
 }
 
 void WorkflowState::RunBlock(size_t block_id, RunnerWebSocket *ws) {
@@ -70,9 +71,11 @@ void WorkflowState::RunBlock(size_t block_id, RunnerWebSocket *ws) {
         PrepareRun(block_id);
         SendRunRequest(block_id, ws);
         BlockResponse response = {.block_id = block_id, .state = RUNNING_STATE};
-        SendToAllClients(StringifyJSON(Serialize(response)));
+        SendToAllClients(BLOCK_SIGNAL + std::string(" ") + StringifyJSON(Serialize(response)));
+        Log("Workflow ", workflow_id, ": block ", block_id, " -> runner ",
+            ws->getUserData()->runner_id);
     } catch (const fs::filesystem_error &error) {
-        RunResponse response = {.error = RUNTIME_ERROR_PREFIX + std::string(error.what())};
+        RunResponse response = {.error = error.what()};
         OnStatus(ws, StringifyJSON(Serialize(response)));
     }
 }
@@ -91,10 +94,13 @@ void WorkflowState::OnStatus(RunnerWebSocket *ws, std::string_view message) {
         }
     }
     BlockResponse block_response = {.block_id = block_id,
-                                    .state = COMPLETE_STATE,
+                                    .state = FINISHED_STATE,
                                     .error = run_response.error,
                                     .status = run_response.status};
-    SendToAllClients(StringifyJSON(Serialize(block_response)));
+    SendToAllClients(BLOCK_SIGNAL + std::string(" ") + StringifyJSON(Serialize(block_response)));
+    Log("Workflow ", workflow_id, ": block ", block_id, " finished, error = '",
+        block_response.error.value_or(""),
+        "', status = ", StringifyJSON(Serialize(block_response.status)));
     partition_ptr->AddRunner(ws);
     DequeueBlock();
     UpdateBlocksProcessing();
@@ -117,7 +123,8 @@ void WorkflowState::UpdateBlocksProcessing() {
     }
     if (is_running_ && cnt_blocks_processing_ == 0 && blocks_ready_.empty()) {
         is_running_ = false;
-        SendToAllClients(COMPLETE_STATE);
+        SendToAllClients(WORKFLOW_SIGNAL + std::string(" ") + FINISHED_STATE);
+        Log("Workflow ", workflow_id, ": run finished");
     }
 }
 

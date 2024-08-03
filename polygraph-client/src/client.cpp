@@ -17,14 +17,18 @@ namespace fs = std::filesystem;
 Client::Client(const std::string &workflow_file) {
     auto document = ReadJSON(workflow_file);
     std::string body = StringifyJSON(document);
-    std::string workflow_id =
+    std::string submit_response_text =
         HttpSession(ClientConfig::Get().host, ClientConfig::Get().port).Post("/submit", body);
-    if (!regex_match(workflow_id, std::regex(UUID_REGEX))) {
-        std::cerr << "Process terminated with the following exception:" << std::endl;
+    SubmitResponse submit_response;
+    Deserialize(submit_response, ParseJSON(submit_response_text));
+    if (submit_response.status != SUBMIT_ACCEPTED) {
+        std::cerr << "While sending the workflow, the following exception occurred:" << std::endl;
         std::cerr << std::endl;
-        std::cerr << workflow_id << std::endl;
+        std::cerr << "Exception type: " << submit_response.status << std::endl;
+        std::cerr << "Message: " << submit_response.data << std::endl;
         exit(EXIT_FAILURE);
     }
+    std::string workflow_id = submit_response.data;
     Deserialize(workflow_, document);
     blocks_.resize(workflow_.blocks.size());
     cnt_runs_.resize(workflow_.blocks.size());
@@ -46,34 +50,39 @@ void Client::Stop() {
 }
 
 void Client::OnMessage(const std::string &message) {
-    if (message == COMPLETE_STATE) {
-        session_.Stop();
-        return;
-    } else if (message.starts_with(API_ERROR_PREFIX)) {
-        std::cerr << message << std::endl;
+    if (message.starts_with(WORKFLOW_SIGNAL)) {
+        std::string workflow_state = message.substr(strlen(WORKFLOW_SIGNAL) + 1);
+        if (workflow_state == FINISHED_STATE) {
+            session_.Stop();
+            return;
+        }
+    } else if (message.starts_with(BLOCK_SIGNAL)) {
+        std::string block_response_text = message.substr(strlen(BLOCK_SIGNAL) + 1);
+        BlockResponse block;
+        Deserialize(block, ParseJSON(block_response_text));
+        blocks_[block.block_id] = block;
+        if (block.state == RUNNING_STATE) {
+            ++cnt_runs_[block.block_id];
+        }
+        PrintBlocks();
+    } else if (message.starts_with(ERROR_SIGNAL)) {
+        std::string error = message.substr(strlen(ERROR_SIGNAL) + 1);
+        std::cerr << "Error: " << error << std::endl;
         session_.Stop();
         return;
     }
-    BlockResponse block;
-    Deserialize(block, ParseJSON(message));
-    blocks_[block.block_id] = block;
-    if (block.state == RUNNING_STATE) {
-        ++cnt_runs_[block.block_id];
-    }
-    PrintBlocks();
 }
 
 void Client::PrintWarnings() {
     for (const auto &block : workflow_.blocks) {
         for (const auto &bind : block.binds) {
-            auto outside_abspath = fs::path(GetVarDir()) / "user" / bind.outside;
-            if (!fs::exists(outside_abspath)) {
+            if (!fs::exists(bind.outside)) {
                 std::cerr << ColoredText("Warning: file " + bind.outside + " does not exist",
                                          YELLOW)
                           << std::endl;
                 continue;
             }
-            auto bind_perms = fs::status(outside_abspath).permissions();
+            auto bind_perms = fs::status(bind.outside).permissions();
             if ((bind_perms & fs::perms::others_read) == fs::perms::none) {
                 std::cerr << ColoredText("Warning: no read permission for file " + bind.outside,
                                          YELLOW)

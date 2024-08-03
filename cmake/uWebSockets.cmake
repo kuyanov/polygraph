@@ -3,7 +3,7 @@ set(FETCHCONTENT_QUIET FALSE)
 FetchContent_Declare(
         uWebSockets
         GIT_REPOSITORY https://github.com/uNetworking/uWebSockets.git
-        GIT_TAG v20.22.0
+        GIT_TAG v20.64.0
         GIT_SUBMODULES uSockets
         GIT_SUBMODULES_RECURSE FALSE
 )
