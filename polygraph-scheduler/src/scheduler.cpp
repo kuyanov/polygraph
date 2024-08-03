@@ -124,10 +124,10 @@ void WorkflowState::UpdateBlocksProcessing() {
 bool WorkflowState::ProcessConnection(const Connection &connection) {
     const auto &[source_block_id, source_output_id, target_block_id, target_input_id] = connection;
     fs::path source_output_path =
-        fs::path("containers") /
+        fs::path(GetVarDir()) / "containers" /
         GetContainerId(source_block_id, blocks_state_[source_block_id].cnt_runs - 1) /
         blocks[source_block_id].outputs[source_output_id].path;
-    if (!fs::exists(fs::path(GetVarDir()) / source_output_path) ||
+    if (!fs::exists(source_output_path) ||
         blocks_state_[target_block_id].input_sources[target_input_id]) {
         return false;
     }
@@ -160,8 +160,8 @@ void WorkflowState::FinalizeRun(size_t block_id) {
 }
 
 void WorkflowState::SendRunRequest(size_t block_id, RunnerWebSocket *ws) {
-    fs::path container_path =
-        fs::path("containers") / GetContainerId(block_id, blocks_state_[block_id].cnt_runs);
+    fs::path container_path = fs::path(GetVarDir()) / "containers" /
+                              GetContainerId(block_id, blocks_state_[block_id].cnt_runs);
     std::vector<Bind> binds = {
         {.inside = ".", .outside = container_path.string(), .readonly = false}};
     for (size_t input_id = 0; input_id < blocks[block_id].inputs.size(); ++input_id) {
@@ -170,9 +170,8 @@ void WorkflowState::SendRunRequest(size_t block_id, RunnerWebSocket *ws) {
                          .readonly = true});
     }
     for (const auto &bind : blocks[block_id].binds) {
-        binds.push_back({.inside = bind.inside,
-                         .outside = (fs::path("user") / bind.outside).string(),
-                         .readonly = bind.readonly});
+        binds.push_back(
+            {.inside = bind.inside, .outside = bind.outside, .readonly = bind.readonly});
     }
     RunRequest request = {.binds = std::move(binds),
                           .argv = blocks[block_id].argv,

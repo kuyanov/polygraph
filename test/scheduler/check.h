@@ -23,7 +23,7 @@
 namespace fs = std::filesystem;
 
 std::string Submit(const std::string &body) {
-    return HttpSession(Config::Get().scheduler_host, Config::Get().scheduler_port)
+    return HttpSession(TestSchedulerConfig::Get().host, TestSchedulerConfig::Get().port)
         .Post("/submit", body);
 }
 
@@ -70,7 +70,7 @@ void CheckExecution(const Workflow &workflow, int cnt_clients, int cnt_runners, 
                     int runner_delay, int exp_delay,
                     const std::vector<size_t> &failed_blocks = {}) {
     std::string body = StringifyJSON(Serialize(workflow));
-    auto id = HttpSession(Config::Get().scheduler_host, Config::Get().scheduler_port)
+    auto id = HttpSession(TestSchedulerConfig::Get().host, TestSchedulerConfig::Get().port)
                   .Post("/submit", body);
     EXPECT_THAT(id, ::testing::MatchesRegex(UUID_REGEX));
 
@@ -81,7 +81,7 @@ void CheckExecution(const Workflow &workflow, int cnt_clients, int cnt_runners, 
     for (int runner_id = 0; runner_id < cnt_runners; ++runner_id) {
         auto &session = runner_sessions[runner_id];
         runner_threads[runner_id] = std::thread([&] {
-            session.Connect(Config::Get().scheduler_host, Config::Get().scheduler_port,
+            session.Connect(TestSchedulerConfig::Get().host, TestSchedulerConfig::Get().port,
                             "/runner/" + workflow.meta.partition);
             session.OnRead([&](const std::string &message) {
                 request_validator_mutex.lock();
@@ -104,7 +104,7 @@ void CheckExecution(const Workflow &workflow, int cnt_clients, int cnt_runners, 
     for (int client_id = 0; client_id < cnt_clients; ++client_id) {
         auto &session = client_sessions[client_id];
         client_threads[client_id] = std::thread([&] {
-            session.Connect(Config::Get().scheduler_host, Config::Get().scheduler_port,
+            session.Connect(TestSchedulerConfig::Get().host, TestSchedulerConfig::Get().port,
                             "/workflow/" + id);
             int cnt_blocks_completed = 0;
             session.OnRead([&](const std::string &message) {

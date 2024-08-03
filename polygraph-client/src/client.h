@@ -8,7 +8,7 @@
 
 class Client {
 public:
-    Client(const std::string &workflow_path);
+    Client(const std::string &workflow_file);
 
     void Run();
     void Stop();

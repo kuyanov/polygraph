@@ -24,11 +24,10 @@ long long Timestamp() {
 }
 
 fs::path CreateContainer() {
-    fs::path container_relpath = fs::path("containers") / GenerateUuid();
-    fs::path container_abspath = fs::path(GetVarDir()) / container_relpath;
-    fs::create_directories(container_abspath);
-    fs::permissions(container_abspath, fs::perms::all, fs::perm_options::add);
-    return container_relpath;
+    fs::path container_path = fs::path(GetVarDir()) / "containers" / GenerateUuid();
+    fs::create_directories(container_path);
+    fs::permissions(container_path, fs::perms::all, fs::perm_options::add);
+    return container_path;
 }
 
 void CreateFile(const std::string &relpath, const std::string &content, int other_perms = 7) {
@@ -47,7 +46,7 @@ std::string ReadFile(const std::string &relpath) {
 }
 
 RunResponse SendRunRequest(const RunRequest &request) {
-    static WebsocketServer server("0.0.0.0", Config::Get().scheduler_port);
+    static WebsocketServer server("0.0.0.0", TestRunnerConfig::Get().port);
     static SchemaValidator response_validator(GetDataDir() + "/schema/run_response.json");
     auto session = server.Accept();
     session.Write(StringifyJSON(Serialize(request)));

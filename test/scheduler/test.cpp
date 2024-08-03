@@ -49,17 +49,6 @@ TEST(ValidationError, InvalidType) {
         StartsWith(VALIDATION_ERROR_PREFIX));
 }
 
-TEST(ValidationError, PathRegex) {
-    for (const auto &path : {"", ".", "../a", "/home", ".a", "a.", "a..b", "a b"}) {
-        EXPECT_THAT(SubmitWorkflow({{{.binds = {{path, path}}}}, {}, kWorkflowMeta}),
-                    StartsWith(VALIDATION_ERROR_PREFIX));
-    }
-    for (const auto &path : {"a", "a.in", "a.in.txt", "A.mp4", "a/b/c.D.E"}) {
-        EXPECT_THAT(SubmitWorkflow({{{.binds = {{path, path}}}}, {}, kWorkflowMeta}),
-                    MatchesRegex(UUID_REGEX));
-    }
-}
-
 TEST(ValidationError, InvalidConnection) {
     EXPECT_THAT(SubmitWorkflow({{{.outputs = {{"a"}}}}, {{0, 0, 1, 0}}, kWorkflowMeta}),
                 StrEq(VALIDATION_ERROR_PREFIX INVALID_CONNECTION_ERROR));
@@ -96,7 +85,7 @@ TEST(Submit, WorkflowIdUnique) {
 
 TEST(Submit, MaxPayloadLength) {
     std::string body;
-    body.resize(Config::Get().scheduler_max_payload_length, '.');
+    body.resize(TestSchedulerConfig::Get().max_payload_length, '.');
     EXPECT_THAT(Submit(body), StartsWith(PARSE_ERROR_PREFIX));
     body.push_back('.');
     EXPECT_THAT(Submit(body), IsEmpty());

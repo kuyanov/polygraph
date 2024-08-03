@@ -8,17 +8,17 @@
 #include "client.h"
 #include "config.h"
 #include "definitions.h"
+#include "json.h"
 #include "serialization/all.h"
 #include "terminal.h"
 
 namespace fs = std::filesystem;
 
-Client::Client(const std::string &workflow_path) {
-    auto document = ReadJSON(workflow_path);
+Client::Client(const std::string &workflow_file) {
+    auto document = ReadJSON(workflow_file);
     std::string body = StringifyJSON(document);
     std::string workflow_id =
-        HttpSession(Config::Get().scheduler_host, Config::Get().scheduler_port)
-            .Post("/submit", body);
+        HttpSession(ClientConfig::Get().host, ClientConfig::Get().port).Post("/submit", body);
     if (!regex_match(workflow_id, std::regex(UUID_REGEX))) {
         std::cerr << "Process terminated with the following exception:" << std::endl;
         std::cerr << std::endl;
@@ -28,7 +28,7 @@ Client::Client(const std::string &workflow_path) {
     Deserialize(workflow_, document);
     blocks_.resize(workflow_.blocks.size());
     cnt_runs_.resize(workflow_.blocks.size());
-    session_.Connect(Config::Get().scheduler_host, Config::Get().scheduler_port,
+    session_.Connect(ClientConfig::Get().host, ClientConfig::Get().port,
                      "/workflow/" + workflow_id);
     session_.OnRead([this](const std::string &message) { OnMessage(message); });
 }

@@ -5,6 +5,7 @@
 #include <libsbox.h>
 
 #include "config.h"
+#include "json.h"
 #include "logger.h"
 #include "net.h"
 #include "run.h"
@@ -15,7 +16,7 @@ namespace fs = std::filesystem;
 
 void FillTask(const RunRequest &request, libsbox::Task &task) {
     for (const auto &bind : request.binds) {
-        task.get_binds().emplace_back(bind.inside, (fs::path(GetVarDir()) / bind.outside).string(),
+        task.get_binds().emplace_back(bind.inside, bind.outside,
                                       bind.readonly ? 0 : libsbox::BindRule::WRITABLE);
     }
     task.set_argv(request.argv);
@@ -73,15 +74,15 @@ RunResponse ProcessRequest(const RunRequest &request) {
     return response;
 }
 
-void Run(const std::string &partition) {
+void Run() {
     bool connected = true;
     while (true) {
         try {
             WebsocketClientSession session;
-            session.Connect(Config::Get().scheduler_host, Config::Get().scheduler_port,
-                            "/runner/" + partition);
+            session.Connect(RunnerConfig::Get().host, RunnerConfig::Get().port,
+                            "/runner/" + RunnerConfig::Get().partition);
             connected = true;
-            Log("Connected to ", Config::Get().scheduler_host, ":", Config::Get().scheduler_port);
+            Log("Connected to ", RunnerConfig::Get().host, ":", RunnerConfig::Get().port);
             session.OnRead([&](const std::string &message) {
                 std::thread([=, &session] {
                     RunRequest request;
@@ -94,11 +95,11 @@ void Run(const std::string &partition) {
         } catch (const beast::system_error &error) {
             if (connected) {
                 connected = false;
-                Log("Not connected to ", Config::Get().scheduler_host, ":",
-                    Config::Get().scheduler_port, ": ", error.what());
+                Log("Not connected to ", RunnerConfig::Get().host, ":", RunnerConfig::Get().port,
+                    ": ", error.what());
             }
             std::this_thread::sleep_for(
-                std::chrono::milliseconds(Config::Get().runner_reconnect_interval_ms));
+                std::chrono::milliseconds(RunnerConfig::Get().reconnect_interval_ms));
         }
     }
 }

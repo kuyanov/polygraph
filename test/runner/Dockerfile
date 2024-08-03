@@ -17,9 +17,8 @@ WORKDIR /polygraph
 ENV BUILD_DIR=cmake-build-asan
 
 RUN rm -rf $BUILD_DIR && \
-    mkdir $BUILD_DIR && \
-    cd $BUILD_DIR && \
-    cmake .. -D CMAKE_BUILD_TYPE=ASan -D ENABLE_TESTING=1 && \
-    make
+    cmake . -B $BUILD_DIR -D CMAKE_BUILD_TYPE=ASan -D ENABLE_TESTING=1 && \
+    cmake --build $BUILD_DIR && \
+    cmake --install $BUILD_DIR
 
 ENTRYPOINT [ "bash", "-c", "./test/runner/test.sh $BUILD_DIR || (cat /var/log/polygraph/common.log && exit 1)" ]

@@ -1,11 +1,5 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "definitions": {
-    "path": {
-      "type": "string",
-      "pattern": "^([A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$"
-    }
-  },
   "type": "object",
   "required": [
     "blocks",
@@ -40,7 +34,7 @@
               ],
               "properties": {
                 "path": {
-                  "$ref": "#/definitions/path"
+                  "type": "string"
                 },
                 "cached": {
                   "type": "boolean"
@@ -57,7 +51,7 @@
               ],
               "properties": {
                 "path": {
-                  "$ref": "#/definitions/path"
+                  "type": "string"
                 }
               }
             }
@@ -73,10 +67,10 @@
               ],
               "properties": {
                 "inside": {
-                  "$ref": "#/definitions/path"
+                  "type": "string"
                 },
                 "outside": {
-                  "$ref": "#/definitions/path"
+                  "type": "string"
                 },
                 "readonly": {
                   "type": "boolean"
