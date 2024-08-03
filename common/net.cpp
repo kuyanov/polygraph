@@ -1,16 +1,17 @@
 #include "net.h"
 
-HttpSession::HttpSession(const std::string &host, int port) : stream_(ioc_) {
+HttpSession::HttpSession(const std::string &host, int port) : host_(host), stream_(ioc_) {
     ip::tcp::resolver resolver(ioc_);
     auto results = resolver.resolve(host, std::to_string(port));
     stream_.connect(results);
 }
 
 std::string HttpSession::Post(const std::string &target, const std::string &body) {
-    http::request<http::string_body> req{http::verb::post, target, 10};
+    http::request<http::string_body> req{http::verb::post, target, 11};
+    req.set(http::field::host, host_);
     req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
-    req.set(http::field::content_length, std::to_string(body.size()));
     req.body() = body;
+    req.prepare_payload();
     http::write(stream_, req);
     beast::flat_buffer buffer;
     http::response<http::string_body> res;

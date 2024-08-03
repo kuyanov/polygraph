@@ -19,6 +19,7 @@ public:
     ~HttpSession();
 
 private:
+    std::string host_;
     asio::io_context ioc_;
     beast::tcp_stream stream_;
 };
