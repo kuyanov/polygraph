@@ -17,14 +17,11 @@ void InvokeWithOptions(int argc, char **argv, const std::function<void(Options)>
 
 void ParseRunnerAction(int argc, char **argv) {
     if (argc < 2 || strcmp(argv[1], "--help") == 0) {
-        std::cerr << "Usage:  "
-                  << "polygraph runner ACTION [OPTIONS]" << std::endl;
+        std::cerr << "Usage:  " << "polygraph runner ACTION [OPTIONS]" << std::endl;
         std::cerr << std::endl;
         std::cerr << "Actions:" << std::endl;
-        std::cerr << "  start   "
-                  << "Start runners" << std::endl;
-        std::cerr << "  stop    "
-                  << "Stop runners" << std::endl;
+        std::cerr << "  start   " << "Start runners" << std::endl;
+        std::cerr << "  stop    " << "Stop runners" << std::endl;
         std::cerr << std::endl;
         std::cerr << "Run 'polygraph runner ACTION --help' for more information about the action."
                   << std::endl;
@@ -43,22 +40,13 @@ void ParseRunnerAction(int argc, char **argv) {
 
 void ParseCommand(int argc, char **argv) {
     if (argc < 2 || strcmp(argv[1], "--help") == 0) {
-        std::cerr << "Usage:  "
-                  << "polygraph COMMAND [OPTIONS]" << std::endl;
+        std::cerr << "Usage:  " << "polygraph COMMAND [OPTIONS]" << std::endl;
         std::cerr << std::endl;
         std::cerr << "Commands:" << std::endl;
-        std::cerr << "  attach   "
-                  << "Attach this machine to an already running polygraph service" << std::endl;
-        std::cerr << "  detach   "
-                  << "Stop all runners and detach from polygraph service" << std::endl;
-        std::cerr << "  run      "
-                  << "Run a workflow" << std::endl;
-        std::cerr << "  runner   "
-                  << "Manage runners" << std::endl;
-        std::cerr << "  start    "
-                  << "Start polygraph service on this machine" << std::endl;
-        std::cerr << "  stop     "
-                  << "Stop polygraph service and all runners on this machine" << std::endl;
+        std::cerr << "  run      " << "Run a workflow" << std::endl;
+        std::cerr << "  runner   " << "Manage runners" << std::endl;
+        std::cerr << "  start    " << "Start polygraph service" << std::endl;
+        std::cerr << "  stop     " << "Stop polygraph service (including all runners)" << std::endl;
         std::cerr << std::endl;
         std::cerr << "Run 'polygraph COMMAND --help' for more information about the command."
                   << std::endl;

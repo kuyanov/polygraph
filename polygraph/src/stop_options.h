@@ -11,8 +11,7 @@ public:
     po::options_description desc{"Options"};
 
     void HelpMessage() const {
-        std::cerr << "Usage:  "
-                  << "polygraph stop [OPTIONS]" << std::endl;
+        std::cerr << "Usage:  " << "polygraph stop [OPTIONS]" << std::endl;
         std::cerr << std::endl;
         std::cerr << desc << std::endl;
         exit(EXIT_FAILURE);

@@ -2,7 +2,6 @@
 #include <filesystem>
 #include <iomanip>
 #include <iostream>
-#include <regex>
 #include <string>
 
 #include "client.h"

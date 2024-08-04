@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ctime>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -17,8 +19,11 @@ public:
     }
 
     void Print(std::ostream &out, const std::string &text) {
-        std::string line = "[" + name_ + "] " + text + "\n";
-        out << line;
+        time_t now = time(nullptr);
+        std::stringstream ss;
+        ss << std::put_time(localtime(&now), "%F %T");
+        ss << " [" << name_ << "] " << text << "\n";
+        out << ss.str();
         out.flush();
     }
 

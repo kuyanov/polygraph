@@ -14,5 +14,5 @@ void Run(const RunOptions &options) {
     setenv("POLYGRAPH_PORT", std::to_string(options.port).c_str(), 1);
     fs::path exec_path = fs::path(GetExecDir()) / "polygraph-client";
     execl(exec_path.c_str(), "polygraph-client", options.workflow_file.c_str(), nullptr);
-    perror("Execution finished with errors");
+    perror("Failed to run");
 }

@@ -16,8 +16,7 @@ public:
     unsigned short idle_timeout;
 
     void HelpMessage() const {
-        std::cerr << "Usage:  "
-                  << "polygraph start [OPTIONS]" << std::endl;
+        std::cerr << "Usage:  " << "polygraph start [OPTIONS]" << std::endl;
         std::cerr << std::endl;
         std::cerr << desc << std::endl;
         exit(EXIT_FAILURE);
@@ -25,19 +24,13 @@ public:
 
     void Init(int argc, char **argv) {
         desc.add_options()("help", "print help message");
-        int default_port = atoi(GetEnvOr("POLYGRAPH_PORT", "3000").c_str());
-        desc.add_options()("port", po::value<int>(&port)->default_value(default_port),
-                           "polygraph port (default taken from POLYGRAPH_PORT)");
-        unsigned int default_mplen = atoi(GetEnvOr("POLYGRAPH_SCHEDULER_MPLEN", "1048576").c_str());
-        desc.add_options()(
-            "mplen", po::value<unsigned int>(&max_payload_length)->default_value(default_mplen),
-            "max payload length, in bytes (default taken from POLYGRAPH_SCHEDULER_MPLEN)");
-        unsigned short default_idle_timeout =
-            atoi(GetEnvOr("POLYGRAPH_SCHEDULER_IDLE_TIMEOUT_S", "60").c_str());
-        desc.add_options()(
-            "idle-timeout",
-            po::value<unsigned short>(&idle_timeout)->default_value(default_idle_timeout),
-            "time interval for pings (default taken from POLYGRAPH_SCHEDULER_IDLE_TIMEOUT_S)");
+        desc.add_options()("port", po::value<int>(&port)->default_value(3000), "polygraph port");
+        desc.add_options()("mplen",
+                           po::value<unsigned int>(&max_payload_length)->default_value(1048576),
+                           "max payload length (in bytes)");
+        desc.add_options()("idle-timeout",
+                           po::value<unsigned short>(&idle_timeout)->default_value(60),
+                           "time interval (s) for pings");
         po::variables_map vm;
         try {
             po::store(po::command_line_parser(argc, argv).options(desc).run(), vm);
