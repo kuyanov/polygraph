@@ -14,11 +14,9 @@ RUN git clone https://github.com/kuyanov/libsbox.git && \
 COPY . /polygraph
 WORKDIR /polygraph
 
-ENV BUILD_DIR=cmake-build-asan
+RUN rm -rf build && \
+    cmake . -B build -D CMAKE_BUILD_TYPE=ASan -D TEST=1 && \
+    cmake --build build && \
+    cmake --install build
 
-RUN rm -rf $BUILD_DIR && \
-    cmake . -B $BUILD_DIR -D CMAKE_BUILD_TYPE=ASan -D ENABLE_TESTING=1 && \
-    cmake --build $BUILD_DIR && \
-    cmake --install $BUILD_DIR
-
-ENTRYPOINT [ "bash", "-c", "./test/scheduler/test.sh $BUILD_DIR || (cat /var/log/polygraph/common.log && exit 1)" ]
+ENTRYPOINT [ "bash", "-c", "./test-runner.sh || (cat /var/log/polygraph/common.log && exit 1)" ]
