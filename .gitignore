@@ -1,3 +1,10 @@
+# Build files
+build
+cmake-build-*
+
+# MacOS
+.DS_Store
+
 # Prerequisites
 *.d
 
@@ -30,7 +37,3 @@
 *.exe
 *.out
 *.app
-
-# Build files
-build
-cmake-build-*
