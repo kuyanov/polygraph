@@ -1,9 +1,19 @@
-#include "serialization/all.h"
-#include "structures/run_response.h"
+#pragma once
+
+#include <string>
+#include <optional>
+
+#include "run_status.h"
+#include "serialize.h"
+
+struct RunResponse {
+    std::optional<std::string> error;
+    std::optional<RunStatus> status;
+};
 
 template <>
-rapidjson::Value Serialize<RunResponse>(const RunResponse &data,
-                                        rapidjson::Document::AllocatorType &alloc) {
+inline rapidjson::Value Serialize<RunResponse>(const RunResponse &data,
+                                               rapidjson::Document::AllocatorType &alloc) {
     rapidjson::Value value(rapidjson::kObjectType);
     if (data.error.has_value()) {
         value.AddMember("error", Serialize(data.error, alloc), alloc);
@@ -15,7 +25,7 @@ rapidjson::Value Serialize<RunResponse>(const RunResponse &data,
 }
 
 template <>
-void Deserialize<RunResponse>(RunResponse &data, const rapidjson::Value &value) {
+inline void Deserialize<RunResponse>(RunResponse &data, const rapidjson::Value &value) {
     if (value.HasMember("error")) {
         Deserialize(data.error, value["error"]);
     }

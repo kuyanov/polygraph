@@ -12,6 +12,14 @@ rapidjson::Value Serialize(const T &data, rapidjson::Document::AllocatorType &al
 template <class T>
 void Deserialize(T &data, const rapidjson::Value &value);
 
+template <class T>
+rapidjson::Document Serialize(const T &data) {
+    rapidjson::Document document;
+    document.CopyFrom(Serialize(data, document.GetAllocator()), document.GetAllocator());
+    return document;
+}
+
+// bool
 template <>
 inline rapidjson::Value Serialize<bool>(const bool &data, rapidjson::Document::AllocatorType &) {
     rapidjson::Value value;
@@ -24,6 +32,7 @@ inline void Deserialize<bool>(bool &data, const rapidjson::Value &value) {
     data = value.GetBool();
 }
 
+// int
 template <>
 inline rapidjson::Value Serialize<int>(const int &data, rapidjson::Document::AllocatorType &) {
     rapidjson::Value value;
@@ -36,6 +45,7 @@ inline void Deserialize<int>(int &data, const rapidjson::Value &value) {
     data = value.GetInt();
 }
 
+// int64_t
 template <>
 inline rapidjson::Value Serialize<int64_t>(const int64_t &data,
                                            rapidjson::Document::AllocatorType &) {
@@ -49,6 +59,7 @@ inline void Deserialize<int64_t>(int64_t &data, const rapidjson::Value &value) {
     data = value.GetInt64();
 }
 
+// size_t
 template <>
 inline rapidjson::Value Serialize<size_t>(const size_t &data,
                                           rapidjson::Document::AllocatorType &) {
@@ -62,6 +73,7 @@ inline void Deserialize<size_t>(size_t &data, const rapidjson::Value &value) {
     data = value.GetUint64();
 }
 
+// std::string
 template <>
 inline rapidjson::Value Serialize<std::string>(const std::string &data,
                                                rapidjson::Document::AllocatorType &alloc) {
@@ -75,6 +87,7 @@ inline void Deserialize<std::string>(std::string &data, const rapidjson::Value &
     data = value.GetString();
 }
 
+// std::optional
 template <class T>
 rapidjson::Value Serialize(const std::optional<T> &data,
                            rapidjson::Document::AllocatorType &alloc) {
@@ -88,13 +101,14 @@ rapidjson::Value Serialize(const std::optional<T> &data,
 template <class T>
 void Deserialize(std::optional<T> &data, const rapidjson::Value &value) {
     if (!value.IsNull()) {
-        data.template emplace();
+        data.template emplace<>();
         Deserialize(data.value(), value);
     } else {
         data.reset();
     }
 }
 
+// std::vector
 template <class T>
 rapidjson::Value Serialize(const std::vector<T> &data, rapidjson::Document::AllocatorType &alloc) {
     rapidjson::Value value(rapidjson::kArrayType);
@@ -110,11 +124,4 @@ void Deserialize(std::vector<T> &data, const rapidjson::Value &value) {
     for (size_t i = 0; i < data.size(); ++i) {
         Deserialize(data[i], value.GetArray()[i]);
     }
-}
-
-template <class T>
-rapidjson::Document Serialize(const T &data) {
-    rapidjson::Document document;
-    document.CopyFrom(Serialize(data, document.GetAllocator()), document.GetAllocator());
-    return document;
 }

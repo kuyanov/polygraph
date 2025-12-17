@@ -84,7 +84,7 @@ TEST(Submit, WorkflowIdUnique) {
 
 TEST(Submit, MaxPayloadLength) {
     std::string body;
-    body.resize(TestSchedulerConfig::Get().max_payload_length, '.');
+    body.resize(Config::Get().scheduler_max_payload_length, '.');
     EXPECT_EQ(Submit(body).status, SUBMIT_PARSE_ERROR);
     body.push_back('.');
     try {

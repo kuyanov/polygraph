@@ -3,8 +3,9 @@
 #include <string>
 #include <vector>
 
+#include "block_response.h"
 #include "net.h"
-#include "structures/all.h"
+#include "workflow.h"
 
 class Client {
 public:

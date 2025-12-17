@@ -11,7 +11,7 @@
 #include <rapidjson/document.h>
 #include <App.h>
 
-#include "structures/workflow.h"
+#include "workflow.h"
 
 class WorkflowState;
 class Partition;

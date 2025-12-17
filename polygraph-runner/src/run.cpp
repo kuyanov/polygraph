@@ -9,8 +9,9 @@
 #include "logger.h"
 #include "net.h"
 #include "run.h"
-#include "serialization/all.h"
-#include "structures/all.h"
+#include "run_request.h"
+#include "run_response.h"
+#include "run_status.h"
 
 namespace fs = std::filesystem;
 
@@ -74,16 +75,15 @@ RunResponse ProcessRequest(const RunRequest &request) {
     return response;
 }
 
-void Run() {
+void Run(const std::string &id, const std::string &partition) {
     bool connected = true;
     while (true) {
         try {
             WebsocketClientSession session;
-            session.Connect(RunnerConfig::Get().host, RunnerConfig::Get().port,
-                            "/runner/" + RunnerConfig::Get().partition + "/" +
-                                std::to_string(RunnerConfig::Get().id));
+            session.Connect(Config::Get().host, Config::Get().port,
+                            "/runner/" + partition + "/" + id);
             connected = true;
-            Log("Connected to ", RunnerConfig::Get().host, ":", RunnerConfig::Get().port);
+            Log("Connected to ", Config::Get().host, ":", Config::Get().port);
             session.OnRead([&](const std::string &message) {
                 std::thread([=, &session] {
                     RunRequest request;
@@ -96,11 +96,11 @@ void Run() {
         } catch (const beast::system_error &error) {
             if (connected) {
                 connected = false;
-                Log("Not connected to ", RunnerConfig::Get().host, ":", RunnerConfig::Get().port,
-                    ": ", error.what());
+                Log("Not connected to ", Config::Get().host, ":", Config::Get().port, ": ",
+                    error.what());
             }
             std::this_thread::sleep_for(
-                std::chrono::milliseconds(RunnerConfig::Get().reconnect_interval_ms));
+                std::chrono::milliseconds(Config::Get().runner_reconnect_interval_ms));
         }
     }
 }

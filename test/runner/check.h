@@ -8,11 +8,10 @@
 
 #include "gtest/gtest.h"
 #include "config.h"
-#include "environment.h"
 #include "json.h"
 #include "net.h"
-#include "serialization/all.h"
-#include "structures/all.h"
+#include "run_request.h"
+#include "run_response.h"
 #include "uuid.h"
 
 namespace fs = std::filesystem;
@@ -24,14 +23,14 @@ long long Timestamp() {
 }
 
 fs::path CreateContainer() {
-    fs::path container_path = fs::path(GetVarDir()) / "containers" / GenerateUuid();
+    fs::path container_path = fs::path(VAR_DIR) / "containers" / GenerateUuid();
     fs::create_directories(container_path);
     fs::permissions(container_path, fs::perms::all, fs::perm_options::add);
     return container_path;
 }
 
 void CreateFile(const std::string &relpath, const std::string &content, int other_perms = 7) {
-    fs::path abspath = fs::path(GetVarDir()) / relpath;
+    fs::path abspath = fs::path(VAR_DIR) / relpath;
     fs::create_directories(abspath.parent_path());
     std::ofstream(abspath.string()) << content;
     fs::permissions(abspath, fs::perms::others_all, fs::perm_options::remove);
@@ -39,15 +38,15 @@ void CreateFile(const std::string &relpath, const std::string &content, int othe
 }
 
 std::string ReadFile(const std::string &relpath) {
-    fs::path abspath = fs::path(GetVarDir()) / relpath;
+    fs::path abspath = fs::path(VAR_DIR) / relpath;
     std::stringstream ss;
     ss << std::ifstream(abspath.string()).rdbuf();
     return ss.str();
 }
 
 RunResponse SendRunRequest(const RunRequest &request) {
-    static WebsocketServer server("0.0.0.0", TestRunnerConfig::Get().port);
-    static SchemaValidator response_validator(GetDataDir() + "/schema/run_response.json");
+    static WebsocketServer server("0.0.0.0", Config::Get().port);
+    static SchemaValidator response_validator(std::string(DATA_DIR) + "/schema/run_response.json");
     auto session = server.Accept();
     session.Write(StringifyJSON(Serialize(request)));
     RunResponse response;

@@ -2,7 +2,7 @@
 #include "check.h"
 
 TEST(Network, Reconnect) {
-    WebsocketServer server("0.0.0.0", TestRunnerConfig::Get().port);
+    WebsocketServer server("0.0.0.0", Config::Get().port);
     long long start_time, end_time;
     {
         auto session = server.Accept();
@@ -12,7 +12,7 @@ TEST(Network, Reconnect) {
         auto session = server.Accept();
         end_time = Timestamp();
     }
-    CheckDuration(end_time - start_time, TestRunnerConfig::Get().reconnect_interval_ms);
+    CheckDuration(end_time - start_time, Config::Get().runner_reconnect_interval_ms);
 }
 
 TEST(Execution, Sleep) {
@@ -26,9 +26,9 @@ TEST(Execution, Sleep) {
 
 TEST(Execution, Binds) {
     auto container_path = CreateContainer();
-    std::string input_path = fs::path(GetVarDir()) / "test" / "input";
-    std::string output_path = fs::path(GetVarDir()) / "test" / "output";
-    std::string script_path = fs::path(GetVarDir()) / "test" / "script";
+    std::string input_path = fs::path(VAR_DIR) / "test" / "input";
+    std::string output_path = fs::path(VAR_DIR) / "test" / "output";
+    std::string script_path = fs::path(VAR_DIR) / "test" / "script";
     CreateFile(input_path, "hello world");
     CreateFile(output_path, "");
     CreateFile(script_path, "#!/bin/bash\ncat");
@@ -56,7 +56,7 @@ TEST(Execution, Binds) {
 
 TEST(Execution, Permissions) {
     auto container_path = CreateContainer();
-    std::string input_path = fs::path(GetVarDir()) / "test" / "input";
+    std::string input_path = fs::path(VAR_DIR) / "test" / "input";
     CreateFile(input_path, "", 3);
     auto response1 = SendRunRequest(
         {.binds = {{".", container_path.string(), false}, {"input", input_path, true}},
@@ -64,14 +64,14 @@ TEST(Execution, Permissions) {
          .constraints = {.max_threads = 2}});
     ASSERT_TRUE(response1.status.has_value());
     ASSERT_EQ(response1.status->exit_code, 1);
-    std::string output_path = fs::path(GetVarDir()) / "test" / "output";
+    std::string output_path = fs::path(VAR_DIR) / "test" / "output";
     CreateFile(output_path, "", 5);
     auto response2 = SendRunRequest(
         {.binds = {{".", container_path.string(), false}, {"output", output_path, false}},
          .argv = {"bash", "-c", "echo test >output"}});
     ASSERT_TRUE(response2.status.has_value());
     ASSERT_EQ(response2.status->exit_code, 1);
-    std::string script_path = fs::path(GetVarDir()) / "test" / "script";
+    std::string script_path = fs::path(VAR_DIR) / "test" / "script";
     CreateFile(script_path, "#!/bin/bash\necho test", 6);
     auto response3 = SendRunRequest(
         {.binds = {{".", container_path.string(), false}, {"script", script_path, true}},

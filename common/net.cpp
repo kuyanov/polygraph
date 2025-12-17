@@ -39,8 +39,8 @@ void WebsocketClientSession::Write(const std::string &message) {
 }
 
 void WebsocketClientSession::OnRead(std::function<void(std::string)> handler) {
-    ws_.template async_read(buffer_, [this, handler = std::move(handler)](
-                                         const beast::error_code &ec, size_t bytes_written) {
+    ws_.template async_read<>(buffer_, [this, handler = std::move(handler)](
+                                           const beast::error_code &ec, size_t bytes_written) {
         if (ec) {
             throw beast::system_error(ec);
         }

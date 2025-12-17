@@ -4,14 +4,14 @@
 #include <fstream>
 #include <vector>
 
-#include "common.h"
+#include "helpers.h"
 #include "runner_stop.h"
 
 namespace fs = std::filesystem;
 
 std::vector<int> GetAllIds() {
     std::vector<int> ids;
-    for (const auto &entry : fs::directory_iterator(fs::path(GetRunDir()))) {
+    for (const auto &entry : fs::directory_iterator(fs::path(RUN_DIR))) {
         auto filename = entry.path().filename().string();
         if (filename.starts_with("runner")) {
             size_t l = 6;
@@ -26,11 +26,11 @@ void RunnerStop(const RunnerStopOptions &options) {
     RequireRoot();
     auto ids = !options.ids.empty() ? options.ids : GetAllIds();
     for (int runner_id : ids) {
-        fs::path runner_pid_path = fs::path(GetRunDir()) /
-                                   ("runner" + std::to_string(runner_id) + ".pid");
+        fs::path runner_pid_path =
+            fs::path(RUN_DIR) / ("runner" + std::to_string(runner_id) + ".pid");
         if (!fs::exists(runner_pid_path)) {
-            std::cerr << "Failed to stop runner " << runner_id << ": file "
-                      << runner_pid_path.filename() << " does not exist" << std::endl;
+            std::cerr << "Failed to stop runner " << runner_id << ": file " << runner_pid_path
+                      << " does not exist" << std::endl;
             exit(EXIT_FAILURE);
         }
         std::ifstream runner_pid_file(runner_pid_path.string());

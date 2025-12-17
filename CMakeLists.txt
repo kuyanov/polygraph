@@ -15,11 +15,12 @@ include(cmake/rapidjson.cmake)
 include(cmake/uWebSockets.cmake)
 
 add_compile_definitions(
-        DATA_DIR="${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}"
-        EXEC_DIR="${CMAKE_INSTALL_PREFIX}/libexec"
-        LOG_DIR="/var/log/${PROJECT_NAME}"
-        RUN_DIR="/var/run/${PROJECT_NAME}"
-        VAR_DIR="/var/${PROJECT_NAME}"
+    CONF_DIR="/etc/${PROJECT_NAME}"
+    DATA_DIR="${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}"
+    EXEC_DIR="${CMAKE_INSTALL_PREFIX}/libexec"
+    LOG_DIR="/var/log/${PROJECT_NAME}"
+    RUN_DIR="/var/run/${PROJECT_NAME}"
+    VAR_DIR="/var/${PROJECT_NAME}"
 )
 
 include_directories(${Boost_INCLUDE_DIR} ${rapidjson_SOURCE_DIR}/include)
@@ -31,9 +32,8 @@ add_subdirectory(polygraph-client)
 add_subdirectory(polygraph-runner)
 add_subdirectory(polygraph-scheduler)
 
-if (TEST)
-    include(cmake/googletest.cmake)
-    add_subdirectory(test)
-endif ()
+include(cmake/googletest.cmake)
+add_subdirectory(test)
 
-install(DIRECTORY schema DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY schema DESTINATION "share/${PROJECT_NAME}")
+install(FILES config.json DESTINATION "/etc/${PROJECT_NAME}")

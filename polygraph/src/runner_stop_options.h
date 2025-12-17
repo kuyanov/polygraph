@@ -1,7 +1,5 @@
 #pragma once
 
-#pragma once
-
 #include <cstdlib>
 #include <iostream>
 #include <vector>
@@ -24,7 +22,7 @@ public:
     void Init(int argc, char **argv) {
         desc.add_options()("help", "print help message");
         desc.add_options()("ids", po::value<std::vector<int>>(&ids)->multitoken(),
-                           "list of runner ids to stop, empty means all");
+                           "list of runner ids to stop, unspecified = all");
         po::variables_map vm;
         try {
             po::store(po::command_line_parser(argc, argv).options(desc).run(), vm);

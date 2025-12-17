@@ -1,9 +1,20 @@
-#include "serialization/all.h"
-#include "structures/run_request.h"
+#pragma once
+
+#include <vector>
+
+#include "bind.h"
+#include "constraints.h"
+#include "serialize.h"
+
+struct RunRequest {
+    std::vector<Bind> binds;
+    std::vector<std::string> argv, env;
+    Constraints constraints;
+};
 
 template <>
-rapidjson::Value Serialize<RunRequest>(const RunRequest &data,
-                                       rapidjson::Document::AllocatorType &alloc) {
+inline rapidjson::Value Serialize<RunRequest>(const RunRequest &data,
+                                              rapidjson::Document::AllocatorType &alloc) {
     rapidjson::Value value(rapidjson::kObjectType);
     value.AddMember("binds", Serialize(data.binds, alloc), alloc);
     value.AddMember("argv", Serialize(data.argv, alloc), alloc);
@@ -13,7 +24,7 @@ rapidjson::Value Serialize<RunRequest>(const RunRequest &data,
 }
 
 template <>
-void Deserialize<RunRequest>(RunRequest &data, const rapidjson::Value &value) {
+inline void Deserialize<RunRequest>(RunRequest &data, const rapidjson::Value &value) {
     Deserialize(data.binds, value["binds"]);
     Deserialize(data.argv, value["argv"]);
     Deserialize(data.env, value["env"]);

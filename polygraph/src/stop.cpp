@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <fstream>
 
-#include "common.h"
+#include "helpers.h"
 #include "runner_stop.h"
 #include "stop.h"
 
@@ -12,9 +12,10 @@ namespace fs = std::filesystem;
 void Stop(const StopOptions &options) {
     RequireRoot();
     RunnerStop({});
-    fs::path scheduler_pid_path = fs::path(GetRunDir()) / "scheduler.pid";
+    fs::path scheduler_pid_path = fs::path(RUN_DIR) / "scheduler.pid";
     if (!fs::exists(scheduler_pid_path)) {
-        std::cerr << "Failed to stop scheduler: file scheduler.pid does not exist" << std::endl;
+        std::cerr << "Failed to stop scheduler: file " << scheduler_pid_path << " does not exist"
+                  << std::endl;
         exit(EXIT_FAILURE);
     }
     std::ifstream scheduler_pid_file(scheduler_pid_path.string());

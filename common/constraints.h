@@ -1,9 +1,18 @@
-#include "serialization/all.h"
-#include "structures/constraints.h"
+#pragma once
+
+#include <cstdint>
+#include <optional>
+
+#include "serialize.h"
+
+struct Constraints {
+    std::optional<int64_t> time_limit_ms, wall_time_limit_ms, memory_limit_kb, fsize_limit_kb;
+    std::optional<int> max_files, max_threads;
+};
 
 template <>
-rapidjson::Value Serialize<Constraints>(const Constraints &data,
-                                        rapidjson::Document::AllocatorType &alloc) {
+inline rapidjson::Value Serialize<Constraints>(const Constraints &data,
+                                               rapidjson::Document::AllocatorType &alloc) {
     rapidjson::Value value(rapidjson::kObjectType);
     if (data.time_limit_ms.has_value()) {
         value.AddMember("time-limit-ms", Serialize(data.time_limit_ms, alloc), alloc);
@@ -27,7 +36,7 @@ rapidjson::Value Serialize<Constraints>(const Constraints &data,
 }
 
 template <>
-void Deserialize<Constraints>(Constraints &data, const rapidjson::Value &value) {
+inline void Deserialize<Constraints>(Constraints &data, const rapidjson::Value &value) {
     if (value.HasMember("time-limit-ms")) {
         Deserialize(data.time_limit_ms, value["time-limit-ms"]);
     }

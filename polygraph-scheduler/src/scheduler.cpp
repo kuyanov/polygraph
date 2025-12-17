@@ -2,14 +2,14 @@
 #include <string>
 #include <unordered_set>
 
+#include "block_response.h"
 #include "definitions.h"
-#include "environment.h"
 #include "error.h"
 #include "json.h"
 #include "logger.h"
+#include "run_request.h"
+#include "run_response.h"
 #include "scheduler.h"
-#include "serialization/all.h"
-#include "structures/all.h"
 #include "uuid.h"
 
 namespace fs = std::filesystem;
@@ -131,7 +131,7 @@ void WorkflowState::UpdateBlocksProcessing() {
 bool WorkflowState::ProcessConnection(const Connection &connection) {
     const auto &[source_block_id, source_output_id, target_block_id, target_input_id] = connection;
     fs::path source_output_path =
-        fs::path(GetVarDir()) / "containers" /
+        fs::path(VAR_DIR) / "containers" /
         GetContainerId(source_block_id, blocks_state_[source_block_id].cnt_runs - 1) /
         blocks[source_block_id].outputs[source_output_id].path;
     if (!fs::exists(source_output_path) ||
@@ -148,7 +148,7 @@ bool WorkflowState::IsBlockReady(size_t block_id) const {
 }
 
 void WorkflowState::PrepareRun(size_t block_id) {
-    fs::path container_path = fs::path(GetVarDir()) / "containers" /
+    fs::path container_path = fs::path(VAR_DIR) / "containers" /
                               GetContainerId(block_id, blocks_state_[block_id].cnt_runs);
     fs::create_directories(container_path);
     fs::permissions(container_path, fs::perms::all, fs::perm_options::add);
@@ -167,7 +167,7 @@ void WorkflowState::FinalizeRun(size_t block_id) {
 }
 
 void WorkflowState::SendRunRequest(size_t block_id, RunnerWebSocket *ws) {
-    fs::path container_path = fs::path(GetVarDir()) / "containers" /
+    fs::path container_path = fs::path(VAR_DIR) / "containers" /
                               GetContainerId(block_id, blocks_state_[block_id].cnt_runs);
     std::vector<Bind> binds = {
         {.inside = ".", .outside = container_path.string(), .readonly = false}};

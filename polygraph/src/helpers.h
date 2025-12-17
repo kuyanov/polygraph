@@ -5,8 +5,6 @@
 #include <iostream>
 #include <unistd.h>
 
-#include "environment.h"
-
 namespace fs = std::filesystem;
 
 inline void RequireRoot() {
@@ -17,13 +15,13 @@ inline void RequireRoot() {
 }
 
 inline void CreateDirs() {
-    fs::create_directories(fs::path(GetLogDir()));
-    fs::create_directories(fs::path(GetRunDir()));
-    fs::create_directories(fs::path(GetVarDir()));
+    fs::create_directories(fs::path(LOG_DIR));
+    fs::create_directories(fs::path(RUN_DIR));
+    fs::create_directories(fs::path(VAR_DIR));
 }
 
 inline void Daemonize() {
-    fs::path log_path = fs::path(GetLogDir()) / "common.log";
+    fs::path log_path = fs::path(LOG_DIR) / "common.log";
     FILE *fs_null = fopen("/dev/null", "r+");
     FILE *fs_log = fopen(log_path.c_str(), "a");
     if (!fs_null) {

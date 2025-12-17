@@ -15,7 +15,7 @@ COPY . /polygraph
 WORKDIR /polygraph
 
 RUN rm -rf build && \
-    cmake . -B build -D CMAKE_BUILD_TYPE=ASan -D TEST=1 && \
+    cmake . -B build -D CMAKE_BUILD_TYPE=ASan && \
     cmake --build build && \
     cmake --install build
 

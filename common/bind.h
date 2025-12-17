@@ -1,8 +1,17 @@
-#include "serialization/all.h"
-#include "structures/bind.h"
+#pragma once
+
+#include <string>
+
+#include "serialize.h"
+
+struct Bind {
+    std::string inside, outside;
+    bool readonly;
+};
 
 template <>
-rapidjson::Value Serialize<Bind>(const Bind &data, rapidjson::Document::AllocatorType &alloc) {
+inline rapidjson::Value Serialize<Bind>(const Bind &data,
+                                        rapidjson::Document::AllocatorType &alloc) {
     rapidjson::Value value(rapidjson::kObjectType);
     value.AddMember("inside", Serialize(data.inside, alloc), alloc);
     value.AddMember("outside", Serialize(data.outside, alloc), alloc);
@@ -11,7 +20,7 @@ rapidjson::Value Serialize<Bind>(const Bind &data, rapidjson::Document::Allocato
 }
 
 template <>
-void Deserialize<Bind>(Bind &data, const rapidjson::Value &value) {
+inline void Deserialize<Bind>(Bind &data, const rapidjson::Value &value) {
     Deserialize(data.inside, value["inside"]);
     Deserialize(data.outside, value["outside"]);
     Deserialize(data.readonly, value["readonly"]);

@@ -13,20 +13,21 @@
 #include <vector>
 
 #include "gtest/gtest.h"
+#include "block_response.h"
 #include "config.h"
 #include "definitions.h"
-#include "environment.h"
 #include "json.h"
 #include "net.h"
-#include "serialization/all.h"
-#include "structures/all.h"
+#include "run_request.h"
+#include "run_response.h"
+#include "submit_response.h"
+#include "workflow.h"
 
 namespace fs = std::filesystem;
 
 SubmitResponse Submit(const std::string &body) {
     std::string submit_response_text =
-        HttpSession(TestSchedulerConfig::Get().host, TestSchedulerConfig::Get().port)
-            .Post("/submit", body);
+        HttpSession(Config::Get().host, Config::Get().port).Post("/submit", body);
     if (submit_response_text.empty()) {
         throw std::runtime_error("submit response empty");
     }
@@ -54,11 +55,11 @@ size_t ParseBlockId(const std::string &container_id) {
 void ImitateRun(const Workflow &workflow, int runner_delay,
                 const std::vector<size_t> &failed_blocks, const RunRequest &request,
                 RunResponse &response) {
-    fs::path container_path = fs::path(GetVarDir()) / request.binds[0].outside;
+    fs::path container_path = fs::path(VAR_DIR) / request.binds[0].outside;
     std::string container_id = container_path.filename().string();
     size_t block_id = ParseBlockId(container_id);
     for (const auto &bind : request.binds) {
-        ASSERT_TRUE(fs::exists(fs::path(GetVarDir()) / bind.outside));
+        ASSERT_TRUE(fs::exists(fs::path(VAR_DIR) / bind.outside));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(runner_delay));
     for (const auto &output : workflow.blocks[block_id].outputs) {
@@ -81,14 +82,14 @@ void CheckExecution(const Workflow &workflow, int cnt_clients, int cnt_runners, 
     EXPECT_EQ(submit_response.status, SUBMIT_ACCEPTED);
     std::string workflow_id = submit_response.data;
 
-    static SchemaValidator request_validator(GetDataDir() + "/schema/run_request.json");
+    static SchemaValidator request_validator(std::string(DATA_DIR) + "/schema/run_request.json");
     std::mutex request_validator_mutex;
     std::vector<std::thread> runner_threads(cnt_runners);
     std::vector<WebsocketClientSession> runner_sessions(cnt_runners);
     for (int runner_id = 0; runner_id < cnt_runners; ++runner_id) {
         auto &session = runner_sessions[runner_id];
         runner_threads[runner_id] = std::thread([&, runner_id] {
-            session.Connect(TestSchedulerConfig::Get().host, TestSchedulerConfig::Get().port,
+            session.Connect(Config::Get().host, Config::Get().port,
                             "/runner/" + workflow.meta.partition + "/" + std::to_string(runner_id));
             session.OnRead([&](const std::string &message) {
                 request_validator_mutex.lock();
@@ -111,8 +112,7 @@ void CheckExecution(const Workflow &workflow, int cnt_clients, int cnt_runners, 
     for (int client_id = 0; client_id < cnt_clients; ++client_id) {
         auto &session = client_sessions[client_id];
         client_threads[client_id] = std::thread([&] {
-            session.Connect(TestSchedulerConfig::Get().host, TestSchedulerConfig::Get().port,
-                            "/workflow/" + workflow_id);
+            session.Connect(Config::Get().host, Config::Get().port, "/workflow/" + workflow_id);
             int cnt_blocks_completed = 0;
             session.OnRead([&](const std::string &message) {
                 if (message.starts_with(WORKFLOW_SIGNAL)) {

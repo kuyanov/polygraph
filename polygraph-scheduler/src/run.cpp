@@ -10,13 +10,12 @@
 #include "logger.h"
 #include "run.h"
 #include "scheduler.h"
-#include "serialization/all.h"
-#include "structures/all.h"
+#include "submit_response.h"
 
 const std::string kListenHost = "0.0.0.0";
 
 void Run() {
-    SchemaValidator workflow_validator(GetDataDir() + "/schema/workflow.json");
+    SchemaValidator workflow_validator(std::string(DATA_DIR) + "/schema/workflow.json");
     Scheduler scheduler;
 
     uWS::App()
@@ -27,7 +26,7 @@ void Run() {
                   res->onData([&, res, workflow_text = std::move(workflow_text)](
                                   std::string_view chunk, bool is_last) mutable {
                       if (workflow_text.size() + chunk.size() >
-                          SchedulerConfig::Get().max_payload_length) {
+                          Config::Get().scheduler_max_payload_length) {
                           res->writeStatus(HTTP_REQUEST_ENTITY_TOO_LARGE)->end("", true);
                           return;
                       }
@@ -57,7 +56,8 @@ void Run() {
               })
         .ws<RunnerPerSocketData>(
             "/runner/:partition/:id",
-            {.maxPayloadLength = SchedulerConfig::Get().max_payload_length,
+            {.maxPayloadLength =
+                 static_cast<unsigned int>(Config::Get().scheduler_max_payload_length),
              .upgrade =
                  [&](auto *res, auto *req, auto *context) {
                      std::string partition(req->getParameter("partition"));
@@ -87,8 +87,9 @@ void Run() {
                  }})
         .ws<ClientPerSocketData>(
             "/workflow/:id",
-            {.maxPayloadLength = SchedulerConfig::Get().max_payload_length,
-             .idleTimeout = SchedulerConfig::Get().idle_timeout,
+            {.maxPayloadLength =
+                 static_cast<unsigned int>(Config::Get().scheduler_max_payload_length),
+             .idleTimeout = static_cast<unsigned short>(Config::Get().scheduler_idle_timeout_s),
              .upgrade =
                  [&](auto *res, auto *req, auto *context) {
                      std::string workflow_id(req->getParameter("id"));
@@ -134,12 +135,12 @@ void Run() {
                          ": client disconnected");
                      scheduler.LeaveClient(ws);
                  }})
-        .listen(kListenHost, SchedulerConfig::Get().port,
+        .listen(kListenHost, Config::Get().port,
                 [&](auto *listen_socket) {
                     if (listen_socket) {
-                        Log("Listening on ", kListenHost, ":", SchedulerConfig::Get().port);
+                        Log("Listening on ", kListenHost, ":", Config::Get().port);
                     } else {
-                        Log("Failed to listen on ", kListenHost, ":", SchedulerConfig::Get().port);
+                        Log("Failed to listen on ", kListenHost, ":", Config::Get().port);
                         exit(EXIT_FAILURE);
                     }
                 })

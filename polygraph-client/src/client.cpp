@@ -4,11 +4,12 @@
 #include <iostream>
 #include <string>
 
+#include "block_response.h"
 #include "client.h"
 #include "config.h"
 #include "definitions.h"
 #include "json.h"
-#include "serialization/all.h"
+#include "submit_response.h"
 #include "terminal.h"
 
 namespace fs = std::filesystem;
@@ -17,7 +18,7 @@ Client::Client(const std::string &workflow_file) {
     auto document = ReadJSON(workflow_file);
     std::string body = StringifyJSON(document);
     std::string submit_response_text =
-        HttpSession(ClientConfig::Get().host, ClientConfig::Get().port).Post("/submit", body);
+        HttpSession(Config::Get().host, Config::Get().port).Post("/submit", body);
     SubmitResponse submit_response;
     Deserialize(submit_response, ParseJSON(submit_response_text));
     if (submit_response.status != SUBMIT_ACCEPTED) {
@@ -31,8 +32,7 @@ Client::Client(const std::string &workflow_file) {
     Deserialize(workflow_, document);
     blocks_.resize(workflow_.blocks.size());
     cnt_runs_.resize(workflow_.blocks.size());
-    session_.Connect(ClientConfig::Get().host, ClientConfig::Get().port,
-                     "/workflow/" + workflow_id);
+    session_.Connect(Config::Get().host, Config::Get().port, "/workflow/" + workflow_id);
     session_.OnRead([this](const std::string &message) { OnMessage(message); });
 }
 
