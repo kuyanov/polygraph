@@ -1,0 +1,6 @@
+fin_approx = open('approx')
+x = float(fin_approx.readline())
+fin_params = open('params')
+a, b = map(float, fin_params.readline().split())
+fout_grad = open('grad', 'w')
+print(2 * a * x, file=fout_grad)

@@ -1,0 +1,196 @@
+{
+  "blocks": [
+    {
+      "name": "matrix gen",
+      "inputs": [],
+      "outputs": [
+        {
+          "path": "matrix_in"
+        }
+      ],
+      "binds": [
+        {
+          "inside": "gen.cpp",
+          "outside": "/workspaces/polygraph/workflows/matrices/gen.cpp",
+          "readonly": true
+        },
+        {
+          "inside": "error",
+          "outside": "/workspaces/polygraph/workflows/matrices/error",
+          "readonly": false
+        }
+      ],
+      "argv": [
+        "bash",
+        "-c",
+        "g++ gen.cpp 2>error && ./a.out 10 >matrix_in 2>error"
+      ],
+      "env": [],
+      "constraints": {
+        "max-threads": 128
+      }
+    },
+    {
+      "name": "SVD",
+      "inputs": [
+        {
+          "path": "matrix_in",
+          "cached": false
+        }
+      ],
+      "outputs": [
+        {
+          "path": "m1"
+        },
+        {
+          "path": "m2"
+        },
+        {
+          "path": "m3"
+        }
+      ],
+      "binds": [
+        {
+          "inside": "svd.py",
+          "outside": "/workspaces/polygraph/workflows/matrices/svd.py",
+          "readonly": true
+        },
+        {
+          "inside": "error",
+          "outside": "/workspaces/polygraph/workflows/matrices/error",
+          "readonly": false
+        }
+      ],
+      "argv": [
+        "bash",
+        "-c",
+        "python3 svd.py <matrix_in 2>error"
+      ],
+      "env": [],
+      "constraints": {
+        "max-threads": 128
+      }
+    },
+    {
+      "name": "multiplication",
+      "inputs": [
+        {
+          "path": "m1",
+          "cached": false
+        },
+        {
+          "path": "m2",
+          "cached": false
+        },
+        {
+          "path": "m3",
+          "cached": false
+        }
+      ],
+      "outputs": [
+        {
+          "path": "matrix_out"
+        }
+      ],
+      "binds": [
+        {
+          "inside": "mult.py",
+          "outside": "/workspaces/polygraph/workflows/matrices/mult.py",
+          "readonly": true
+        },
+        {
+          "inside": "error",
+          "outside": "/workspaces/polygraph/workflows/matrices/error",
+          "readonly": false
+        }
+      ],
+      "argv": [
+        "bash",
+        "-c",
+        "python3 mult.py >matrix_out 2>error"
+      ],
+      "env": [],
+      "constraints": {
+        "max-threads": 128
+      }
+    },
+    {
+      "name": "verification",
+      "inputs": [
+        {
+          "path": "matrix_in",
+          "cached": false
+        },
+        {
+          "path": "matrix_out",
+          "cached": false
+        }
+      ],
+      "outputs": [],
+      "binds": [
+        {
+          "inside": "cmp.py",
+          "outside": "/workspaces/polygraph/workflows/matrices/cmp.py",
+          "readonly": true
+        },
+        {
+          "inside": "error",
+          "outside": "/workspaces/polygraph/workflows/matrices/error",
+          "readonly": false
+        }
+      ],
+      "argv": [
+        "bash",
+        "-c",
+        "python3 cmp.py 2>error"
+      ],
+      "env": [],
+      "constraints": {
+        "max-threads": 128
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source-block-id": 0,
+      "source-output-id": 0,
+      "target-block-id": 1,
+      "target-input-id": 0
+    },
+    {
+      "source-block-id": 1,
+      "source-output-id": 0,
+      "target-block-id": 2,
+      "target-input-id": 0
+    },
+    {
+      "source-block-id": 1,
+      "source-output-id": 1,
+      "target-block-id": 2,
+      "target-input-id": 1
+    },
+    {
+      "source-block-id": 1,
+      "source-output-id": 2,
+      "target-block-id": 2,
+      "target-input-id": 2
+    },
+    {
+      "source-block-id": 2,
+      "source-output-id": 0,
+      "target-block-id": 3,
+      "target-input-id": 1
+    },
+    {
+      "source-block-id": 0,
+      "source-output-id": 0,
+      "target-block-id": 3,
+      "target-input-id": 0
+    }
+  ],
+  "meta": {
+    "name": "Matrices",
+    "partition": "all",
+    "max-runners": 1
+  }
+}

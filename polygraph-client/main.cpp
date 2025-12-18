@@ -5,7 +5,7 @@
 
 #include "client.h"
 
-std::function<void()> interrupt_handler;
+std::function<void(int)> interrupt_handler;
 
 int main(int argc, char **argv) {
     if (argc != 2) {
@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
     Client client(argv[1]);
-    interrupt_handler = [&client] { client.Stop(); };
-    signal(SIGINT, [](int) { interrupt_handler(); });
+    interrupt_handler = [&client](int signum) { client.Stop(); };
+    signal(SIGINT, [](int signum) { interrupt_handler(signum); });
     client.Run();
 }

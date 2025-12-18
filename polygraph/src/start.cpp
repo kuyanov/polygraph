@@ -11,13 +11,10 @@ namespace fs = std::filesystem;
 
 void Start(const StartOptions &options) {
     RequireRoot();
+    RequireDown();
     CreateDirs();
-    fs::path pid_path = fs::path(RUN_DIR) / "scheduler.pid";
-    if (fs::exists(pid_path)) {
-        std::cerr << "File " << pid_path << " already exists" << std::endl;
-        exit(EXIT_FAILURE);
-    }
     Daemonize();
+    fs::path pid_path = fs::path(RUN_DIR) / "scheduler.pid";
     std::ofstream pid_file(pid_path.string());
     pid_file << getpid() << std::endl;
     fs::path exec_path = fs::path(EXEC_DIR) / "polygraph-scheduler";

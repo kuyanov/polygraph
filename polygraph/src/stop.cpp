@@ -11,19 +11,15 @@ namespace fs = std::filesystem;
 
 void Stop(const StopOptions &options) {
     RequireRoot();
+    RequireUp();
     RunnerStop({});
-    fs::path scheduler_pid_path = fs::path(RUN_DIR) / "scheduler.pid";
-    if (!fs::exists(scheduler_pid_path)) {
-        std::cerr << "Failed to stop scheduler: file " << scheduler_pid_path << " does not exist"
-                  << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    std::ifstream scheduler_pid_file(scheduler_pid_path.string());
+    fs::path pid_path = fs::path(RUN_DIR) / "scheduler.pid";
+    std::ifstream pid_file(pid_path.string());
     pid_t scheduler_pid;
-    scheduler_pid_file >> scheduler_pid;
+    pid_file >> scheduler_pid;
     if (kill(scheduler_pid, SIGTERM)) {
         perror("Failed to stop scheduler");
         exit(EXIT_FAILURE);
     }
-    fs::remove(scheduler_pid_path);
+    fs::remove(pid_path);
 }

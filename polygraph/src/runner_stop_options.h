@@ -13,6 +13,8 @@ public:
     std::vector<int> ids;
 
     void HelpMessage() const {
+        std::cerr << "Disconnect runners from polygraph." << std::endl;
+        std::cerr << std::endl;
         std::cerr << "Usage:  " << "polygraph runner stop [OPTIONS]" << std::endl;
         std::cerr << std::endl;
         std::cerr << desc << std::endl;

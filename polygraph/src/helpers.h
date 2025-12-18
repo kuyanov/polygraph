@@ -14,6 +14,25 @@ inline void RequireRoot() {
     }
 }
 
+inline void RequireUp() {
+    fs::path pid_path = fs::path(RUN_DIR) / "scheduler.pid";
+    if (!fs::exists(pid_path)) {
+        std::cerr << "Error: polygraph is not running (file " << pid_path << " does not exist)."
+                  << std::endl;
+        std::cerr << "To execute this command, start polygraph first." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+inline void RequireDown() {
+    fs::path pid_path = fs::path(RUN_DIR) / "scheduler.pid";
+    if (fs::exists(pid_path)) {
+        std::cerr << "Error: polygraph is running (file " << pid_path << " exists)." << std::endl;
+        std::cerr << "To execute this command, stop polygraph first." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
 inline void CreateDirs() {
     fs::create_directories(fs::path(LOG_DIR));
     fs::create_directories(fs::path(RUN_DIR));
@@ -21,7 +40,7 @@ inline void CreateDirs() {
 }
 
 inline void Daemonize() {
-    fs::path log_path = fs::path(LOG_DIR) / "common.log";
+    fs::path log_path = fs::path(LOG_DIR) / "polygraph.log";
     FILE *fs_null = fopen("/dev/null", "r+");
     FILE *fs_log = fopen(log_path.c_str(), "a");
     if (!fs_null) {

@@ -1,0 +1,5 @@
+fin = open('params')
+approx_log = open('approx_log', 'w')
+a, b = map(float, fin.readline().split())
+fout = open('approx', 'w')
+print(-b / a, file=fout)

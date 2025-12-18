@@ -14,6 +14,8 @@ public:
     std::string partition;
 
     void HelpMessage() const {
+        std::cerr << "Connect new runners to polygraph." << std::endl;
+        std::cerr << std::endl;
         std::cerr << "Usage:  " << "polygraph runner start [OPTIONS]" << std::endl;
         std::cerr << std::endl;
         std::cerr << desc << std::endl;

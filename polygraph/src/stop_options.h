@@ -11,6 +11,8 @@ public:
     po::options_description desc{"Options"};
 
     void HelpMessage() const {
+        std::cerr << "Stop polygraph service, including all runners." << std::endl;
+        std::cerr << std::endl;
         std::cerr << "Usage:  " << "polygraph stop [OPTIONS]" << std::endl;
         std::cerr << std::endl;
         std::cerr << desc << std::endl;

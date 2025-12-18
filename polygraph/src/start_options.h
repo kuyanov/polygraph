@@ -11,6 +11,11 @@ public:
     po::options_description desc{"Options"};
 
     void HelpMessage() const {
+        std::cerr << "Start polygraph service." << std::endl;
+        std::cerr << "Note: this command does not start any runners. Run 'polygraph runner start' "
+                     "to add them."
+                  << std::endl;
+        std::cerr << std::endl;
         std::cerr << "Usage:  " << "polygraph start [OPTIONS]" << std::endl;
         std::cerr << std::endl;
         std::cerr << desc << std::endl;

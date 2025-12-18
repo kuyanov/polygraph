@@ -1,0 +1,170 @@
+{
+  "blocks": [
+    {
+      "name": "initial",
+      "inputs": [],
+      "outputs": [
+        {
+          "path": "approx"
+        }
+      ],
+      "binds": [
+        {
+          "inside": "params",
+          "outside": "/workspaces/polygraph/workflows/optimization/params",
+          "readonly": true
+        },
+        {
+          "inside": "approx_log",
+          "outside": "/workspaces/polygraph/workflows/optimization/approx_log",
+          "readonly": false
+        },
+        {
+          "inside": "init.py",
+          "outside": "/workspaces/polygraph/workflows/optimization/init.py",
+          "readonly": true
+        },
+        {
+          "inside": "error",
+          "outside": "/workspaces/polygraph/workflows/optimization/error",
+          "readonly": false
+        }
+      ],
+      "argv": [
+        "bash",
+        "-c",
+        "python3 init.py 2>error"
+      ],
+      "env": [],
+      "constraints": {
+        "max-threads": 128
+      }
+    },
+    {
+      "name": "differentiation",
+      "inputs": [
+        {
+          "path": "approx",
+          "cached": false
+        }
+      ],
+      "outputs": [
+        {
+          "path": "grad"
+        }
+      ],
+      "binds": [
+        {
+          "inside": "params",
+          "outside": "/workspaces/polygraph/workflows/optimization/params",
+          "readonly": true
+        },
+        {
+          "inside": "differentiate.py",
+          "outside": "/workspaces/polygraph/workflows/optimization/differentiate.py",
+          "readonly": true
+        },
+        {
+          "inside": "error",
+          "outside": "/workspaces/polygraph/workflows/optimization/error",
+          "readonly": false
+        }
+      ],
+      "argv": [
+        "bash",
+        "-c",
+        "python3 differentiate.py 2>error"
+      ],
+      "env": [],
+      "constraints": {
+        "max-threads": 128
+      }
+    },
+    {
+      "name": "subtraction",
+      "inputs": [
+        {
+          "path": "grad",
+          "cached": false
+        },
+        {
+          "path": "approx_old",
+          "cached": false
+        }
+      ],
+      "outputs": [
+        {
+          "path": "approx_new"
+        }
+      ],
+      "binds": [
+        {
+          "inside": "solution",
+          "outside": "/workspaces/polygraph/workflows/optimization/solution",
+          "readonly": false
+        },
+        {
+          "inside": "approx_log",
+          "outside": "/workspaces/polygraph/workflows/optimization/approx_log",
+          "readonly": false
+        },
+        {
+          "inside": "subtract.py",
+          "outside": "/workspaces/polygraph/workflows/optimization/subtract.py",
+          "readonly": true
+        },
+        {
+          "inside": "error",
+          "outside": "/workspaces/polygraph/workflows/optimization/error",
+          "readonly": false
+        }
+      ],
+      "argv": [
+        "bash",
+        "-c",
+        "python3 subtract.py 2>error"
+      ],
+      "env": [],
+      "constraints": {
+        "max-threads": 128
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source-block-id": 0,
+      "source-output-id": 0,
+      "target-block-id": 1,
+      "target-input-id": 0
+    },
+    {
+      "source-block-id": 0,
+      "source-output-id": 0,
+      "target-block-id": 2,
+      "target-input-id": 1
+    },
+    {
+      "source-block-id": 1,
+      "source-output-id": 0,
+      "target-block-id": 2,
+      "target-input-id": 0
+    },
+    {
+      "source-block-id": 2,
+      "source-output-id": 0,
+      "target-block-id": 1,
+      "target-input-id": 0
+    },
+    {
+      "source-block-id": 2,
+      "source-output-id": 0,
+      "target-block-id": 2,
+      "target-input-id": 1
+    }
+  ],
+  "meta": {
+    "name": "Optimization",
+    "partition": "all",
+    "max-runners": 100
+  }
+}

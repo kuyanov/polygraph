@@ -1,0 +1,102 @@
+{
+  "blocks": [
+    {
+      "name": "success",
+      "inputs": [],
+      "outputs": [],
+      "binds": [
+        {
+          "inside": "output",
+          "outside": "/workspaces/polygraph/workflows/test/output",
+          "readonly": false
+        },
+        {
+          "inside": "error",
+          "outside": "/workspaces/polygraph/workflows/test/error",
+          "readonly": false
+        }
+      ],
+      "argv": [
+        "bash",
+        "-c",
+        "echo test >output 2>error"
+      ],
+      "env": [],
+      "constraints": {
+        "max-threads": 128
+      }
+    },
+    {
+      "name": "runtime error",
+      "inputs": [],
+      "outputs": [],
+      "binds": [],
+      "argv": [
+        "bash",
+        "-c",
+        "exit $CODE"
+      ],
+      "env": [
+        "CODE=57"
+      ],
+      "constraints": {
+        "max-threads": 128
+      }
+    },
+    {
+      "name": "time limit",
+      "inputs": [],
+      "outputs": [],
+      "binds": [],
+      "argv": [
+        "bash",
+        "-c",
+        "while true; do :; done"
+      ],
+      "env": [],
+      "constraints": {
+        "time-limit-ms": 500,
+        "max-threads": 128
+      }
+    },
+    {
+      "name": "wall time limit",
+      "inputs": [],
+      "outputs": [],
+      "binds": [],
+      "argv": [
+        "bash",
+        "-c",
+        "sleep 1"
+      ],
+      "env": [],
+      "constraints": {
+        "wall-time-limit-ms": 500,
+        "max-threads": 128
+      }
+    },
+    {
+      "name": "memory limit",
+      "inputs": [],
+      "outputs": [],
+      "binds": [],
+      "argv": [
+        "bash",
+        "-c",
+        "a='0'; while true; do a+=$a; done"
+      ],
+      "env": [],
+      "constraints": {
+        "time-limit-ms": 1000,
+        "memory-limit-kb": 102400,
+        "max-threads": 128
+      }
+    }
+  ],
+  "connections": [],
+  "meta": {
+    "name": "Test",
+    "partition": "all",
+    "max-runners": 100
+  }
+}
