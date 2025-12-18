@@ -10,7 +10,7 @@ jobs:
       - name: Build
         run: docker build -f TestRunnerDockerfile -t polygraph_test_runner .
       - name: Run
-        run: docker run --privileged -t polygraph_test_runner
+        run: docker run --privileged --cgroupns=host -t polygraph_test_runner
   test-scheduler:
     runs-on: ubuntu-latest
     name: Test scheduler in docker
