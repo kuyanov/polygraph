@@ -22,31 +22,29 @@ long long Timestamp() {
         .count();
 }
 
-fs::path CreateContainer() {
-    fs::path container_path = fs::path(VAR_DIR) / "containers" / GenerateUuid();
+std::string CreateContainer() {
+    fs::path container_path = fs::path(CONTAINERS_DIR) / GenerateUuid();
     fs::create_directories(container_path);
     fs::permissions(container_path, fs::perms::all, fs::perm_options::add);
-    return container_path;
+    return container_path.string();
 }
 
-void CreateFile(const std::string &relpath, const std::string &content, int other_perms = 7) {
-    fs::path abspath = fs::path(VAR_DIR) / relpath;
-    fs::create_directories(abspath.parent_path());
-    std::ofstream(abspath.string()) << content;
-    fs::permissions(abspath, fs::perms::others_all, fs::perm_options::remove);
-    fs::permissions(abspath, static_cast<fs::perms>(other_perms), fs::perm_options::add);
+void CreateFile(const std::string &abspath, const std::string &content, int other_perms = 7) {
+    fs::create_directories(fs::path(abspath).parent_path());
+    std::ofstream(abspath) << content;
+    fs::permissions(fs::path(abspath), fs::perms::others_all, fs::perm_options::remove);
+    fs::permissions(fs::path(abspath), static_cast<fs::perms>(other_perms), fs::perm_options::add);
 }
 
-std::string ReadFile(const std::string &relpath) {
-    fs::path abspath = fs::path(VAR_DIR) / relpath;
+std::string ReadFile(const std::string &abspath) {
     std::stringstream ss;
-    ss << std::ifstream(abspath.string()).rdbuf();
+    ss << std::ifstream(abspath).rdbuf();
     return ss.str();
 }
 
 RunResponse SendRunRequest(const RunRequest &request) {
     static WebsocketServer server("0.0.0.0", Config::Get().port);
-    static SchemaValidator response_validator(std::string(DATA_DIR) + "/schema/run_response.json");
+    static SchemaValidator response_validator(SCHEMA_DIR "/run_response.json");
     auto session = server.Accept();
     session.Write(StringifyJSON(Serialize(request)));
     RunResponse response;

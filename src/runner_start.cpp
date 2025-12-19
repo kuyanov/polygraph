@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -5,6 +6,8 @@
 #include <unistd.h>
 
 #include "helpers.h"
+#include "logger.h"
+#include "runner.h"
 #include "runner_start.h"
 
 namespace fs = std::filesystem;
@@ -29,13 +32,8 @@ void RunnerStart(const RunnerStartOptions &options) {
         if (child_pid == 0) {
             Daemonize();
             pid_file << getpid() << std::endl;
-            setenv("RUNNER_ID", std::to_string(runner_id).c_str(), 1);
-            setenv("RUNNER_PARTITION", options.partition.c_str(), 1);
-            fs::path exec_path = fs::path(EXEC_DIR) / "polygraph-runner";
-            execl(exec_path.c_str(), "polygraph-runner", nullptr);
-            fs::remove(pid_path);
-            perror("Failed to start runner");
-            exit(EXIT_FAILURE);
+            auto runner = Runner(std::to_string(runner_id), options.partition);
+            runner.Run();
         }
     }
 }

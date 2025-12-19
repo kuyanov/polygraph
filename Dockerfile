@@ -19,4 +19,4 @@ RUN rm -rf build && \
     cmake --build build && \
     cmake --install build
 
-ENTRYPOINT [ "bash", "-c", "./test-runner.sh || (cat /var/log/polygraph/polygraph.log && exit 1)" ]
+ENTRYPOINT [ "bash", "-c", "./test_all.sh || (cat /var/log/polygraph.log && exit 1)" ]

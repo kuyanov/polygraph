@@ -1,3 +1,4 @@
+#include <csignal>
 #include <cstdlib>
 #include <string>
 #include <string_view>
@@ -10,14 +11,21 @@
 #include "logger.h"
 #include "run.h"
 #include "scheduler.h"
+#include "scheduler_app.h"
 #include "submit_response.h"
 
-const std::string kListenHost = "0.0.0.0";
+SchedulerApp::SchedulerApp() : workflow_validator_(SCHEMA_DIR "/workflow.json") {
+}
 
-void Run() {
-    SchemaValidator workflow_validator(std::string(DATA_DIR) + "/schema/workflow.json");
-    Scheduler scheduler;
+void SchedulerInterruptHandler(int signum) {
+    Log("Terminated with signal ", signum);
+    exit(signum);
+}
 
+void SchedulerApp::Run() {
+    Logger::Get().SetName("scheduler");
+    signal(SIGINT, SchedulerInterruptHandler);
+    signal(SIGTERM, SchedulerInterruptHandler);
     uWS::App()
         .post("/submit",
               [&](auto *res, auto *req) {
@@ -36,8 +44,8 @@ void Run() {
                       }
                       SubmitResponse submit_response;
                       try {
-                          auto document = workflow_validator.ParseAndValidate(workflow_text);
-                          std::string workflow_id = scheduler.AddWorkflow(document);
+                          auto document = workflow_validator_.ParseAndValidate(workflow_text);
+                          std::string workflow_id = scheduler_.AddWorkflow(document);
                           submit_response.status = SUBMIT_ACCEPTED;
                           submit_response.data = workflow_id;
                       } catch (const ParseError &error) {
@@ -72,7 +80,7 @@ void Run() {
                  [&](auto *ws) {
                      Log("Runner ", ws->getUserData()->runner_id, " connected, partition = '",
                          ws->getUserData()->partition, "'");
-                     scheduler.JoinRunner(ws);
+                     scheduler_.JoinRunner(ws);
                  },
              .message =
                  [&](auto *ws, std::string_view message, uWS::OpCode op_code) {
@@ -83,7 +91,7 @@ void Run() {
              .close =
                  [&](auto *ws, int code, std::string_view message) {
                      Log("Runner ", ws->getUserData()->runner_id, " disconnected");
-                     scheduler.LeaveRunner(ws);
+                     scheduler_.LeaveRunner(ws);
                  }})
         .ws<ClientPerSocketData>(
             "/workflow/:id",
@@ -93,7 +101,7 @@ void Run() {
              .upgrade =
                  [&](auto *res, auto *req, auto *context) {
                      std::string workflow_id(req->getParameter("id"));
-                     WorkflowState *workflow_ptr = scheduler.FindWorkflow(workflow_id);
+                     WorkflowState *workflow_ptr = scheduler_.FindWorkflow(workflow_id);
                      if (!workflow_ptr) {
                          res->writeStatus(HTTP_NOT_FOUND)->end();
                          return;
@@ -107,7 +115,7 @@ void Run() {
                  [&](auto *ws) {
                      Log("Workflow ", ws->getUserData()->workflow_ptr->workflow_id,
                          ": client connected");
-                     scheduler.JoinClient(ws);
+                     scheduler_.JoinClient(ws);
                  },
              .message =
                  [&](auto *ws, std::string_view message, uWS::OpCode op_code) {
@@ -133,14 +141,14 @@ void Run() {
                  [&](auto *ws, int code, std::string_view message) {
                      Log("Workflow ", ws->getUserData()->workflow_ptr->workflow_id,
                          ": client disconnected");
-                     scheduler.LeaveClient(ws);
+                     scheduler_.LeaveClient(ws);
                  }})
-        .listen(kListenHost, Config::Get().port,
+        .listen(listen_host_, Config::Get().port,
                 [&](auto *listen_socket) {
                     if (listen_socket) {
-                        Log("Listening on ", kListenHost, ":", Config::Get().port);
+                        Log("Listening on ", listen_host_, ":", Config::Get().port);
                     } else {
-                        Log("Failed to listen on ", kListenHost, ":", Config::Get().port);
+                        Log("Failed to listen on ", listen_host_, ":", Config::Get().port);
                         exit(EXIT_FAILURE);
                     }
                 })

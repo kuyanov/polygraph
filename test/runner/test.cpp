@@ -16,23 +16,23 @@ TEST(Network, Reconnect) {
 }
 
 TEST(Execution, Sleep) {
-    auto container_path = CreateContainer();
+    std::string container_path = CreateContainer();
     auto response =
-        SendRunRequest({.binds = {{".", container_path.string(), false}}, .argv = {"sleep", "1"}});
+        SendRunRequest({.binds = {{".", container_path, false}}, .argv = {"sleep", "1"}});
     CheckExitedNormally(response);
     CheckDuration(response.status->time_usage_ms, 0);
     CheckDuration(response.status->wall_time_usage_ms, 1000);
 }
 
 TEST(Execution, Binds) {
-    auto container_path = CreateContainer();
-    std::string input_path = fs::path(VAR_DIR) / "test" / "input";
-    std::string output_path = fs::path(VAR_DIR) / "test" / "output";
-    std::string script_path = fs::path(VAR_DIR) / "test" / "script";
+    std::string container_path = CreateContainer();
+    std::string input_path = "/tmp/polygraph/input";
+    std::string output_path = "/tmp/polygraph/output";
+    std::string script_path = "/tmp/polygraph/script";
     CreateFile(input_path, "hello world");
     CreateFile(output_path, "");
     CreateFile(script_path, "#!/bin/bash\ncat");
-    auto response1 = SendRunRequest({.binds = {{".", container_path.string(), false},
+    auto response1 = SendRunRequest({.binds = {{".", container_path, false},
                                                {"input", input_path, true},
                                                {"output", output_path, false},
                                                {"script", script_path, true}},
@@ -41,49 +41,49 @@ TEST(Execution, Binds) {
     CheckExitedNormally(response1);
     ASSERT_EQ(ReadFile(output_path), "hello world");
     CreateFile(output_path, "");
-    auto response2 = SendRunRequest(
-        {.binds = {{".", container_path.string(), false}, {"output", output_path, false}},
-         .argv = {"bash", "-c", "echo test >output"}});
+    auto response2 =
+        SendRunRequest({.binds = {{".", container_path, false}, {"output", output_path, false}},
+                        .argv = {"bash", "-c", "echo test >output"}});
     CheckExitedNormally(response2);
     ASSERT_EQ(ReadFile(output_path), "test\n");
-    auto response3 = SendRunRequest(
-        {.binds = {{".", container_path.string(), false}, {"output", output_path, true}},
-         .argv = {"bash", "-c", "echo test2 >output"}});
+    auto response3 =
+        SendRunRequest({.binds = {{".", container_path, false}, {"output", output_path, true}},
+                        .argv = {"bash", "-c", "echo test2 >output"}});
     ASSERT_TRUE(response3.status.has_value());
     ASSERT_EQ(response3.status->exit_code, 1);
     ASSERT_EQ(ReadFile(output_path), "test\n");
 }
 
 TEST(Execution, Permissions) {
-    auto container_path = CreateContainer();
-    std::string input_path = fs::path(VAR_DIR) / "test" / "input";
+    std::string container_path = CreateContainer();
+    std::string input_path = "/tmp/polygraph/input";
     CreateFile(input_path, "", 3);
-    auto response1 = SendRunRequest(
-        {.binds = {{".", container_path.string(), false}, {"input", input_path, true}},
-         .argv = {"bash", "-c", "cat <input"},
-         .constraints = {.max_threads = 2}});
+    auto response1 =
+        SendRunRequest({.binds = {{".", container_path, false}, {"input", input_path, true}},
+                        .argv = {"bash", "-c", "cat <input"},
+                        .constraints = {.max_threads = 2}});
     ASSERT_TRUE(response1.status.has_value());
     ASSERT_EQ(response1.status->exit_code, 1);
-    std::string output_path = fs::path(VAR_DIR) / "test" / "output";
+    std::string output_path = "/tmp/polygraph/output";
     CreateFile(output_path, "", 5);
-    auto response2 = SendRunRequest(
-        {.binds = {{".", container_path.string(), false}, {"output", output_path, false}},
-         .argv = {"bash", "-c", "echo test >output"}});
+    auto response2 =
+        SendRunRequest({.binds = {{".", container_path, false}, {"output", output_path, false}},
+                        .argv = {"bash", "-c", "echo test >output"}});
     ASSERT_TRUE(response2.status.has_value());
     ASSERT_EQ(response2.status->exit_code, 1);
-    std::string script_path = fs::path(VAR_DIR) / "test" / "script";
+    std::string script_path = "/tmp/polygraph/script";
     CreateFile(script_path, "#!/bin/bash\necho test", 6);
-    auto response3 = SendRunRequest(
-        {.binds = {{".", container_path.string(), false}, {"script", script_path, true}},
-         .argv = {"bash", "-c", "./script"},
-         .constraints = {.max_threads = 3}});
+    auto response3 =
+        SendRunRequest({.binds = {{".", container_path, false}, {"script", script_path, true}},
+                        .argv = {"bash", "-c", "./script"},
+                        .constraints = {.max_threads = 3}});
     ASSERT_TRUE(response3.status.has_value());
     ASSERT_EQ(response3.status->exit_code, 126);
 }
 
 TEST(Execution, Environment) {
-    auto container_path = CreateContainer();
-    auto response = SendRunRequest({.binds = {{".", container_path.string(), false}},
+    std::string container_path = CreateContainer();
+    auto response = SendRunRequest({.binds = {{".", container_path, false}},
                                     .argv = {"bash", "-c", "exit $CODE"},
                                     .env = {"CODE=57"}});
     ASSERT_TRUE(response.status.has_value());
@@ -91,8 +91,8 @@ TEST(Execution, Environment) {
 }
 
 TEST(Execution, TimeLimit) {
-    auto container_path = CreateContainer();
-    auto response = SendRunRequest({.binds = {{".", container_path.string(), false}},
+    std::string container_path = CreateContainer();
+    auto response = SendRunRequest({.binds = {{".", container_path, false}},
                                     .argv = {"bash", "-c", "while true; do :; done"},
                                     .constraints = {.time_limit_ms = 1000}});
     ASSERT_TRUE(response.status.has_value());
@@ -101,8 +101,8 @@ TEST(Execution, TimeLimit) {
 }
 
 TEST(Execution, WallTimeLimit) {
-    auto container_path = CreateContainer();
-    auto response = SendRunRequest({.binds = {{".", container_path.string(), false}},
+    std::string container_path = CreateContainer();
+    auto response = SendRunRequest({.binds = {{".", container_path, false}},
                                     .argv = {"sleep", "2"},
                                     .constraints = {.wall_time_limit_ms = 1000}});
     ASSERT_TRUE(response.status.has_value());
@@ -111,8 +111,8 @@ TEST(Execution, WallTimeLimit) {
 }
 
 TEST(Execution, MemoryLimit) {
-    auto container_path = CreateContainer();
-    auto response = SendRunRequest({.binds = {{".", container_path.string(), false}},
+    std::string container_path = CreateContainer();
+    auto response = SendRunRequest({.binds = {{".", container_path, false}},
                                     .argv = {"bash", "-c", "a=(0); while true; do a+=$a; done"},
                                     .constraints = {.memory_limit_kb = 1024}});
     ASSERT_TRUE(response.status.has_value());

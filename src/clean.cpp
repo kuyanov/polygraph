@@ -45,7 +45,7 @@ std::pair<uintmax_t, uintmax_t> DirectoryStats(const fs::path &dir) {
 void Clean(const CleanOptions &options) {
     RequireRoot();
     RequireDown();
-    fs::path containers_dir = fs::path(VAR_DIR) / "containers";
+    fs::path containers_dir = CONTAINERS_DIR;
     auto [num_items, total_size] = DirectoryStats(containers_dir);
     std::cerr << "This operation will remove " << num_items << " items and free "
               << FileSize{total_size} << " of disk space." << std::endl;
@@ -56,8 +56,8 @@ void Clean(const CleanOptions &options) {
         for (const auto &entry : fs::directory_iterator(containers_dir)) {
             fs::remove_all(entry.path());
         }
-        std::cerr << "Done." << std::endl;
+        std::cerr << "Done" << std::endl;
     } else {
-        std::cerr << "Cancelled." << std::endl;
+        std::cerr << "Cancelled" << std::endl;
     }
 }

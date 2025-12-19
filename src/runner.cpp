@@ -1,4 +1,6 @@
 #include <chrono>
+#include <csignal>
+#include <cstdlib>
 #include <filesystem>
 #include <string>
 #include <thread>
@@ -8,7 +10,7 @@
 #include "json.h"
 #include "logger.h"
 #include "net.h"
-#include "run.h"
+#include "runner.h"
 #include "run_request.h"
 #include "run_response.h"
 #include "run_status.h"
@@ -75,13 +77,26 @@ RunResponse ProcessRequest(const RunRequest &request) {
     return response;
 }
 
-void Run(const std::string &id, const std::string &partition) {
+Runner::Runner(const std::string &id, const std::string &partition)
+    : id_(id), partition_(partition) {
+}
+
+void RunnerInterruptHandler(int signum) {
+    Log("Terminated with signal ", signum);
+    exit(signum);
+}
+
+void Runner::Run() {
+    std::string name = std::string("runner ") + id_;
+    Logger::Get().SetName(name);
+    signal(SIGINT, RunnerInterruptHandler);
+    signal(SIGTERM, RunnerInterruptHandler);
     bool connected = true;
     while (true) {
         try {
             WebsocketClientSession session;
             session.Connect(Config::Get().host, Config::Get().port,
-                            "/runner/" + partition + "/" + id);
+                            "/runner/" + partition_ + "/" + id_);
             connected = true;
             Log("Connected to ", Config::Get().host, ":", Config::Get().port);
             session.OnRead([&](const std::string &message) {

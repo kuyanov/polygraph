@@ -26,10 +26,7 @@ public:
     void Dump();
 
 private:
-    fs::path config_path_;
-
     Config() {
-        config_path_ = fs::path(CONF_DIR) / "config.json";
         Load();
     }
 };
@@ -62,11 +59,11 @@ inline void Deserialize<Config>(Config &data, const rapidjson::Value &value) {
 }
 
 inline void Config::Load() {
-    rapidjson::Document document = ReadJSON(this->config_path_);
+    rapidjson::Document document = ReadJSON(CONF_PATH);
     Deserialize(*this, document);
 }
 
 inline void Config::Dump() {
     rapidjson::Document document = Serialize(*this);
-    WriteJSON(document, config_path_);
+    WriteJSON(document, CONF_PATH);
 }

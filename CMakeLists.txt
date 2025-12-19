@@ -11,29 +11,29 @@ if (NOT CMAKE_BUILD_TYPE)
 endif ()
 
 find_package(Boost REQUIRED COMPONENTS program_options)
+find_library(LIBSBOX_LIBRARY libsbox.a REQUIRED)
 include(cmake/rapidjson.cmake)
 include(cmake/uWebSockets.cmake)
 
-add_compile_definitions(
-    CONF_DIR="/etc/${PROJECT_NAME}"
-    DATA_DIR="${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}"
-    EXEC_DIR="${CMAKE_INSTALL_PREFIX}/libexec"
-    LOG_DIR="/var/log/${PROJECT_NAME}"
+add_library(polygraph_impl INTERFACE)
+target_compile_definitions(polygraph_impl INTERFACE
+    CONF_PATH="/etc/${PROJECT_NAME}/config.json"
+    SCHEMA_DIR="${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/schema"
+    LOG_PATH="/var/log/${PROJECT_NAME}.log"
+    CONTAINERS_DIR="/var/${PROJECT_NAME}/containers"
     RUN_DIR="/var/run/${PROJECT_NAME}"
-    VAR_DIR="/var/${PROJECT_NAME}"
 )
+file(GLOB POLYGRAPH_SOURCES src/*.cpp)
+target_sources(polygraph_impl INTERFACE ${POLYGRAPH_SOURCES})
+target_include_directories(polygraph_impl INTERFACE src ${Boost_INCLUDE_DIR} ${rapidjson_SOURCE_DIR}/include)
+target_link_libraries(polygraph_impl INTERFACE ${Boost_LIBRARIES} ${LIBSBOX_LIBRARY} uWebSockets)
 
-include_directories(${Boost_INCLUDE_DIR} ${rapidjson_SOURCE_DIR}/include)
-link_libraries(${Boost_LIBRARIES})
-
-add_subdirectory(common)
-add_subdirectory(polygraph)
-add_subdirectory(polygraph-client)
-add_subdirectory(polygraph-runner)
-add_subdirectory(polygraph-scheduler)
+add_executable(polygraph main.cpp)
+target_link_libraries(polygraph PRIVATE polygraph_impl)
 
 include(cmake/googletest.cmake)
 add_subdirectory(test)
 
 install(DIRECTORY schema DESTINATION "share/${PROJECT_NAME}")
 install(FILES config.json DESTINATION "/etc/${PROJECT_NAME}")
+install(TARGETS polygraph DESTINATION bin)

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
@@ -34,13 +35,12 @@ inline void RequireDown() {
 }
 
 inline void CreateDirs() {
-    fs::create_directories(fs::path(LOG_DIR));
+    fs::create_directories(fs::path(CONTAINERS_DIR));
     fs::create_directories(fs::path(RUN_DIR));
-    fs::create_directories(fs::path(VAR_DIR));
 }
 
 inline void Daemonize() {
-    fs::path log_path = fs::path(LOG_DIR) / "polygraph.log";
+    fs::path log_path = LOG_PATH;
     FILE *fs_null = fopen("/dev/null", "r+");
     FILE *fs_log = fopen(log_path.c_str(), "a");
     if (!fs_null) {

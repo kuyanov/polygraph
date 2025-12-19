@@ -55,11 +55,11 @@ size_t ParseBlockId(const std::string &container_id) {
 void ImitateRun(const Workflow &workflow, int runner_delay,
                 const std::vector<size_t> &failed_blocks, const RunRequest &request,
                 RunResponse &response) {
-    fs::path container_path = fs::path(VAR_DIR) / request.binds[0].outside;
+    fs::path container_path = fs::path(request.binds[0].outside);
     std::string container_id = container_path.filename().string();
     size_t block_id = ParseBlockId(container_id);
     for (const auto &bind : request.binds) {
-        ASSERT_TRUE(fs::exists(fs::path(VAR_DIR) / bind.outside));
+        ASSERT_TRUE(fs::exists(bind.outside));
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(runner_delay));
     for (const auto &output : workflow.blocks[block_id].outputs) {
@@ -82,7 +82,7 @@ void CheckExecution(const Workflow &workflow, int cnt_clients, int cnt_runners, 
     EXPECT_EQ(submit_response.status, SUBMIT_ACCEPTED);
     std::string workflow_id = submit_response.data;
 
-    static SchemaValidator request_validator(std::string(DATA_DIR) + "/schema/run_request.json");
+    static SchemaValidator request_validator(SCHEMA_DIR "/run_request.json");
     std::mutex request_validator_mutex;
     std::vector<std::thread> runner_threads(cnt_runners);
     std::vector<WebsocketClientSession> runner_sessions(cnt_runners);
