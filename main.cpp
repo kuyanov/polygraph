@@ -5,6 +5,7 @@
 #include "clean.h"
 #include "config_get.h"
 #include "config_set.h"
+#include "helpers.h"
 #include "run.h"
 #include "runner_start.h"
 #include "runner_stop.h"
@@ -108,5 +109,6 @@ void ParseCommand(int argc, char **argv) {
 }
 
 int main(int argc, char **argv) {
+    CreateDirs();
     ParseCommand(argc, argv);
 }

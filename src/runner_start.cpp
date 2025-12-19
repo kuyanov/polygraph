@@ -15,7 +15,6 @@ namespace fs = std::filesystem;
 void RunnerStart(const RunnerStartOptions &options) {
     RequireRoot();
     RequireUp();
-    CreateDirs();
     int runner_id = 0;
     for (int iter = 0; iter < options.num; ++iter) {
         fs::path pid_path;

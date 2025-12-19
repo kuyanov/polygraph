@@ -1,3 +1,4 @@
+#include <csignal>
 #include <cstdlib>
 #include <filesystem>
 #include <iomanip>
@@ -36,7 +37,12 @@ Client::Client(const std::string &workflow_file) {
     session_.OnRead([this](const std::string &message) { OnMessage(message); });
 }
 
+void ClientInterruptHandler(int signum) {
+    Client::Get("").Stop();
+}
+
 void Client::Run() {
+    signal(SIGINT, ClientInterruptHandler);
     PrintWarnings();
     PrintBlocks();
     session_.Write(RUN_SIGNAL);

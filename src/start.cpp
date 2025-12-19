@@ -11,7 +11,6 @@ namespace fs = std::filesystem;
 void Start(const StartOptions &options) {
     RequireRoot();
     RequireDown();
-    CreateDirs();
     Daemonize();
     fs::path pid_path = fs::path(RUN_DIR) / "scheduler.pid";
     std::ofstream pid_file(pid_path.string());

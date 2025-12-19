@@ -35,8 +35,10 @@ inline void RequireDown() {
 }
 
 inline void CreateDirs() {
-    fs::create_directories(fs::path(CONTAINERS_DIR));
-    fs::create_directories(fs::path(RUN_DIR));
+    if (geteuid() == 0) {
+        fs::create_directories(fs::path(CONTAINERS_DIR));
+        fs::create_directories(fs::path(RUN_DIR));
+    }
 }
 
 inline void Daemonize() {
