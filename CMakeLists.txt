@@ -15,18 +15,17 @@ find_library(LIBSBOX_LIBRARY libsbox.a REQUIRED)
 include(cmake/rapidjson.cmake)
 include(cmake/uWebSockets.cmake)
 
-add_library(polygraph_impl INTERFACE)
-target_compile_definitions(polygraph_impl INTERFACE
+file(GLOB POLYGRAPH_SOURCES src/*.cpp)
+add_library(polygraph_impl STATIC ${POLYGRAPH_SOURCES})
+target_compile_definitions(polygraph_impl PUBLIC
     CONF_PATH="/etc/${PROJECT_NAME}/config.json"
     SCHEMA_DIR="${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}/schema"
     LOG_PATH="/var/log/${PROJECT_NAME}.log"
     CONTAINERS_DIR="/var/${PROJECT_NAME}/containers"
     RUN_DIR="/var/run/${PROJECT_NAME}"
 )
-file(GLOB POLYGRAPH_SOURCES src/*.cpp)
-target_sources(polygraph_impl INTERFACE ${POLYGRAPH_SOURCES})
-target_include_directories(polygraph_impl INTERFACE src ${Boost_INCLUDE_DIR} ${rapidjson_SOURCE_DIR}/include)
-target_link_libraries(polygraph_impl INTERFACE ${Boost_LIBRARIES} ${LIBSBOX_LIBRARY} uWebSockets)
+target_include_directories(polygraph_impl PUBLIC src ${Boost_INCLUDE_DIR} ${rapidjson_SOURCE_DIR}/include)
+target_link_libraries(polygraph_impl PRIVATE ${Boost_LIBRARIES} ${LIBSBOX_LIBRARY} uWebSockets)
 
 add_executable(polygraph main.cpp)
 target_link_libraries(polygraph PRIVATE polygraph_impl)

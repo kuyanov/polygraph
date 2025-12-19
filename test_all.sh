@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 
-# Scheduler test
+# Scheduler tests
 ./test_scheduler.sh
 STATUS=$?
 if [ $STATUS != 0 ]; then
+    echo "Scheduler tests failed"
     exit $STATUS
 fi
 
-# Runner test
+# Runner tests
 ./test_runner.sh
 if [ $STATUS != 0 ]; then
+    echo "Runner tests failed"
     exit $STATUS
 fi
 
