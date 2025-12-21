@@ -18,9 +18,8 @@ inline void RequireRoot() {
 inline void RequireUp() {
     fs::path pid_path = fs::path(RUN_DIR) / "scheduler.pid";
     if (!fs::exists(pid_path)) {
-        std::cerr << "Error: polygraph is not running (file " << pid_path << " does not exist)."
+        std::cerr << "Error: polygraph is not running (file " << pid_path << " does not exist)"
                   << std::endl;
-        std::cerr << "To execute this command, start polygraph first." << std::endl;
         exit(EXIT_FAILURE);
     }
 }
@@ -28,8 +27,7 @@ inline void RequireUp() {
 inline void RequireDown() {
     fs::path pid_path = fs::path(RUN_DIR) / "scheduler.pid";
     if (fs::exists(pid_path)) {
-        std::cerr << "Error: polygraph is running (file " << pid_path << " exists)." << std::endl;
-        std::cerr << "To execute this command, stop polygraph first." << std::endl;
+        std::cerr << "Error: polygraph is running (file " << pid_path << " exists)" << std::endl;
         exit(EXIT_FAILURE);
     }
 }

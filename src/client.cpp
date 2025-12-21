@@ -74,7 +74,7 @@ void Client::OnMessage(const std::string &message) {
         std::string error = message.substr(strlen(ERROR_SIGNAL) + 1);
         std::cerr << "Error: " << error << std::endl;
         session_.Stop();
-        return;
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -182,9 +182,14 @@ void Client::PrintBlocks() {
 }
 
 void Client::PrintErrors() {
+    bool has_errors = false;
     for (const auto &block : blocks_) {
         if (block.error.has_value()) {
+            has_errors = true;
             std::cerr << block.error.value() << std::endl;
         }
+    }
+    if (has_errors) {
+        exit(EXIT_FAILURE);
     }
 }

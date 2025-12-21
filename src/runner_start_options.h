@@ -27,7 +27,7 @@ public:
         desc.add_options()("num", po::value<int>(&num)->default_value(1),
                            "number of runners to start");
         desc.add_options()("partition", po::value<std::string>(&partition)->default_value("all"),
-                           "partition to subscribe to");
+                           "partition to subscribe runners to");
         po::variables_map vm;
         try {
             po::store(po::command_line_parser(argc, argv).options(desc).run(), vm);
