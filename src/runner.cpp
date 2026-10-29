@@ -63,7 +63,7 @@ void FillStatus(const libsbox::Task &task, RunStatus &status) {
     status.memory_usage_kb = task.get_memory_usage_kb();
 }
 
-RunResponse ProcessRequest(const RunRequest &request) {
+RunResponse ProcessRunRequest(const RunRequest &request) {
     libsbox::Task task;
     FillTask(request, task);
     auto error = libsbox::run_together({&task});
@@ -103,7 +103,7 @@ void Runner::Run() {
                 std::thread([=, &session] {
                     RunRequest request;
                     Deserialize(request, ParseJSON(message));
-                    RunResponse response = ProcessRequest(request);
+                    RunResponse response = ProcessRunRequest(request);
                     session.Write(StringifyJSON(Serialize(response)));
                 }).detach();
             });

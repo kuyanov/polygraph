@@ -10,6 +10,7 @@ fi
 
 # Runner tests
 ./test_runner.sh
+STATUS=$?
 if [ $STATUS != 0 ]; then
     echo "Runner tests failed"
     exit $STATUS
