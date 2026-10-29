@@ -1,11 +1,10 @@
 include(FetchContent)
-set(FETCHCONTENT_QUIET FALSE)
+
 FetchContent_Declare(
-        rapidjson
-        GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
-        GIT_SUBMODULES ""
+    rapidjson
+    GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
+    GIT_SUBMODULES ""
+    SOURCE_SUBDIR include
 )
-FetchContent_GetProperties(rapidjson)
-if (NOT rapidjson_POPULATED)
-    FetchContent_Populate(rapidjson)
-endif ()
+
+FetchContent_MakeAvailable(rapidjson)

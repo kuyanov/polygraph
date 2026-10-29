@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.18)
 project(polygraph)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -10,7 +10,7 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif ()
 
-find_package(Boost REQUIRED COMPONENTS program_options)
+find_package(Boost CONFIG REQUIRED COMPONENTS program_options)
 find_library(LIBSBOX_LIBRARY libsbox.a REQUIRED)
 include(cmake/rapidjson.cmake)
 include(cmake/uWebSockets.cmake)
